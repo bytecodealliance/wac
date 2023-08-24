@@ -1,0 +1,24 @@
+[package]
+name = "wac-parser"
+version = "0.1.0"
+edition = "2021"
+authors = ["Peter Huene <peter@huene.dev>"]
+description = "A library for encoding and decoding WebAssembly compositions."
+license = "Apache-2.0 WITH LLVM-exception"
+documentation = "https://docs.rs/wac-parser"
+categories = ["wasm"]
+keywords = ["webassembly", "wasm", "components", "component-model"]
+repository = "https://github.com/bytecodealliance/wac"
+
+[dependencies]
+anyhow = { workspace = true }
+clap = { workspace = true }
+pest = { workspace = true }
+pest_derive = { workspace = true }
+pest-ast = { workspace = true }
+from-pest = { workspace = true }
+semver = { workspace = true }
+id-arena = { workspace = true }
+
+[dev-dependencies]
+pretty_assertions = "1.4.0"
