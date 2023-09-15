@@ -6,11 +6,13 @@ use super::{
 };
 use crate::parser::Rule;
 use pest_ast::FromPest;
+use serde::Serialize;
 use std::fmt;
 
 /// Represents a let statement in the AST.
-#[derive(Debug, Clone, FromPest)]
+#[derive(Debug, Clone, Serialize, FromPest)]
 #[pest_ast(rule(Rule::LetStatement))]
+#[serde(rename_all = "camelCase")]
 pub struct LetStatement<'a> {
     /// The let keyword in the statement.
     pub keyword: Let<'a>,

@@ -1,0 +1,4 @@
+resource x {
+    x: func();
+    x: static func();
+}

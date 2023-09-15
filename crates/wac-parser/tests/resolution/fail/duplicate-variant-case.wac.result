@@ -1,0 +1,9 @@
+duplicate case `a` for variant type `x`
+
+Caused by:
+     --> tests/resolution/fail/duplicate-variant-case.wac:6:5
+      |
+    6 |     a,
+      |     ^
+      |
+      = duplicate case `a` for variant type `x`

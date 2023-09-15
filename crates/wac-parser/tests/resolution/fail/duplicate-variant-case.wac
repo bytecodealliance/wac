@@ -1,0 +1,7 @@
+type x = string;
+
+variant x {
+    a(x),
+    b,
+    a,
+}

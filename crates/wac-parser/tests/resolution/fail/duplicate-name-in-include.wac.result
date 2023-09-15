@@ -1,0 +1,9 @@
+duplicate `a` in world include `with` clause
+
+Caused by:
+     --> tests/resolution/fail/duplicate-name-in-include.wac:6:31
+      |
+    6 |     include w1 with { a as b, a as c};
+      |                               ^
+      |
+      = duplicate `a` in world include `with` clause

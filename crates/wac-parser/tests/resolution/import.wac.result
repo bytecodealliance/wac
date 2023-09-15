@@ -1,0 +1,98 @@
+{
+  "package": "test:test",
+  "types": [],
+  "funcs": [
+    {
+      "params": {},
+      "results": null
+    },
+    {
+      "params": {},
+      "results": null
+    },
+    {
+      "params": {
+        "name": "string"
+      },
+      "results": null
+    },
+    {
+      "params": {},
+      "results": null
+    }
+  ],
+  "interfaces": [
+    {
+      "kind": "inline",
+      "types": {},
+      "exports": {
+        "x": 3
+      }
+    }
+  ],
+  "worlds": [],
+  "scopes": [
+    {
+      "parent": null,
+      "names": {
+        "a": {
+          "span": {
+            "str": "a",
+            "start": 31,
+            "end": 32
+          },
+          "kind": {
+            "func": 0
+          }
+        },
+        "x": {
+          "span": {
+            "str": "x",
+            "start": 68,
+            "end": 69
+          },
+          "kind": {
+            "funcType": 1
+          }
+        },
+        "b": {
+          "span": {
+            "str": "b",
+            "start": 87,
+            "end": 88
+          },
+          "kind": {
+            "func": 1
+          }
+        },
+        "d": {
+          "span": {
+            "str": "d",
+            "start": 200,
+            "end": 201
+          },
+          "kind": {
+            "func": 2
+          }
+        },
+        "e": {
+          "span": {
+            "str": "e",
+            "start": 281,
+            "end": 282
+          },
+          "kind": {
+            "instance": {
+              "id": 0,
+              "scope": 1
+            }
+          }
+        }
+      }
+    },
+    {
+      "parent": 0,
+      "names": {}
+    }
+  ]
+}

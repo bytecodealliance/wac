@@ -14,11 +14,11 @@ PackageName     = ${ Ident ~ (":" ~ Ident)+ }
 PackageVersion  =  { (ASCII_ALPHANUMERIC | "." | "-" | "+")+ }
 
 // Type statement
-TypeStatement            =  { InterfaceDecl | WorldDecl | ValueTypeStatement }
+TypeStatement            =  { InterfaceDecl | WorldDecl | TypeDecl }
 InterfaceDecl            = ${ InterfaceKeyword ~ DelimitingSpace+ ~ Ident ~ DelimitingSpace* ~ InterfaceBody }
 InterfaceBody            = !{ OpenBrace ~ InterfaceItem* ~ CloseBrace }
 InterfaceItem            =  { DocComment* ~ InterfaceItemStatement }
-InterfaceItemStatement   =  { UseStatement | ValueTypeStatement | InterfaceExportStatement }
+InterfaceItemStatement   =  { UseStatement | TypeDecl | InterfaceExportStatement }
 UseStatement             = ${ UseKeyword ~ DelimitingSpace+ ~ UseItems ~ DelimitingSpace* ~ Semicolon }
 UseItems                 = !{ UsePath ~ Dot ~ OpenBrace ~ Ident ~ ("," ~ Ident)* ~ ","? ~ CloseBrace }
 UsePath                  =  { PackagePath | Ident }
@@ -26,7 +26,7 @@ InterfaceExportStatement =  { Ident ~ Colon ~ FuncTypeRef ~ Semicolon }
 WorldDecl                = ${ WorldKeyword ~ DelimitingSpace+ ~ Ident ~ DelimitingSpace* ~ WorldBody }
 WorldBody                = !{ OpenBrace ~ WorldItem* ~ CloseBrace }
 WorldItem                =  { DocComment* ~ WorldItemStatement }
-WorldItemStatement       =  { UseStatement | ValueTypeStatement | WorldImportStatement | WorldExportStatement | WorldIncludeStatement }
+WorldItemStatement       =  { UseStatement | TypeDecl | WorldImportStatement | WorldExportStatement | WorldIncludeStatement }
 WorldImportStatement     = ${ ImportKeyword ~ DelimitingSpace+ ~ WorldItemDecl ~ DelimitingSpace* ~ Semicolon }
 WorldExportStatement     = ${ ExportKeyword ~ DelimitingSpace+ ~ WorldItemDecl ~ DelimitingSpace* ~ Semicolon }
 WorldItemDecl            = !{ WorldNamedItem | InterfaceRef }
@@ -38,33 +38,31 @@ WorldIncludeStatement    = ${ IncludeKeyword ~ DelimitingSpace+ ~ WorldRef ~ Del
 WorldIncludeWithClause   = !{ WithKeyword ~ OpenBrace ~ WorldIncludeItem ~ ("," ~ WorldIncludeItem)* ~ ","? ~ CloseBrace }
 WorldIncludeItem         = ${ Ident ~ DelimitingSpace+ ~ AsKeyword ~ DelimitingSpace+ ~ Ident }
 WorldRef                 =  { PackagePath | Ident }
-
-// Value type statement
-ValueTypeStatement =  { ResourceDecl | VariantDecl | RecordDecl | FlagsDecl | EnumDecl | TypeAlias }
-ResourceDecl       = ${ ResourceKeyword ~ DelimitingSpace+ ~ Ident ~ DelimitingSpace* ~ ResourceBody }
-ResourceBody       = !{ Semicolon | (OpenBrace ~ (ResourceMethod ~ Semicolon)+ ~ CloseBrace) }
-ResourceMethod     =  { Constructor | Method }
-Constructor        =  { ConstructorKeyword ~ ParamList }
-Method             =  { Ident ~ Colon ~ StaticKeyword? ~ FuncTypeRef }
-VariantDecl        = ${ VariantKeyword ~ DelimitingSpace+ ~ Ident ~ DelimitingSpace* ~ VariantBody }
-VariantBody        = !{ OpenBrace ~ VariantCase ~ ("," ~ VariantCase)* ~ ","? ~ CloseBrace }
-VariantCase        =  { Ident ~ VariantType? }
-VariantType        =  { OpenParen ~ Type ~ CloseParen }
-RecordDecl         = ${ RecordKeyword ~ DelimitingSpace+ ~ Ident ~ DelimitingSpace* ~ RecordBody }
-RecordBody         = !{ OpenBrace ~ NamedType ~ ("," ~ NamedType)* ~ ","? ~ CloseBrace }
-FlagsDecl          = ${ FlagsKeyword ~ DelimitingSpace+ ~ Ident ~ DelimitingSpace* ~ FlagsBody }
-FlagsBody          = !{ OpenBrace ~ Ident ~ ("," ~ Ident)* ~ ","? ~ CloseBrace }
-EnumDecl           = ${ EnumKeyword ~ DelimitingSpace+ ~ Ident ~ DelimitingSpace* ~ EnumBody }
-EnumBody           = !{ OpenBrace ~ Ident ~ ("," ~ Ident)* ~ ","? ~ CloseBrace }
-TypeAlias          = ${ TypeKeyword ~ DelimitingSpace+ ~ Ident ~ DelimitingSpace* ~ Equals ~ DelimitingSpace* ~ TypeAliasKind ~ DelimitingSpace* ~ Semicolon }
-TypeAliasKind      = !{ FuncType | Type }
-FuncTypeRef        =  { FuncType | Ident }
-FuncType           =  { FuncKeyword ~ ParamList ~ ResultList? }
-ParamList          =  { OpenParen ~ (NamedType ~ ("," ~ NamedType)* ~ ","?)? ~ CloseParen }
-ResultList         =  { Arrow ~ (NamedResultList | Type) }
-NamedResultList    =  { OpenParen ~ (NamedType ~ ("," ~ NamedType)* ~ ","?)? ~ CloseParen }
-NamedType          =  { Ident ~ Colon ~ Type }
-Type               =  {
+TypeDecl                 =  { ResourceDecl | VariantDecl | RecordDecl | FlagsDecl | EnumDecl | TypeAlias }
+ResourceDecl             = ${ ResourceKeyword ~ DelimitingSpace+ ~ Ident ~ DelimitingSpace* ~ ResourceBody }
+ResourceBody             = !{ Semicolon | (OpenBrace ~ (ResourceMethod ~ Semicolon)+ ~ CloseBrace) }
+ResourceMethod           =  { Constructor | Method }
+Constructor              =  { ConstructorKeyword ~ ParamList }
+Method                   =  { Ident ~ Colon ~ StaticKeyword? ~ FuncTypeRef }
+VariantDecl              = ${ VariantKeyword ~ DelimitingSpace+ ~ Ident ~ DelimitingSpace* ~ VariantBody }
+VariantBody              = !{ OpenBrace ~ VariantCase ~ ("," ~ VariantCase)* ~ ","? ~ CloseBrace }
+VariantCase              =  { Ident ~ VariantType? }
+VariantType              =  { OpenParen ~ Type ~ CloseParen }
+RecordDecl               = ${ RecordKeyword ~ DelimitingSpace+ ~ Ident ~ DelimitingSpace* ~ RecordBody }
+RecordBody               = !{ OpenBrace ~ NamedType ~ ("," ~ NamedType)* ~ ","? ~ CloseBrace }
+FlagsDecl                = ${ FlagsKeyword ~ DelimitingSpace+ ~ Ident ~ DelimitingSpace* ~ FlagsBody }
+FlagsBody                = !{ OpenBrace ~ Ident ~ ("," ~ Ident)* ~ ","? ~ CloseBrace }
+EnumDecl                 = ${ EnumKeyword ~ DelimitingSpace+ ~ Ident ~ DelimitingSpace* ~ EnumBody }
+EnumBody                 = !{ OpenBrace ~ Ident ~ ("," ~ Ident)* ~ ","? ~ CloseBrace }
+TypeAlias                = ${ TypeKeyword ~ DelimitingSpace+ ~ Ident ~ DelimitingSpace* ~ Equals ~ DelimitingSpace* ~ TypeAliasKind ~ DelimitingSpace* ~ Semicolon }
+TypeAliasKind            = !{ FuncType | Type }
+FuncTypeRef              =  { FuncType | Ident }
+FuncType                 =  { FuncKeyword ~ ParamList ~ ResultList? }
+ParamList                =  { OpenParen ~ (NamedType ~ ("," ~ NamedType)* ~ ","?)? ~ CloseParen }
+ResultList               =  { Arrow ~ (NamedResultList | Type) }
+NamedResultList          =  { OpenParen ~ (NamedType ~ ("," ~ NamedType)* ~ ","?)? ~ CloseParen }
+NamedType                =  { Ident ~ Colon ~ Type }
+Type                     =  {
     U8Keyword
   | S8Keyword
   | U16Keyword
@@ -85,13 +83,13 @@ Type               =  {
   | Borrow
   | Ident
 }
-Tuple              =  { TupleKeyword ~ OpenAngle ~ Type ~ ("," ~ Type)* ~ CloseAngle }
-List               =  { ListKeyword ~ OpenAngle ~ Type ~ CloseAngle }
-Option             =  { OptionKeyword ~ OpenAngle ~ Type ~ CloseAngle }
-Result             =  { ResultKeyword ~ SpecifiedResult? }
-SpecifiedResult    =  { OpenAngle ~ OmitType ~ ("," ~ Type)? ~ CloseAngle }
-OmitType           =  { Underscore | Type }
-Borrow             =  { BorrowKeyword ~ OpenAngle ~ Ident ~ CloseAngle }
+Tuple                    =  { TupleKeyword ~ OpenAngle ~ Type ~ ("," ~ Type)* ~ CloseAngle }
+List                     =  { ListKeyword ~ OpenAngle ~ Type ~ CloseAngle }
+Option                   =  { OptionKeyword ~ OpenAngle ~ Type ~ CloseAngle }
+Result                   =  { ResultKeyword ~ SpecifiedResult? }
+SpecifiedResult          =  { OpenAngle ~ OmitType ~ ("," ~ Type)? ~ CloseAngle }
+OmitType                 =  { Underscore | Type }
+Borrow                   =  { BorrowKeyword ~ OpenAngle ~ Ident ~ CloseAngle }
 
 // Let statement
 LetStatement = ${ LetKeyword ~ DelimitingSpace+ ~ Ident ~ DelimitingSpace* ~ Equals ~ DelimitingSpace* ~ Expr ~ DelimitingSpace* ~ Semicolon }

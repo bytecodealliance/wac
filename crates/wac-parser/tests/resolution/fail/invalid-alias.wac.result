@@ -1,0 +1,9 @@
+interface `a` cannot be used in a type alias
+
+Caused by:
+     --> tests/resolution/fail/invalid-alias.wac:5:10
+      |
+    5 | type x = a;
+      |          ^
+      |
+      = interface `a` cannot be used in a type alias

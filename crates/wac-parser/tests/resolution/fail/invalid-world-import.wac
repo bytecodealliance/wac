@@ -1,0 +1,5 @@
+type x = u32;
+
+world w {
+    import x: x;
+}

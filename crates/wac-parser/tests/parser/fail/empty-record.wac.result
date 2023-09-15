@@ -1,0 +1,9 @@
+expected identifier
+
+Caused by:
+     --> tests/parser/fail/empty-record.wac:1:11
+      |
+    1 | record r {}
+      |           ^---
+      |
+      = expected identifier

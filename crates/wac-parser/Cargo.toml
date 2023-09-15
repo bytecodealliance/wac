@@ -18,7 +18,21 @@ pest_derive = { workspace = true }
 pest-ast = { workspace = true }
 from-pest = { workspace = true }
 semver = { workspace = true }
+log = { workspace = true }
+indexmap = { workspace = true }
 id-arena = { workspace = true }
+serde = { workspace = true }
 
 [dev-dependencies]
 pretty_assertions = "1.4.0"
+pretty_env_logger = { workspace = true }
+rayon = "1.8.0"
+serde_json = { workspace = true }
+
+[[test]]
+name = "parser"
+harness = false
+
+[[test]]
+name = "resolution"
+harness = false

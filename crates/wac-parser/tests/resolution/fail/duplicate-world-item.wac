@@ -1,0 +1,4 @@
+world w {
+    import x: func();
+    export x: func();
+}

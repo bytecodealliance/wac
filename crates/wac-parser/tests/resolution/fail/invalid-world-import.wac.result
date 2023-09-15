@@ -1,0 +1,9 @@
+value type `x` is not a function type or interface
+
+Caused by:
+     --> tests/resolution/fail/invalid-world-import.wac:4:15
+      |
+    4 |     import x: x;
+      |               ^
+      |
+      = value type `x` is not a function type or interface

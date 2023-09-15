@@ -1,0 +1,336 @@
+{
+  "statements": [
+    {
+      "docs": [
+        {
+          "str": "/// Resource without methods\n",
+          "start": 0,
+          "end": 29
+        }
+      ],
+      "stmt": {
+        "type": {
+          "type": {
+            "resource": {
+              "keyword": {
+                "str": "resource",
+                "start": 29,
+                "end": 37
+              },
+              "id": {
+                "str": "r1",
+                "start": 38,
+                "end": 40
+              },
+              "body": {
+                "empty": {
+                  "str": ";",
+                  "start": 40,
+                  "end": 41
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "docs": [
+        {
+          "str": "/// Resource with only constructor\n",
+          "start": 43,
+          "end": 78
+        }
+      ],
+      "stmt": {
+        "type": {
+          "type": {
+            "resource": {
+              "keyword": {
+                "str": "resource",
+                "start": 78,
+                "end": 86
+              },
+              "id": {
+                "str": "r2",
+                "start": 87,
+                "end": 89
+              },
+              "body": {
+                "methods": {
+                  "open": {
+                    "str": "{",
+                    "start": 90,
+                    "end": 91
+                  },
+                  "methods": [
+                    [
+                      {
+                        "constructor": {
+                          "keyword": {
+                            "str": "constructor",
+                            "start": 96,
+                            "end": 107
+                          },
+                          "params": {
+                            "open": {
+                              "str": "(",
+                              "start": 107,
+                              "end": 108
+                            },
+                            "list": [],
+                            "close": {
+                              "str": ")",
+                              "start": 108,
+                              "end": 109
+                            }
+                          }
+                        }
+                      },
+                      {
+                        "str": ";",
+                        "start": 109,
+                        "end": 110
+                      }
+                    ]
+                  ],
+                  "close": {
+                    "str": "}",
+                    "start": 111,
+                    "end": 112
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "docs": [
+        {
+          "str": "/// Resource with constructor, instance method, and static method\n",
+          "start": 114,
+          "end": 180
+        }
+      ],
+      "stmt": {
+        "type": {
+          "type": {
+            "resource": {
+              "keyword": {
+                "str": "resource",
+                "start": 180,
+                "end": 188
+              },
+              "id": {
+                "str": "r3",
+                "start": 189,
+                "end": 191
+              },
+              "body": {
+                "methods": {
+                  "open": {
+                    "str": "{",
+                    "start": 192,
+                    "end": 193
+                  },
+                  "methods": [
+                    [
+                      {
+                        "constructor": {
+                          "keyword": {
+                            "str": "constructor",
+                            "start": 198,
+                            "end": 209
+                          },
+                          "params": {
+                            "open": {
+                              "str": "(",
+                              "start": 209,
+                              "end": 210
+                            },
+                            "list": [
+                              {
+                                "id": {
+                                  "str": "a",
+                                  "start": 210,
+                                  "end": 211
+                                },
+                                "colon": {
+                                  "str": ":",
+                                  "start": 211,
+                                  "end": 212
+                                },
+                                "ty": {
+                                  "u32": {
+                                    "str": "u32",
+                                    "start": 213,
+                                    "end": 216
+                                  }
+                                }
+                              }
+                            ],
+                            "close": {
+                              "str": ")",
+                              "start": 216,
+                              "end": 217
+                            }
+                          }
+                        }
+                      },
+                      {
+                        "str": ";",
+                        "start": 217,
+                        "end": 218
+                      }
+                    ],
+                    [
+                      {
+                        "method": {
+                          "id": {
+                            "str": "a",
+                            "start": 223,
+                            "end": 224
+                          },
+                          "colon": {
+                            "str": ":",
+                            "start": 224,
+                            "end": 225
+                          },
+                          "keyword": null,
+                          "func": {
+                            "func": {
+                              "keyword": {
+                                "str": "func",
+                                "start": 226,
+                                "end": 230
+                              },
+                              "params": {
+                                "open": {
+                                  "str": "(",
+                                  "start": 230,
+                                  "end": 231
+                                },
+                                "list": [
+                                  {
+                                    "id": {
+                                      "str": "b",
+                                      "start": 231,
+                                      "end": 232
+                                    },
+                                    "colon": {
+                                      "str": ":",
+                                      "start": 232,
+                                      "end": 233
+                                    },
+                                    "ty": {
+                                      "u32": {
+                                        "str": "u32",
+                                        "start": 234,
+                                        "end": 237
+                                      }
+                                    }
+                                  }
+                                ],
+                                "close": {
+                                  "str": ")",
+                                  "start": 237,
+                                  "end": 238
+                                }
+                              },
+                              "results": null
+                            }
+                          }
+                        }
+                      },
+                      {
+                        "str": ";",
+                        "start": 238,
+                        "end": 239
+                      }
+                    ],
+                    [
+                      {
+                        "method": {
+                          "id": {
+                            "str": "b",
+                            "start": 244,
+                            "end": 245
+                          },
+                          "colon": {
+                            "str": ":",
+                            "start": 245,
+                            "end": 246
+                          },
+                          "keyword": {
+                            "str": "static",
+                            "start": 247,
+                            "end": 253
+                          },
+                          "func": {
+                            "func": {
+                              "keyword": {
+                                "str": "func",
+                                "start": 254,
+                                "end": 258
+                              },
+                              "params": {
+                                "open": {
+                                  "str": "(",
+                                  "start": 258,
+                                  "end": 259
+                                },
+                                "list": [
+                                  {
+                                    "id": {
+                                      "str": "c",
+                                      "start": 259,
+                                      "end": 260
+                                    },
+                                    "colon": {
+                                      "str": ":",
+                                      "start": 260,
+                                      "end": 261
+                                    },
+                                    "ty": {
+                                      "u32": {
+                                        "str": "u32",
+                                        "start": 262,
+                                        "end": 265
+                                      }
+                                    }
+                                  }
+                                ],
+                                "close": {
+                                  "str": ")",
+                                  "start": 265,
+                                  "end": 266
+                                }
+                              },
+                              "results": null
+                            }
+                          }
+                        }
+                      },
+                      {
+                        "str": ";",
+                        "start": 266,
+                        "end": 267
+                      }
+                    ]
+                  ],
+                  "close": {
+                    "str": "}",
+                    "start": 268,
+                    "end": 269
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
+}

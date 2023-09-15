@@ -1,0 +1,46 @@
+/// u8
+type a = u8;
+/// s8
+type b = s8;
+/// u16
+type c = u16;
+/// s16
+type d = s16;
+/// u32
+type e = u32;
+/// s32
+type f = s32;
+/// u64
+type g = u64;
+/// s64
+type h = s64;
+/// float32
+type i = float32;
+/// float64
+type j = float64;
+/// bool
+type k = bool;
+/// char
+type l = char;
+/// string
+type m = string;
+/// tuple<u8, s8>
+type n = tuple<u8, s8>;
+/// list<tuple<u8>>
+type o = list<tuple<u8>>;
+/// option<string>
+type p = option<string>;
+/// result
+type q = result;
+/// result<u8>
+type r = result<u8>;
+/// result<_, s8>
+type s = result<_, s8>;
+/// result<u8, string>
+type t = result<u8, string>;
+/// borrow<x>
+type u = borrow<x>;
+/// x
+type v = x;
+/// keyword
+type %type = v;

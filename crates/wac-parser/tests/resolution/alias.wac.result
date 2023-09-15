@@ -1,0 +1,64 @@
+{
+  "package": "test:test",
+  "types": [
+    {
+      "alias": {
+        "ty": "u32"
+      }
+    },
+    {
+      "alias": {
+        "ty": "string"
+      }
+    }
+  ],
+  "funcs": [
+    {
+      "params": {},
+      "results": null
+    }
+  ],
+  "interfaces": [],
+  "worlds": [],
+  "scopes": [
+    {
+      "parent": null,
+      "names": {
+        "a": {
+          "span": {
+            "str": "a",
+            "start": 5,
+            "end": 6
+          },
+          "kind": {
+            "type": {
+              "id": 0
+            }
+          }
+        },
+        "b": {
+          "span": {
+            "str": "b",
+            "start": 20,
+            "end": 21
+          },
+          "kind": {
+            "type": {
+              "id": 1
+            }
+          }
+        },
+        "c": {
+          "span": {
+            "str": "c",
+            "start": 38,
+            "end": 39
+          },
+          "kind": {
+            "funcType": 0
+          }
+        }
+      }
+    }
+  ]
+}

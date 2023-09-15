@@ -1,0 +1,19 @@
+/// Import by func type
+import a: func();
+
+/// Import by ident
+import b: x;
+
+/// Import by package path
+import c: foo:bar/baz;
+
+/// Import by func type with kebab name 
+import d with "hello-world": func(name: string);
+
+/// Import by inline interface
+import e: interface {
+    x: func();
+};
+
+/// Import by package path with version
+import f: foo:bar/baz@1.0.0;

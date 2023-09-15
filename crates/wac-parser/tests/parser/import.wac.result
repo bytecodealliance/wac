@@ -1,0 +1,437 @@
+{
+  "statements": [
+    {
+      "docs": [
+        {
+          "str": "/// Import by func type\n",
+          "start": 0,
+          "end": 24
+        }
+      ],
+      "stmt": {
+        "import": {
+          "keyword": {
+            "str": "import",
+            "start": 24,
+            "end": 30
+          },
+          "id": {
+            "str": "a",
+            "start": 31,
+            "end": 32
+          },
+          "with": null,
+          "colon": {
+            "str": ":",
+            "start": 32,
+            "end": 33
+          },
+          "ty": {
+            "func": {
+              "keyword": {
+                "str": "func",
+                "start": 34,
+                "end": 38
+              },
+              "params": {
+                "open": {
+                  "str": "(",
+                  "start": 38,
+                  "end": 39
+                },
+                "list": [],
+                "close": {
+                  "str": ")",
+                  "start": 39,
+                  "end": 40
+                }
+              },
+              "results": null
+            }
+          },
+          "semicolon": {
+            "str": ";",
+            "start": 40,
+            "end": 41
+          }
+        }
+      }
+    },
+    {
+      "docs": [
+        {
+          "str": "/// Import by ident\n",
+          "start": 43,
+          "end": 63
+        }
+      ],
+      "stmt": {
+        "import": {
+          "keyword": {
+            "str": "import",
+            "start": 63,
+            "end": 69
+          },
+          "id": {
+            "str": "b",
+            "start": 70,
+            "end": 71
+          },
+          "with": null,
+          "colon": {
+            "str": ":",
+            "start": 71,
+            "end": 72
+          },
+          "ty": {
+            "ident": {
+              "str": "x",
+              "start": 73,
+              "end": 74
+            }
+          },
+          "semicolon": {
+            "str": ";",
+            "start": 74,
+            "end": 75
+          }
+        }
+      }
+    },
+    {
+      "docs": [
+        {
+          "str": "/// Import by package path\n",
+          "start": 77,
+          "end": 104
+        }
+      ],
+      "stmt": {
+        "import": {
+          "keyword": {
+            "str": "import",
+            "start": 104,
+            "end": 110
+          },
+          "id": {
+            "str": "c",
+            "start": 111,
+            "end": 112
+          },
+          "with": null,
+          "colon": {
+            "str": ":",
+            "start": 112,
+            "end": 113
+          },
+          "ty": {
+            "package": {
+              "name": {
+                "parts": [
+                  {
+                    "str": "foo",
+                    "start": 114,
+                    "end": 117
+                  },
+                  {
+                    "str": "bar",
+                    "start": 118,
+                    "end": 121
+                  }
+                ]
+              },
+              "path": [
+                [
+                  {
+                    "str": "/",
+                    "start": 121,
+                    "end": 122
+                  },
+                  {
+                    "str": "baz",
+                    "start": 122,
+                    "end": 125
+                  }
+                ]
+              ],
+              "version": null
+            }
+          },
+          "semicolon": {
+            "str": ";",
+            "start": 125,
+            "end": 126
+          }
+        }
+      }
+    },
+    {
+      "docs": [
+        {
+          "str": "/// Import by func type with kebab name \n",
+          "start": 128,
+          "end": 169
+        }
+      ],
+      "stmt": {
+        "import": {
+          "keyword": {
+            "str": "import",
+            "start": 169,
+            "end": 175
+          },
+          "id": {
+            "str": "d",
+            "start": 176,
+            "end": 177
+          },
+          "with": {
+            "keyword": {
+              "str": "with",
+              "start": 178,
+              "end": 182
+            },
+            "name": {
+              "str": "\"hello-world\"",
+              "start": 183,
+              "end": 196
+            }
+          },
+          "colon": {
+            "str": ":",
+            "start": 196,
+            "end": 197
+          },
+          "ty": {
+            "func": {
+              "keyword": {
+                "str": "func",
+                "start": 198,
+                "end": 202
+              },
+              "params": {
+                "open": {
+                  "str": "(",
+                  "start": 202,
+                  "end": 203
+                },
+                "list": [
+                  {
+                    "id": {
+                      "str": "name",
+                      "start": 203,
+                      "end": 207
+                    },
+                    "colon": {
+                      "str": ":",
+                      "start": 207,
+                      "end": 208
+                    },
+                    "ty": {
+                      "string": {
+                        "str": "string",
+                        "start": 209,
+                        "end": 215
+                      }
+                    }
+                  }
+                ],
+                "close": {
+                  "str": ")",
+                  "start": 215,
+                  "end": 216
+                }
+              },
+              "results": null
+            }
+          },
+          "semicolon": {
+            "str": ";",
+            "start": 216,
+            "end": 217
+          }
+        }
+      }
+    },
+    {
+      "docs": [
+        {
+          "str": "/// Import by inline interface\n",
+          "start": 219,
+          "end": 250
+        }
+      ],
+      "stmt": {
+        "import": {
+          "keyword": {
+            "str": "import",
+            "start": 250,
+            "end": 256
+          },
+          "id": {
+            "str": "e",
+            "start": 257,
+            "end": 258
+          },
+          "with": null,
+          "colon": {
+            "str": ":",
+            "start": 258,
+            "end": 259
+          },
+          "ty": {
+            "interface": {
+              "keyword": {
+                "str": "interface",
+                "start": 260,
+                "end": 269
+              },
+              "body": {
+                "open": {
+                  "str": "{",
+                  "start": 270,
+                  "end": 271
+                },
+                "items": [
+                  {
+                    "docs": [],
+                    "stmt": {
+                      "export": {
+                        "id": {
+                          "str": "x",
+                          "start": 276,
+                          "end": 277
+                        },
+                        "colon": {
+                          "str": ":",
+                          "start": 277,
+                          "end": 278
+                        },
+                        "ty": {
+                          "func": {
+                            "keyword": {
+                              "str": "func",
+                              "start": 279,
+                              "end": 283
+                            },
+                            "params": {
+                              "open": {
+                                "str": "(",
+                                "start": 283,
+                                "end": 284
+                              },
+                              "list": [],
+                              "close": {
+                                "str": ")",
+                                "start": 284,
+                                "end": 285
+                              }
+                            },
+                            "results": null
+                          }
+                        },
+                        "semicolon": {
+                          "str": ";",
+                          "start": 285,
+                          "end": 286
+                        }
+                      }
+                    }
+                  }
+                ],
+                "close": {
+                  "str": "}",
+                  "start": 287,
+                  "end": 288
+                }
+              }
+            }
+          },
+          "semicolon": {
+            "str": ";",
+            "start": 288,
+            "end": 289
+          }
+        }
+      }
+    },
+    {
+      "docs": [
+        {
+          "str": "/// Import by package path with version\n",
+          "start": 291,
+          "end": 331
+        }
+      ],
+      "stmt": {
+        "import": {
+          "keyword": {
+            "str": "import",
+            "start": 331,
+            "end": 337
+          },
+          "id": {
+            "str": "f",
+            "start": 338,
+            "end": 339
+          },
+          "with": null,
+          "colon": {
+            "str": ":",
+            "start": 339,
+            "end": 340
+          },
+          "ty": {
+            "package": {
+              "name": {
+                "parts": [
+                  {
+                    "str": "foo",
+                    "start": 341,
+                    "end": 344
+                  },
+                  {
+                    "str": "bar",
+                    "start": 345,
+                    "end": 348
+                  }
+                ]
+              },
+              "path": [
+                [
+                  {
+                    "str": "/",
+                    "start": 348,
+                    "end": 349
+                  },
+                  {
+                    "str": "baz",
+                    "start": 349,
+                    "end": 352
+                  }
+                ]
+              ],
+              "version": [
+                {
+                  "str": "@",
+                  "start": 352,
+                  "end": 353
+                },
+                {
+                  "str": "1.0.0",
+                  "start": 353,
+                  "end": 358
+                }
+              ]
+            }
+          },
+          "semicolon": {
+            "str": ";",
+            "start": 358,
+            "end": 359
+          }
+        }
+      }
+    }
+  ]
+}

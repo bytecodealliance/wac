@@ -1,0 +1,3 @@
+resource x;
+
+type f = func(x: borrow<x>);

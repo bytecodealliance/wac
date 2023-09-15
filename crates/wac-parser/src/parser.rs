@@ -24,7 +24,7 @@ mod pest {
                 Self::Document | Self::TopLevelStatement | Self::Statement => "statement",
                 Self::ImportStatement => "import statement",
                 Self::TypeStatement => "type statement",
-                Self::ValueTypeStatement => "value type statement",
+                Self::TypeDecl => "type declaration",
                 Self::ResourceDecl => "resource declaration",
                 Self::ResourceBody => "resource body",
                 Self::VariantDecl => "variant declaration",

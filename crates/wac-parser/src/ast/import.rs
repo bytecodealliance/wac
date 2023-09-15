@@ -1,6 +1,7 @@
 use super::{
     display,
     keywords::{Import, With},
+    serialize_span,
     symbols::{At, Colon, Semicolon, Slash},
     AstDisplay, FuncType, Ident, Indenter, InlineInterface,
 };
@@ -9,11 +10,13 @@ use anyhow::Result;
 use pest::Span;
 use pest_ast::FromPest;
 use semver::Version;
+use serde::Serialize;
 use std::fmt;
 
 /// Represents an import statement in the AST.
-#[derive(Debug, Clone, FromPest)]
+#[derive(Debug, Clone, Serialize, FromPest)]
 #[pest_ast(rule(Rule::ImportStatement))]
+#[serde(rename_all = "camelCase")]
 pub struct ImportStatement<'a> {
     /// The import keyword in the statement.
     pub keyword: Import<'a>,
@@ -52,8 +55,9 @@ impl AstDisplay for ImportStatement<'_> {
 display!(ImportStatement);
 
 /// Represents an import type in the AST.
-#[derive(Debug, Clone, FromPest)]
+#[derive(Debug, Clone, Serialize, FromPest)]
 #[pest_ast(rule(Rule::ImportType))]
+#[serde(rename_all = "camelCase")]
 pub enum ImportType<'a> {
     /// The import type is from a package path.
     Package(PackagePath<'a>),
@@ -79,8 +83,9 @@ impl AstDisplay for ImportType<'_> {
 display!(ImportType);
 
 /// Represents a `with` clause in the AST.
-#[derive(Debug, Clone, FromPest)]
+#[derive(Debug, Clone, Serialize, FromPest)]
 #[pest_ast(rule(Rule::WithClause))]
+#[serde(rename_all = "camelCase")]
 pub struct WithClause<'a> {
     /// The `with` keyword in the clause.
     pub keyword: With<'a>,
@@ -98,8 +103,9 @@ impl AstDisplay for WithClause<'_> {
 display!(WithClause);
 
 /// Represents a package path in the AST.
-#[derive(Debug, Clone, FromPest)]
+#[derive(Debug, Clone, Serialize, FromPest)]
 #[pest_ast(rule(Rule::PackagePath))]
+#[serde(rename_all = "camelCase")]
 pub struct PackagePath<'a> {
     /// The name of the package.
     pub name: PackageName<'a>,
@@ -107,6 +113,22 @@ pub struct PackagePath<'a> {
     pub path: Vec<(Slash<'a>, Ident<'a>)>,
     /// The version of the package.
     pub version: Option<(At<'a>, PackageVersion<'a>)>,
+}
+
+impl PackagePath<'_> {
+    /// Calculates the span of the package path.
+    pub fn span(&self) -> Span {
+        let span = self.name.parts.first().unwrap().0;
+        let end = if let Some((_, version)) = &self.version {
+            version.0.end()
+        } else if let Some((_, path)) = self.path.last() {
+            path.0.end()
+        } else {
+            span.end()
+        };
+
+        Span::new(span.get_input(), span.start(), end).unwrap()
+    }
 }
 
 impl AstDisplay for PackagePath<'_> {
@@ -130,8 +152,9 @@ impl AstDisplay for PackagePath<'_> {
 display!(PackagePath);
 
 /// Represents a package name in the AST.
-#[derive(Debug, Clone, FromPest)]
+#[derive(Debug, Clone, Serialize, FromPest)]
 #[pest_ast(rule(Rule::PackageName))]
+#[serde(rename_all = "camelCase")]
 pub struct PackageName<'a> {
     /// The parts of the package name.
     pub parts: Vec<Ident<'a>>,
@@ -154,9 +177,14 @@ impl AstDisplay for PackageName<'_> {
 display!(PackageName);
 
 /// Represents a package version in the AST.
-#[derive(Debug, Clone, FromPest)]
+#[derive(Debug, Clone, Serialize, FromPest)]
 #[pest_ast(rule(Rule::PackageVersion))]
-pub struct PackageVersion<'a>(#[pest_ast(outer())] pub Span<'a>);
+#[serde(rename_all = "camelCase")]
+pub struct PackageVersion<'a>(
+    #[pest_ast(outer())]
+    #[serde(serialize_with = "serialize_span")]
+    pub Span<'a>,
+);
 
 impl PackageVersion<'_> {
     /// Returns the string representation of the package version.

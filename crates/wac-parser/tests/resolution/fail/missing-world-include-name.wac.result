@@ -1,0 +1,9 @@
+world `w1` does not have an import or export with kebab-name `a`
+
+Caused by:
+     --> tests/resolution/fail/missing-world-include-name.wac:6:23
+      |
+    6 |     include w1 with { a as b };
+      |                       ^
+      |
+      = world `w1` does not have an import or export with kebab-name `a`

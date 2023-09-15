@@ -1,0 +1,157 @@
+{
+  "statements": [
+    {
+      "docs": [
+        {
+          "str": "/// Export an item (default name)\n",
+          "start": 0,
+          "end": 34
+        }
+      ],
+      "stmt": {
+        "export": {
+          "keyword": {
+            "str": "export",
+            "start": 34,
+            "end": 40
+          },
+          "expr": {
+            "primary": {
+              "ident": {
+                "str": "e",
+                "start": 41,
+                "end": 42
+              }
+            },
+            "postfix": []
+          },
+          "with": null,
+          "semicolon": {
+            "str": ";",
+            "start": 42,
+            "end": 43
+          }
+        }
+      }
+    },
+    {
+      "docs": [
+        {
+          "str": "/// Export an alias of an item (default name)\n",
+          "start": 45,
+          "end": 91
+        }
+      ],
+      "stmt": {
+        "export": {
+          "keyword": {
+            "str": "export",
+            "start": 91,
+            "end": 97
+          },
+          "expr": {
+            "primary": {
+              "ident": {
+                "str": "e",
+                "start": 98,
+                "end": 99
+              }
+            },
+            "postfix": [
+              {
+                "namedAccess": {
+                  "open": {
+                    "str": "[",
+                    "start": 99,
+                    "end": 100
+                  },
+                  "string": {
+                    "str": "\"foo\"",
+                    "start": 100,
+                    "end": 105
+                  },
+                  "close": {
+                    "str": "]",
+                    "start": 105,
+                    "end": 106
+                  }
+                }
+              }
+            ]
+          },
+          "with": null,
+          "semicolon": {
+            "str": ";",
+            "start": 106,
+            "end": 107
+          }
+        }
+      }
+    },
+    {
+      "docs": [
+        {
+          "str": "/// Export an alias of an item with a different name\n",
+          "start": 109,
+          "end": 162
+        }
+      ],
+      "stmt": {
+        "export": {
+          "keyword": {
+            "str": "export",
+            "start": 162,
+            "end": 168
+          },
+          "expr": {
+            "primary": {
+              "ident": {
+                "str": "e",
+                "start": 169,
+                "end": 170
+              }
+            },
+            "postfix": [
+              {
+                "namedAccess": {
+                  "open": {
+                    "str": "[",
+                    "start": 170,
+                    "end": 171
+                  },
+                  "string": {
+                    "str": "\"foo\"",
+                    "start": 171,
+                    "end": 176
+                  },
+                  "close": {
+                    "str": "]",
+                    "start": 176,
+                    "end": 177
+                  }
+                }
+              }
+            ]
+          },
+          "with": {
+            "keyword": {
+              "str": "with",
+              "start": 178,
+              "end": 182
+            },
+            "name": {
+              "str": "\"bar\"",
+              "start": 183,
+              "end": 188
+            }
+          },
+          "semicolon": {
+            "str": ";",
+            "start": 188,
+            "end": 189
+          }
+        }
+      }
+    }
+  ]
+}

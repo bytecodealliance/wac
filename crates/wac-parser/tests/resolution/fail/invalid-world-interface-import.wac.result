@@ -1,0 +1,9 @@
+value type `x` is not an interface
+
+Caused by:
+     --> tests/resolution/fail/invalid-world-interface-import.wac:4:12
+      |
+    4 |     import x;
+      |            ^
+      |
+      = value type `x` is not an interface

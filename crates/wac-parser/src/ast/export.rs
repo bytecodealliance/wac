@@ -3,11 +3,13 @@ use super::{
 };
 use crate::parser::Rule;
 use pest_ast::FromPest;
+use serde::Serialize;
 use std::fmt;
 
 /// Represents an export statement in the AST.
-#[derive(Debug, Clone, FromPest)]
+#[derive(Debug, Clone, Serialize, FromPest)]
 #[pest_ast(rule(Rule::ExportStatement))]
+#[serde(rename_all = "camelCase")]
 pub struct ExportStatement<'a> {
     /// The export keyword in the statement.
     pub keyword: Export<'a>,

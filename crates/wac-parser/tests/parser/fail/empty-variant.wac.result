@@ -1,0 +1,9 @@
+expected identifier
+
+Caused by:
+     --> tests/parser/fail/empty-variant.wac:1:12
+      |
+    1 | variant v {}
+      |            ^---
+      |
+      = expected identifier

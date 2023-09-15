@@ -1,0 +1,9 @@
+undefined name `x`
+
+Caused by:
+     --> tests/resolution/fail/undefined-name.wac:1:10
+      |
+    1 | type x = x;
+      |          ^
+      |
+      = undefined name `x`

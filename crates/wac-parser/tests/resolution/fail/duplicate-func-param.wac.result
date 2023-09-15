@@ -1,0 +1,9 @@
+duplicate function parameter `x`
+
+Caused by:
+     --> tests/resolution/fail/duplicate-func-param.wac:1:23
+      |
+    1 | type f = func(x: u32, x: string);
+      |                       ^
+      |
+      = duplicate function parameter `x`

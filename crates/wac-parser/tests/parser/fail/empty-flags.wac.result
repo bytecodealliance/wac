@@ -1,0 +1,9 @@
+expected identifier
+
+Caused by:
+     --> tests/parser/fail/empty-flags.wac:1:10
+      |
+    1 | flags f {}
+      |          ^---
+      |
+      = expected identifier

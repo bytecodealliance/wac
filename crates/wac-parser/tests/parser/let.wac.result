@@ -1,0 +1,630 @@
+{
+  "statements": [
+    {
+      "docs": [
+        {
+          "str": "/// Instantiate without args\n",
+          "start": 0,
+          "end": 29
+        }
+      ],
+      "stmt": {
+        "let": {
+          "keyword": {
+            "str": "let",
+            "start": 29,
+            "end": 32
+          },
+          "id": {
+            "str": "a",
+            "start": 33,
+            "end": 34
+          },
+          "equals": {
+            "str": "=",
+            "start": 35,
+            "end": 36
+          },
+          "expr": {
+            "primary": {
+              "new": {
+                "keyword": {
+                  "str": "new",
+                  "start": 37,
+                  "end": 40
+                },
+                "packageName": {
+                  "parts": [
+                    {
+                      "str": "foo",
+                      "start": 41,
+                      "end": 44
+                    },
+                    {
+                      "str": "bar",
+                      "start": 45,
+                      "end": 48
+                    }
+                  ]
+                },
+                "body": {
+                  "open": {
+                    "str": "{",
+                    "start": 49,
+                    "end": 50
+                  },
+                  "arguments": [],
+                  "ellipsis": null,
+                  "close": {
+                    "str": "}",
+                    "start": 50,
+                    "end": 51
+                  }
+                }
+              }
+            },
+            "postfix": []
+          },
+          "semicolon": {
+            "str": ";",
+            "start": 51,
+            "end": 52
+          }
+        }
+      }
+    },
+    {
+      "docs": [
+        {
+          "str": "/// Instantiation with import-propagation.\n",
+          "start": 54,
+          "end": 97
+        }
+      ],
+      "stmt": {
+        "let": {
+          "keyword": {
+            "str": "let",
+            "start": 97,
+            "end": 100
+          },
+          "id": {
+            "str": "b",
+            "start": 101,
+            "end": 102
+          },
+          "equals": {
+            "str": "=",
+            "start": 103,
+            "end": 104
+          },
+          "expr": {
+            "primary": {
+              "new": {
+                "keyword": {
+                  "str": "new",
+                  "start": 105,
+                  "end": 108
+                },
+                "packageName": {
+                  "parts": [
+                    {
+                      "str": "foo",
+                      "start": 109,
+                      "end": 112
+                    },
+                    {
+                      "str": "bar",
+                      "start": 113,
+                      "end": 116
+                    }
+                  ]
+                },
+                "body": {
+                  "open": {
+                    "str": "{",
+                    "start": 117,
+                    "end": 118
+                  },
+                  "arguments": [],
+                  "ellipsis": {
+                    "str": "...",
+                    "start": 119,
+                    "end": 122
+                  },
+                  "close": {
+                    "str": "}",
+                    "start": 123,
+                    "end": 124
+                  }
+                }
+              }
+            },
+            "postfix": []
+          },
+          "semicolon": {
+            "str": ";",
+            "start": 124,
+            "end": 125
+          }
+        }
+      }
+    },
+    {
+      "docs": [
+        {
+          "str": "/// Instantiation with arguments\n",
+          "start": 127,
+          "end": 160
+        }
+      ],
+      "stmt": {
+        "let": {
+          "keyword": {
+            "str": "let",
+            "start": 160,
+            "end": 163
+          },
+          "id": {
+            "str": "c",
+            "start": 164,
+            "end": 165
+          },
+          "equals": {
+            "str": "=",
+            "start": 166,
+            "end": 167
+          },
+          "expr": {
+            "primary": {
+              "new": {
+                "keyword": {
+                  "str": "new",
+                  "start": 168,
+                  "end": 171
+                },
+                "packageName": {
+                  "parts": [
+                    {
+                      "str": "foo",
+                      "start": 172,
+                      "end": 175
+                    },
+                    {
+                      "str": "bar",
+                      "start": 176,
+                      "end": 179
+                    }
+                  ]
+                },
+                "body": {
+                  "open": {
+                    "str": "{",
+                    "start": 180,
+                    "end": 181
+                  },
+                  "arguments": [
+                    {
+                      "ident": {
+                        "str": "a",
+                        "start": 182,
+                        "end": 183
+                      }
+                    },
+                    {
+                      "ident": {
+                        "str": "b",
+                        "start": 185,
+                        "end": 186
+                      }
+                    },
+                    {
+                      "named": {
+                        "id": {
+                          "str": "c",
+                          "start": 188,
+                          "end": 189
+                        },
+                        "colon": {
+                          "str": ":",
+                          "start": 189,
+                          "end": 190
+                        },
+                        "expr": {
+                          "primary": {
+                            "ident": {
+                              "str": "c",
+                              "start": 191,
+                              "end": 192
+                            }
+                          },
+                          "postfix": []
+                        }
+                      }
+                    }
+                  ],
+                  "ellipsis": null,
+                  "close": {
+                    "str": "}",
+                    "start": 194,
+                    "end": 195
+                  }
+                }
+              }
+            },
+            "postfix": []
+          },
+          "semicolon": {
+            "str": ";",
+            "start": 195,
+            "end": 196
+          }
+        }
+      }
+    },
+    {
+      "docs": [
+        {
+          "str": "/// Instantiation with arguments and import-propagation.\n",
+          "start": 198,
+          "end": 255
+        }
+      ],
+      "stmt": {
+        "let": {
+          "keyword": {
+            "str": "let",
+            "start": 255,
+            "end": 258
+          },
+          "id": {
+            "str": "d",
+            "start": 259,
+            "end": 260
+          },
+          "equals": {
+            "str": "=",
+            "start": 261,
+            "end": 262
+          },
+          "expr": {
+            "primary": {
+              "new": {
+                "keyword": {
+                  "str": "new",
+                  "start": 263,
+                  "end": 266
+                },
+                "packageName": {
+                  "parts": [
+                    {
+                      "str": "foo",
+                      "start": 267,
+                      "end": 270
+                    },
+                    {
+                      "str": "bar",
+                      "start": 271,
+                      "end": 274
+                    }
+                  ]
+                },
+                "body": {
+                  "open": {
+                    "str": "{",
+                    "start": 275,
+                    "end": 276
+                  },
+                  "arguments": [
+                    {
+                      "ident": {
+                        "str": "a",
+                        "start": 277,
+                        "end": 278
+                      }
+                    },
+                    {
+                      "named": {
+                        "id": {
+                          "str": "b",
+                          "start": 280,
+                          "end": 281
+                        },
+                        "colon": {
+                          "str": ":",
+                          "start": 281,
+                          "end": 282
+                        },
+                        "expr": {
+                          "primary": {
+                            "nested": {
+                              "open": {
+                                "str": "(",
+                                "start": 283,
+                                "end": 284
+                              },
+                              "expr": {
+                                "primary": {
+                                  "new": {
+                                    "keyword": {
+                                      "str": "new",
+                                      "start": 284,
+                                      "end": 287
+                                    },
+                                    "packageName": {
+                                      "parts": [
+                                        {
+                                          "str": "foo",
+                                          "start": 288,
+                                          "end": 291
+                                        },
+                                        {
+                                          "str": "bar",
+                                          "start": 292,
+                                          "end": 295
+                                        }
+                                      ]
+                                    },
+                                    "body": {
+                                      "open": {
+                                        "str": "{",
+                                        "start": 296,
+                                        "end": 297
+                                      },
+                                      "arguments": [],
+                                      "ellipsis": null,
+                                      "close": {
+                                        "str": "}",
+                                        "start": 298,
+                                        "end": 299
+                                      }
+                                    }
+                                  }
+                                },
+                                "postfix": []
+                              },
+                              "close": {
+                                "str": ")",
+                                "start": 299,
+                                "end": 300
+                              }
+                            }
+                          },
+                          "postfix": []
+                        }
+                      }
+                    },
+                    {
+                      "named": {
+                        "id": {
+                          "str": "c",
+                          "start": 302,
+                          "end": 303
+                        },
+                        "colon": {
+                          "str": ":",
+                          "start": 303,
+                          "end": 304
+                        },
+                        "expr": {
+                          "primary": {
+                            "ident": {
+                              "str": "c",
+                              "start": 305,
+                              "end": 306
+                            }
+                          },
+                          "postfix": []
+                        }
+                      }
+                    }
+                  ],
+                  "ellipsis": {
+                    "str": "...",
+                    "start": 308,
+                    "end": 311
+                  },
+                  "close": {
+                    "str": "}",
+                    "start": 312,
+                    "end": 313
+                  }
+                }
+              }
+            },
+            "postfix": []
+          },
+          "semicolon": {
+            "str": ";",
+            "start": 313,
+            "end": 314
+          }
+        }
+      }
+    },
+    {
+      "docs": [
+        {
+          "str": "/// Nested expression\n",
+          "start": 316,
+          "end": 338
+        }
+      ],
+      "stmt": {
+        "let": {
+          "keyword": {
+            "str": "let",
+            "start": 338,
+            "end": 341
+          },
+          "id": {
+            "str": "e",
+            "start": 342,
+            "end": 343
+          },
+          "equals": {
+            "str": "=",
+            "start": 344,
+            "end": 345
+          },
+          "expr": {
+            "primary": {
+              "nested": {
+                "open": {
+                  "str": "(",
+                  "start": 346,
+                  "end": 347
+                },
+                "expr": {
+                  "primary": {
+                    "ident": {
+                      "str": "b",
+                      "start": 347,
+                      "end": 348
+                    }
+                  },
+                  "postfix": []
+                },
+                "close": {
+                  "str": ")",
+                  "start": 348,
+                  "end": 349
+                }
+              }
+            },
+            "postfix": []
+          },
+          "semicolon": {
+            "str": ";",
+            "start": 349,
+            "end": 350
+          }
+        }
+      }
+    },
+    {
+      "docs": [
+        {
+          "str": "/// Access expression\n",
+          "start": 352,
+          "end": 374
+        }
+      ],
+      "stmt": {
+        "let": {
+          "keyword": {
+            "str": "let",
+            "start": 374,
+            "end": 377
+          },
+          "id": {
+            "str": "f",
+            "start": 378,
+            "end": 379
+          },
+          "equals": {
+            "str": "=",
+            "start": 380,
+            "end": 381
+          },
+          "expr": {
+            "primary": {
+              "ident": {
+                "str": "e",
+                "start": 382,
+                "end": 383
+              }
+            },
+            "postfix": [
+              {
+                "namedAccess": {
+                  "open": {
+                    "str": "[",
+                    "start": 383,
+                    "end": 384
+                  },
+                  "string": {
+                    "str": "\"b-c\"",
+                    "start": 384,
+                    "end": 389
+                  },
+                  "close": {
+                    "str": "]",
+                    "start": 389,
+                    "end": 390
+                  }
+                }
+              },
+              {
+                "access": {
+                  "dot": {
+                    "str": ".",
+                    "start": 390,
+                    "end": 391
+                  },
+                  "id": {
+                    "str": "c",
+                    "start": 391,
+                    "end": 392
+                  }
+                }
+              },
+              {
+                "access": {
+                  "dot": {
+                    "str": ".",
+                    "start": 392,
+                    "end": 393
+                  },
+                  "id": {
+                    "str": "d",
+                    "start": 393,
+                    "end": 394
+                  }
+                }
+              },
+              {
+                "namedAccess": {
+                  "open": {
+                    "str": "[",
+                    "start": 394,
+                    "end": 395
+                  },
+                  "string": {
+                    "str": "\"foo:bar/baz\"",
+                    "start": 395,
+                    "end": 408
+                  },
+                  "close": {
+                    "str": "]",
+                    "start": 408,
+                    "end": 409
+                  }
+                }
+              },
+              {
+                "access": {
+                  "dot": {
+                    "str": ".",
+                    "start": 409,
+                    "end": 410
+                  },
+                  "id": {
+                    "str": "e",
+                    "start": 410,
+                    "end": 411
+                  }
+                }
+              }
+            ]
+          },
+          "semicolon": {
+            "str": ";",
+            "start": 411,
+            "end": 412
+          }
+        }
+      }
+    }
+  ]
+}

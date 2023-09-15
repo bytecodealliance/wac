@@ -1,0 +1,95 @@
+/// Defining an interface
+interface i {
+    /// Type alias a
+    type a = func();
+    /// Record type
+    record r {
+        x: u32
+    }
+    /// Export func
+    x: func();
+    /// Export func of type a
+    y: a;
+}
+
+/// Defining a second interface
+interface i2 {
+    /// Use type r from i
+    use i.{r};
+}
+
+type c = func();
+type f = c;
+
+/// Defining a world
+world w1 {
+    // TODO: Use type r from foo:bar/i
+    //use foo:bar/i.{r};
+
+    /// Import a function
+    import a: func();
+    /// Import an interface
+    import i;
+    /// Import by name with type `c`
+    import c: c;
+
+    /// Export an inline interface
+    export d: interface {
+        x: func();
+    };
+    /// Export an interface
+    export i2;
+    /// Export by name with type `f`
+    export f: f;
+}
+
+/// Defining a second world
+world w2 {
+    /// Include the first world
+    include w1;
+
+    // TODO: Include a world by path
+    //include foo:bar/baz;
+}
+
+/// Defining a resource
+resource res {
+    constructor();
+}
+
+type x = u32;
+
+/// Defining a variant
+variant v {
+    a(x),
+    b(string),
+    c(u32),
+    d,
+}
+
+/// Defining a record
+record r {
+    x: u32,
+    y: string,
+    z: v,
+} 
+
+/// Defining flags
+flags %flags {
+    a,
+    b,
+    c,
+}
+
+/// Defining an enum
+enum e {
+    a,
+    b,
+    c,
+}
+
+/// Type aliases
+type t = e;
+type t2 = string;
+type t3 = func(a: u32, b: r) -> u32;
+type t4 = func() -> (a: u32, b: string);

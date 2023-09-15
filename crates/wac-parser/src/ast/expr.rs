@@ -9,11 +9,13 @@ use super::{
 };
 use crate::parser::Rule;
 use pest_ast::FromPest;
+use serde::Serialize;
 use std::fmt;
 
 /// Represents an expression in the AST.
-#[derive(Debug, Clone, FromPest)]
+#[derive(Debug, Clone, Serialize, FromPest)]
 #[pest_ast(rule(Rule::Expr))]
+#[serde(rename_all = "camelCase")]
 pub struct Expr<'a> {
     /// The primary expression.
     pub primary: PrimaryExpr<'a>,
@@ -36,8 +38,9 @@ impl AstDisplay for Expr<'_> {
 display!(Expr);
 
 /// Represents a primary expression in the AST.
-#[derive(Debug, Clone, FromPest)]
+#[derive(Debug, Clone, Serialize, FromPest)]
 #[pest_ast(rule(Rule::PrimaryExpr))]
+#[serde(rename_all = "camelCase")]
 pub enum PrimaryExpr<'a> {
     /// A new expression.
     New(NewExpr<'a>),
@@ -60,8 +63,9 @@ impl AstDisplay for PrimaryExpr<'_> {
 display!(PrimaryExpr);
 
 /// Represents a new expression in the AST.
-#[derive(Debug, Clone, FromPest)]
+#[derive(Debug, Clone, Serialize, FromPest)]
 #[pest_ast(rule(Rule::NewExpr))]
+#[serde(rename_all = "camelCase")]
 pub struct NewExpr<'a> {
     /// The new keyword in the expression.
     pub keyword: New<'a>,
@@ -87,8 +91,9 @@ impl AstDisplay for NewExpr<'_> {
 display!(NewExpr);
 
 /// Represents a new expression body in the AST.
-#[derive(Debug, Clone, FromPest)]
+#[derive(Debug, Clone, Serialize, FromPest)]
 #[pest_ast(rule(Rule::NewExprBody))]
+#[serde(rename_all = "camelCase")]
 pub struct NewExprBody<'a> {
     /// The open brace in the expression.
     pub open: OpenBrace<'a>,
@@ -141,8 +146,9 @@ impl AstDisplay for NewExprBody<'_> {
 display!(NewExprBody);
 
 /// Represents an instantiation argument in the AST.
-#[derive(Debug, Clone, FromPest)]
+#[derive(Debug, Clone, Serialize, FromPest)]
 #[pest_ast(rule(Rule::InstantiationArgument))]
+#[serde(rename_all = "camelCase")]
 pub enum InstantiationArgument<'a> {
     /// The argument is a named instantiation argument.
     Named(NamedInstantiationArgument<'a>),
@@ -162,8 +168,9 @@ impl AstDisplay for InstantiationArgument<'_> {
 display!(InstantiationArgument);
 
 /// Represents a named instantiation argument in the AST.
-#[derive(Debug, Clone, FromPest)]
+#[derive(Debug, Clone, Serialize, FromPest)]
 #[pest_ast(rule(Rule::NamedInstantiationArgument))]
+#[serde(rename_all = "camelCase")]
 pub struct NamedInstantiationArgument<'a> {
     /// The identifier in the argument.
     pub id: Ident<'a>,
@@ -183,8 +190,9 @@ impl AstDisplay for NamedInstantiationArgument<'_> {
 display!(NamedInstantiationArgument);
 
 /// Represents a nested expression in the AST.
-#[derive(Debug, Clone, FromPest)]
+#[derive(Debug, Clone, Serialize, FromPest)]
 #[pest_ast(rule(Rule::NestedExpr))]
+#[serde(rename_all = "camelCase")]
 pub struct NestedExpr<'a> {
     /// The open paren in the expression.
     pub open: OpenParen<'a>,
@@ -205,8 +213,9 @@ impl AstDisplay for NestedExpr<'_> {
 display!(NestedExpr);
 
 /// Represents a postfix expression in the AST.
-#[derive(Debug, Clone, FromPest)]
+#[derive(Debug, Clone, Serialize, FromPest)]
 #[pest_ast(rule(Rule::PostfixExpr))]
+#[serde(rename_all = "camelCase")]
 pub enum PostfixExpr<'a> {
     /// The postfix expression is an access expression.
     Access(AccessExpr<'a>),
@@ -226,8 +235,9 @@ impl AstDisplay for PostfixExpr<'_> {
 display!(PostfixExpr);
 
 /// Represents an access expression in the AST.
-#[derive(Debug, Clone, FromPest)]
+#[derive(Debug, Clone, Serialize, FromPest)]
 #[pest_ast(rule(Rule::AccessExpr))]
+#[serde(rename_all = "camelCase")]
 pub struct AccessExpr<'a> {
     /// The dot in the expression.
     pub dot: Dot<'a>,
@@ -244,8 +254,9 @@ impl AstDisplay for AccessExpr<'_> {
 display!(AccessExpr);
 
 /// Represents a named access expression in the AST.
-#[derive(Debug, Clone, FromPest)]
+#[derive(Debug, Clone, Serialize, FromPest)]
 #[pest_ast(rule(Rule::NamedAccessExpr))]
+#[serde(rename_all = "camelCase")]
 pub struct NamedAccessExpr<'a> {
     /// The open bracket in the expression.
     pub open: OpenBracket<'a>,
