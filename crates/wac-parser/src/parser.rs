@@ -37,8 +37,8 @@ mod pest {
                 Self::EnumDecl => "enum declaration",
                 Self::EnumBody => "enum body",
                 Self::TypeAlias => "type alias",
-                Self::InterfaceStatement => "interface statement",
-                Self::WorldStatement => "world statement",
+                Self::InterfaceDecl => "interface declaration",
+                Self::WorldDecl => "world declaration",
                 Self::LetStatement => "let statement",
                 Self::ExportStatement => "export statement",
 
@@ -50,7 +50,7 @@ mod pest {
 
                 Self::TypeAliasKind => "type alias",
                 Self::FuncType => "function type",
-                Self::Type | Self::OmitType => "type",
+                Self::Type | Self::OmitType => "value type",
                 Self::Tuple => "tuple",
                 Self::List => "list",
                 Self::Option => "option",
