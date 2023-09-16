@@ -22,6 +22,28 @@ pub enum TypeStatement<'a> {
     Interface(InterfaceDecl<'a>),
     /// The statement is for a world declaration.
     World(WorldDecl<'a>),
+    /// The statement is for a value type declaration.
+    Value(ValueTypeStatement<'a>),
+}
+
+impl AstDisplay for TypeStatement<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, indenter: &mut Indenter) -> fmt::Result {
+        write!(f, "{indenter}")?;
+
+        match self {
+            Self::Interface(interface) => interface.fmt(f, indenter),
+            Self::World(world) => world.fmt(f, indenter),
+            Self::Value(value) => value.fmt(f, indenter),
+        }
+    }
+}
+
+display!(TypeStatement);
+
+/// Represents a value type statement in the AST.
+#[derive(Debug, Clone, FromPest)]
+#[pest_ast(rule(Rule::ValueTypeStatement))]
+pub enum ValueTypeStatement<'a> {
     /// The statement is for a resource declaration.
     Resource(ResourceDecl<'a>),
     /// The statement is for a variant declaration.
@@ -36,13 +58,11 @@ pub enum TypeStatement<'a> {
     Alias(TypeAlias<'a>),
 }
 
-impl AstDisplay for TypeStatement<'_> {
+impl AstDisplay for ValueTypeStatement<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, indenter: &mut Indenter) -> fmt::Result {
         write!(f, "{indenter}")?;
 
         match self {
-            Self::Interface(interface) => interface.fmt(f, indenter),
-            Self::World(world) => world.fmt(f, indenter),
             Self::Resource(resource) => resource.fmt(f, indenter),
             Self::Variant(variant) => variant.fmt(f, indenter),
             Self::Record(record) => record.fmt(f, indenter),
@@ -53,7 +73,7 @@ impl AstDisplay for TypeStatement<'_> {
     }
 }
 
-display!(TypeStatement);
+display!(ValueTypeStatement);
 
 /// Represents a resource declaration in the AST.
 #[derive(Debug, Clone, FromPest)]
@@ -1016,8 +1036,8 @@ display!(InterfaceItem);
 pub enum InterfaceItemKind<'a> {
     /// The item is a use statement.
     Use(Box<UseStatement<'a>>),
-    /// The item is a type statement.
-    Type(TypeStatement<'a>),
+    /// The item is a value type statement.
+    Type(ValueTypeStatement<'a>),
     /// The item is an interface export statement.
     Export(InterfaceExportStatement<'a>),
 }
@@ -1221,8 +1241,8 @@ display!(WorldItem);
 pub enum WorldItemKind<'a> {
     /// The item is a use statement.
     Use(Box<UseStatement<'a>>),
-    /// The item is a type statement.
-    Type(TypeStatement<'a>),
+    /// The item is a value type statement.
+    Type(ValueTypeStatement<'a>),
     /// The item is a world export statement.
     Import(WorldImportStatement<'a>),
     /// The item is a world export statement.
