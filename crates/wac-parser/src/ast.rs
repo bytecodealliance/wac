@@ -17,20 +17,16 @@ use std::{fmt, path::Path};
 mod export;
 mod expr;
 mod import;
-mod interface;
 pub mod keywords;
 mod r#let;
 pub mod symbols;
 mod r#type;
-mod world;
 
 pub use export::*;
 pub use expr::*;
 pub use import::*;
-pub use interface::*;
 pub use r#let::*;
 pub use r#type::*;
-pub use world::*;
 
 /// Used to indent output when displaying AST nodes.
 #[derive(Debug, Clone, Copy, Default)]
@@ -242,10 +238,6 @@ pub enum StatementKind<'a> {
     Import(ImportStatement<'a>),
     /// A type statement.
     Type(TypeStatement<'a>),
-    /// An interface statement.
-    Interface(InterfaceStatement<'a>),
-    /// A world statement.
-    World(WorldStatement<'a>),
     /// A let statement.
     Let(LetStatement<'a>),
     /// An export statement.
@@ -257,8 +249,6 @@ impl AstDisplay for StatementKind<'_> {
         match self {
             Self::Import(import) => import.fmt(f, indenter),
             Self::Type(ty) => ty.fmt(f, indenter),
-            Self::Interface(interface) => interface.fmt(f, indenter),
-            Self::World(world) => world.fmt(f, indenter),
             Self::Let(l) => l.fmt(f, indenter),
             Self::Export(export) => export.fmt(f, indenter),
         }

@@ -1,14 +1,14 @@
 use super::{
     display,
     keywords::{
-        self, Bool, Enum, Flags, Float32, Float64, Func, Record, Resource, Static, Variant, S16,
-        S32, S64, S8, U16, U32, U64, U8,
+        self, Bool, Enum, Export, Flags, Float32, Float64, Func, Import, Interface, Record,
+        Resource, Static, Use, Variant, World, S16, S32, S64, S8, U16, U32, U64, U8,
     },
     symbols::{
-        Arrow, CloseAngle, CloseBrace, CloseParen, Colon, Equals, OpenAngle, OpenBrace, OpenParen,
-        Semicolon, Underscore,
+        Arrow, CloseAngle, CloseBrace, CloseParen, Colon, Dot, Equals, OpenAngle, OpenBrace,
+        OpenParen, Semicolon, Underscore,
     },
-    AstDisplay, Ident, Indenter,
+    AstDisplay, DocComment, Ident, Indenter, PackagePath,
 };
 use crate::parser::Rule;
 use pest_ast::FromPest;
@@ -18,6 +18,32 @@ use std::fmt;
 #[derive(Debug, Clone, FromPest)]
 #[pest_ast(rule(Rule::TypeStatement))]
 pub enum TypeStatement<'a> {
+    /// The statement is for an interface declaration.
+    Interface(InterfaceDecl<'a>),
+    /// The statement is for a world declaration.
+    World(WorldDecl<'a>),
+    /// The statement is for a value type declaration.
+    Value(ValueTypeStatement<'a>),
+}
+
+impl AstDisplay for TypeStatement<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, indenter: &mut Indenter) -> fmt::Result {
+        write!(f, "{indenter}")?;
+
+        match self {
+            Self::Interface(interface) => interface.fmt(f, indenter),
+            Self::World(world) => world.fmt(f, indenter),
+            Self::Value(value) => value.fmt(f, indenter),
+        }
+    }
+}
+
+display!(TypeStatement);
+
+/// Represents a value type statement in the AST.
+#[derive(Debug, Clone, FromPest)]
+#[pest_ast(rule(Rule::ValueTypeStatement))]
+pub enum ValueTypeStatement<'a> {
     /// The statement is for a resource declaration.
     Resource(ResourceDecl<'a>),
     /// The statement is for a variant declaration.
@@ -32,7 +58,7 @@ pub enum TypeStatement<'a> {
     Alias(TypeAlias<'a>),
 }
 
-impl AstDisplay for TypeStatement<'_> {
+impl AstDisplay for ValueTypeStatement<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, indenter: &mut Indenter) -> fmt::Result {
         write!(f, "{indenter}")?;
 
@@ -47,7 +73,7 @@ impl AstDisplay for TypeStatement<'_> {
     }
 }
 
-display!(TypeStatement);
+display!(ValueTypeStatement);
 
 /// Represents a resource declaration in the AST.
 #[derive(Debug, Clone, FromPest)]
@@ -494,7 +520,7 @@ pub struct ParamList<'a> {
     /// The opening parenthesis of the parameter list.
     pub open: OpenParen<'a>,
     /// The parameters of the function.
-    pub params: Vec<NamedType<'a>>,
+    pub list: Vec<NamedType<'a>>,
     /// The closing parenthesis of the parameter list.
     pub close: CloseParen<'a>,
 }
@@ -503,7 +529,7 @@ impl AstDisplay for ParamList<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, indenter: &mut Indenter) -> fmt::Result {
         write!(f, "{open}", open = self.open)?;
 
-        for (i, param) in self.params.iter().enumerate() {
+        for (i, param) in self.list.iter().enumerate() {
             if i > 0 {
                 write!(f, ", ")?;
             }
@@ -561,7 +587,7 @@ pub struct NamedResultList<'a> {
     /// The opening parenthesis of the result list.
     pub open: OpenParen<'a>,
     /// The results of the function.
-    pub results: Vec<NamedType<'a>>,
+    pub list: Vec<NamedType<'a>>,
     /// The closing parenthesis of the result list.
     pub close: CloseParen<'a>,
 }
@@ -570,7 +596,7 @@ impl AstDisplay for NamedResultList<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, indenter: &mut Indenter) -> fmt::Result {
         write!(f, "{open}", open = self.open)?;
 
-        for (i, result) in self.results.iter().enumerate() {
+        for (i, result) in self.list.iter().enumerate() {
             if i > 0 {
                 write!(f, ", ")?;
             }
@@ -927,6 +953,465 @@ impl AstDisplay for Borrow<'_> {
 
 display!(Borrow);
 
+/// Represents an interface declaration in the AST.
+#[derive(Debug, Clone, FromPest)]
+#[pest_ast(rule(Rule::InterfaceDecl))]
+pub struct InterfaceDecl<'a> {
+    /// The `interface` keyword.
+    pub keyword: Interface<'a>,
+    /// The identifier of the interface.
+    pub id: Ident<'a>,
+    /// The body of the interface.
+    pub body: InterfaceBody<'a>,
+}
+
+impl AstDisplay for InterfaceDecl<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, indenter: &mut Indenter) -> fmt::Result {
+        write!(f, "{indenter}{keyword} ", keyword = self.keyword)?;
+        self.id.fmt(f, indenter)?;
+        self.body.fmt(f, indenter)
+    }
+}
+
+display!(InterfaceDecl);
+
+/// Represents an interface body in the AST.
+#[derive(Debug, Clone, FromPest)]
+#[pest_ast(rule(Rule::InterfaceBody))]
+pub struct InterfaceBody<'a> {
+    /// The opening brace of the interface body.
+    pub open: OpenBrace<'a>,
+    /// The items of the interface body.
+    pub items: Vec<InterfaceItem<'a>>,
+    /// The closing brace of the interface body.
+    pub close: CloseBrace<'a>,
+}
+
+impl AstDisplay for InterfaceBody<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, indenter: &mut Indenter) -> fmt::Result {
+        writeln!(f, " {open}", open = self.open)?;
+        indenter.indent();
+
+        for (i, item) in self.items.iter().enumerate() {
+            if i > 0 {
+                writeln!(f)?;
+            }
+
+            item.fmt(f, indenter)?;
+            writeln!(f)?;
+        }
+
+        indenter.dedent();
+        write!(f, "{indenter}{close}", close = self.close)
+    }
+}
+
+display!(InterfaceBody);
+
+/// Represents an interface item in the AST.
+#[derive(Debug, Clone, FromPest)]
+#[pest_ast(rule(Rule::InterfaceItem))]
+pub struct InterfaceItem<'a> {
+    /// The doc comments for the interface item.
+    pub docs: Vec<DocComment<'a>>,
+    /// The interface item kind.
+    pub kind: InterfaceItemKind<'a>,
+}
+
+impl AstDisplay for InterfaceItem<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, indenter: &mut Indenter) -> fmt::Result {
+        for doc in &self.docs {
+            doc.fmt(f, indenter)?;
+        }
+
+        self.kind.fmt(f, indenter)
+    }
+}
+
+display!(InterfaceItem);
+
+/// Represents an interface item kind in the AST.
+#[derive(Debug, Clone, FromPest)]
+#[pest_ast(rule(Rule::InterfaceItemKind))]
+pub enum InterfaceItemKind<'a> {
+    /// The item is a use statement.
+    Use(Box<UseStatement<'a>>),
+    /// The item is a value type statement.
+    Type(ValueTypeStatement<'a>),
+    /// The item is an interface export statement.
+    Export(InterfaceExportStatement<'a>),
+}
+
+impl AstDisplay for InterfaceItemKind<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, indenter: &mut Indenter) -> fmt::Result {
+        match self {
+            Self::Use(u) => u.fmt(f, indenter),
+            Self::Type(ty) => ty.fmt(f, indenter),
+            Self::Export(e) => e.fmt(f, indenter),
+        }
+    }
+}
+
+display!(InterfaceItemKind);
+
+/// Represents a use statement in the AST.
+#[derive(Debug, Clone, FromPest)]
+#[pest_ast(rule(Rule::UseStatement))]
+pub struct UseStatement<'a> {
+    /// The use keyword in the statement.
+    pub keyword: Use<'a>,
+    /// The items being used.
+    pub items: UseItems<'a>,
+    /// The semicolon of the export statement.
+    pub semicolon: Semicolon<'a>,
+}
+
+impl AstDisplay for UseStatement<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, indenter: &mut Indenter) -> fmt::Result {
+        write!(f, "{indenter}{keyword} ", keyword = self.keyword)?;
+        self.items.fmt(f, indenter)?;
+        write!(f, "{semi}", semi = self.semicolon)
+    }
+}
+
+display!(UseStatement);
+
+/// Represents the items being used in a use statement in the AST.
+#[derive(Debug, Clone, FromPest)]
+#[pest_ast(rule(Rule::UseItems))]
+pub struct UseItems<'a> {
+    /// The path to the interface or world being used.
+    pub path: UsePath<'a>,
+    /// The dot in the statement.
+    pub dot: Dot<'a>,
+    /// The opening brace of the statement.
+    pub open: OpenBrace<'a>,
+    /// The items being used.
+    pub items: Vec<Ident<'a>>,
+    /// The closing brace of the use items.
+    pub close: CloseBrace<'a>,
+}
+
+impl AstDisplay for UseItems<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, indenter: &mut Indenter) -> fmt::Result {
+        self.path.fmt(f, indenter)?;
+        write!(f, "{dot}{open} ", dot = self.dot, open = self.open)?;
+
+        for (i, item) in self.items.iter().enumerate() {
+            if i > 0 {
+                write!(f, ", ")?;
+            }
+
+            item.fmt(f, indenter)?;
+        }
+
+        write!(f, " {close}", close = self.close)
+    }
+}
+
+display!(UseItems);
+
+/// Represents a use path in the AST.
+#[derive(Debug, Clone, FromPest)]
+#[pest_ast(rule(Rule::UsePath))]
+pub enum UsePath<'a> {
+    /// The path is a package path.
+    Package(PackagePath<'a>),
+    /// The path is an identifier.
+    Ident(Ident<'a>),
+}
+
+impl AstDisplay for UsePath<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, indenter: &mut Indenter) -> fmt::Result {
+        match self {
+            Self::Package(pkg) => pkg.fmt(f, indenter),
+            Self::Ident(id) => id.fmt(f, indenter),
+        }
+    }
+}
+
+display!(UsePath);
+
+/// Represents an interface export statement in the AST.
+#[derive(Debug, Clone, FromPest)]
+#[pest_ast(rule(Rule::InterfaceExportStatement))]
+pub struct InterfaceExportStatement<'a> {
+    /// The identifier of the export.
+    pub id: Ident<'a>,
+    /// The colon of the export statement.
+    pub colon: Colon<'a>,
+    /// The type of the export.
+    pub ty: FuncTypeRef<'a>,
+    /// The semicolon of the export statement.
+    pub semicolon: Semicolon<'a>,
+}
+
+impl AstDisplay for InterfaceExportStatement<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, indenter: &mut Indenter) -> fmt::Result {
+        write!(f, "{indenter}")?;
+        self.id.fmt(f, indenter)?;
+        write!(f, "{colon} ", colon = self.colon)?;
+        self.ty.fmt(f, indenter)?;
+        write!(f, "{semi}", semi = self.semicolon)
+    }
+}
+
+display!(InterfaceExportStatement);
+
+/// Represents a world declaration in the AST.
+#[derive(Debug, Clone, FromPest)]
+#[pest_ast(rule(Rule::WorldDecl))]
+pub struct WorldDecl<'a> {
+    /// The `world` keyword.
+    pub keyword: World<'a>,
+    /// The identifier of the world.
+    pub id: Ident<'a>,
+    /// The body of the world.
+    pub body: WorldBody<'a>,
+}
+
+impl AstDisplay for WorldDecl<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, indenter: &mut Indenter) -> fmt::Result {
+        write!(f, "{indenter}{keyword} ", keyword = self.keyword)?;
+        self.id.fmt(f, indenter)?;
+        self.body.fmt(f, indenter)
+    }
+}
+
+display!(WorldDecl);
+
+/// Represents a world body in the AST.
+#[derive(Debug, Clone, FromPest)]
+#[pest_ast(rule(Rule::WorldBody))]
+pub struct WorldBody<'a> {
+    /// The opening brace of the world body.
+    pub open: OpenBrace<'a>,
+    /// The items of the world body.
+    pub items: Vec<WorldItem<'a>>,
+    /// The closing brace of the world body.
+    pub close: CloseBrace<'a>,
+}
+
+impl AstDisplay for WorldBody<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, indenter: &mut Indenter) -> fmt::Result {
+        writeln!(f, " {open}", open = self.open)?;
+        indenter.indent();
+
+        for (i, item) in self.items.iter().enumerate() {
+            if i > 0 {
+                writeln!(f)?;
+            }
+
+            item.fmt(f, indenter)?;
+            writeln!(f)?;
+        }
+
+        indenter.dedent();
+        write!(f, "{indenter}{close}", close = self.close)
+    }
+}
+
+display!(WorldBody);
+
+/// Represents a world item in the AST.
+#[derive(Debug, Clone, FromPest)]
+#[pest_ast(rule(Rule::WorldItem))]
+pub struct WorldItem<'a> {
+    /// The doc comments for the world item.
+    pub docs: Vec<DocComment<'a>>,
+    /// The world item kind.
+    pub kind: WorldItemKind<'a>,
+}
+
+impl AstDisplay for WorldItem<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, indenter: &mut Indenter) -> fmt::Result {
+        for doc in &self.docs {
+            doc.fmt(f, indenter)?;
+        }
+
+        self.kind.fmt(f, indenter)
+    }
+}
+
+display!(WorldItem);
+
+/// Represents a world item kind in the AST.
+#[derive(Debug, Clone, FromPest)]
+#[pest_ast(rule(Rule::WorldItemKind))]
+pub enum WorldItemKind<'a> {
+    /// The item is a use statement.
+    Use(Box<UseStatement<'a>>),
+    /// The item is a value type statement.
+    Type(ValueTypeStatement<'a>),
+    /// The item is a world export statement.
+    Import(WorldImportStatement<'a>),
+    /// The item is a world export statement.
+    Export(WorldExportStatement<'a>),
+}
+
+impl AstDisplay for WorldItemKind<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, indenter: &mut Indenter) -> fmt::Result {
+        match self {
+            Self::Use(u) => u.fmt(f, indenter),
+            Self::Type(ty) => ty.fmt(f, indenter),
+            Self::Import(i) => i.fmt(f, indenter),
+            Self::Export(e) => e.fmt(f, indenter),
+        }
+    }
+}
+
+display!(WorldItemKind);
+
+/// Represents a world import statement in the AST.
+#[derive(Debug, Clone, FromPest)]
+#[pest_ast(rule(Rule::WorldImportStatement))]
+pub struct WorldImportStatement<'a> {
+    /// The `import` keyword in the statement.
+    pub keyword: Import<'a>,
+    /// The declaration of the imported item.
+    pub decl: WorldItemDecl<'a>,
+    /// The semicolon of the import statement.
+    pub semicolon: Semicolon<'a>,
+}
+
+impl AstDisplay for WorldImportStatement<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, indenter: &mut Indenter) -> fmt::Result {
+        write!(f, "{indenter}{keyword} ", keyword = self.keyword)?;
+        self.decl.fmt(f, indenter)?;
+        write!(f, "{semi}", semi = self.semicolon)
+    }
+}
+
+display!(WorldImportStatement);
+
+/// Represents a world export statement in the AST.
+#[derive(Debug, Clone, FromPest)]
+#[pest_ast(rule(Rule::WorldExportStatement))]
+pub struct WorldExportStatement<'a> {
+    /// The `export` keyword in the statement.
+    pub keyword: Export<'a>,
+    /// The declaration of the exported item.
+    pub decl: WorldItemDecl<'a>,
+    /// The semicolon of the export statement.
+    pub semicolon: Semicolon<'a>,
+}
+
+impl AstDisplay for WorldExportStatement<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, indenter: &mut Indenter) -> fmt::Result {
+        write!(f, "{indenter}{keyword} ", keyword = self.keyword)?;
+        self.decl.fmt(f, indenter)?;
+        write!(f, "{semi}", semi = self.semicolon)
+    }
+}
+
+display!(WorldExportStatement);
+
+/// Represents a world item declaration in the AST.
+#[derive(Debug, Clone, FromPest)]
+#[pest_ast(rule(Rule::WorldItemDecl))]
+pub enum WorldItemDecl<'a> {
+    /// The declaration is by name.
+    Named(WorldNamedItem<'a>),
+    /// The declaration is by a reference to an interface.
+    Interface(InterfaceRef<'a>),
+}
+
+impl AstDisplay for WorldItemDecl<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, indenter: &mut Indenter) -> fmt::Result {
+        match self {
+            Self::Named(n) => n.fmt(f, indenter),
+            Self::Interface(i) => i.fmt(f, indenter),
+        }
+    }
+}
+
+display!(WorldItemDecl);
+
+/// Represents a world named item in the AST.
+#[derive(Debug, Clone, FromPest)]
+#[pest_ast(rule(Rule::WorldNamedItem))]
+pub struct WorldNamedItem<'a> {
+    /// The identifier of the item being imported or exported.
+    pub id: Ident<'a>,
+    /// The colon between the identifier and the extern type.
+    pub colon: Colon<'a>,
+    /// The extern type of the item.
+    pub ty: ExternType<'a>,
+}
+
+impl AstDisplay for WorldNamedItem<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, indenter: &mut Indenter) -> fmt::Result {
+        self.id.fmt(f, indenter)?;
+        write!(f, "{colon} ", colon = self.colon)?;
+        self.ty.fmt(f, indenter)
+    }
+}
+
+display!(WorldNamedItem);
+
+/// Represents a reference to an interface in the AST.
+#[derive(Debug, Clone, FromPest)]
+#[pest_ast(rule(Rule::InterfaceRef))]
+pub enum InterfaceRef<'a> {
+    /// The reference is by identifier.
+    Ident(Ident<'a>),
+    /// The reference is by package path.
+    Path(PackagePath<'a>),
+}
+
+impl AstDisplay for InterfaceRef<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, indenter: &mut Indenter) -> fmt::Result {
+        match self {
+            Self::Ident(id) => id.fmt(f, indenter),
+            Self::Path(path) => path.fmt(f, indenter),
+        }
+    }
+}
+
+display!(InterfaceRef);
+
+/// Represents the external type of a world item in the AST.
+#[derive(Debug, Clone, FromPest)]
+#[pest_ast(rule(Rule::ExternType))]
+pub enum ExternType<'a> {
+    /// The type is by identifier.
+    Ident(Ident<'a>),
+    /// The type is an inline function type.
+    Func(FuncType<'a>),
+    /// The type is an inline interface.
+    Interface(InlineInterface<'a>),
+}
+
+impl AstDisplay for ExternType<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, indenter: &mut Indenter) -> fmt::Result {
+        match self {
+            Self::Ident(id) => id.fmt(f, indenter),
+            Self::Func(func) => func.fmt(f, indenter),
+            Self::Interface(interface) => interface.fmt(f, indenter),
+        }
+    }
+}
+
+display!(ExternType);
+
+/// Represents an inline interface in the AST.
+#[derive(Debug, Clone, FromPest)]
+#[pest_ast(rule(Rule::InlineInterface))]
+pub struct InlineInterface<'a> {
+    /// The `interface` keyword in the inline interface.
+    pub keyword: Interface<'a>,
+    /// The body of the interface.
+    pub body: InterfaceBody<'a>,
+}
+
+impl AstDisplay for InlineInterface<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, indenter: &mut Indenter) -> fmt::Result {
+        write!(f, "{keyword}", keyword = self.keyword)?;
+        self.body.fmt(f, indenter)
+    }
+}
+
+display!(InlineInterface);
 #[cfg(test)]
 mod test {
     use super::*;
@@ -1041,6 +1526,130 @@ mod test {
             Rule::TypeStatement,
             r#"type x = tuple<u8, s8, u16, s16, u32, s32, u64, s64, float32, float64, char, bool, string, tuple<string, list<u8>>, option<list<bool>>, result, result<string>, result<_, string>, result<u8, u8>, borrow<y>, y>;"#,
             r#"type x = tuple<u8, s8, u16, s16, u32, s32, u64, s64, float32, float64, char, bool, string, tuple<string, list<u8>>, option<list<bool>>, result, result<string>, result<_, string>, result<u8, u8>, borrow<y>, y>;"#,
+        )
+        .unwrap();
+    }
+
+    #[test]
+    fn interface_roundtrip() {
+        roundtrip::<InterfaceDecl>(
+            Rule::InterfaceDecl,
+            r#"interface foo {
+            /// Type t
+            type t = list<string>;
+
+            use foo.{ x, y, };
+
+            /// Function a
+            a: func(a: string, b: string) -> string;
+
+            // not a doc comment
+            type x = func() -> list<string>;
+            
+            /// Function b
+            b: x;
+}
+            "#,
+            r#"interface foo {
+  /// Type t
+  type t = list<string>;
+
+  use foo.{ x, y };
+
+  /// Function a
+  a: func(a: string, b: string) -> string;
+
+  type x = func() -> list<string>;
+
+  /// Function b
+  b: x;
+}"#,
+        )
+        .unwrap();
+    }
+
+    #[test]
+    fn world_roundtrip() {
+        roundtrip::<WorldDecl>(
+            Rule::WorldDecl,
+            r#"world foo {
+            /// Type t
+            type t = list<string>;
+
+            // not a doc comment
+            type x = func() -> list<string>;
+
+            use foo.{ y, };
+
+            /// Import with function type.
+            import a: func(a: string, b: string) -> string;
+
+            /// Import with identifier.
+            import b: x;
+
+            /// Import with inline interface.
+            import c: interface {
+                /// Function a
+                a: func(a: string, b: string) -> string;
+            };
+
+            /// Import with package path
+            import foo:bar/baz@1.0.0;
+
+            /// Export with function type.
+            export a: func(a: string, b: string) -> string;
+
+            /// Export with identifier.
+            export b: x;
+
+            /// Export with inline interface.
+            export c: interface {
+                /// Function a
+                a: func(a: string, b: string) -> string;
+            };
+
+            /// Export with package path
+            export foo:bar/baz@1.0.0;
+}
+            "#,
+            r#"world foo {
+  /// Type t
+  type t = list<string>;
+
+  type x = func() -> list<string>;
+
+  use foo.{ y };
+
+  /// Import with function type.
+  import a: func(a: string, b: string) -> string;
+
+  /// Import with identifier.
+  import b: x;
+
+  /// Import with inline interface.
+  import c: interface {
+    /// Function a
+    a: func(a: string, b: string) -> string;
+  };
+
+  /// Import with package path
+  import foo:bar/baz@1.0.0;
+
+  /// Export with function type.
+  export a: func(a: string, b: string) -> string;
+
+  /// Export with identifier.
+  export b: x;
+
+  /// Export with inline interface.
+  export c: interface {
+    /// Function a
+    a: func(a: string, b: string) -> string;
+  };
+
+  /// Export with package path
+  export foo:bar/baz@1.0.0;
+}"#,
         )
         .unwrap();
     }
