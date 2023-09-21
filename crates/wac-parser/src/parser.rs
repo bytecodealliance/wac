@@ -88,6 +88,11 @@ mod pest {
                 Self::ExternType => "extern type",
                 Self::InlineInterface => "inline interface",
 
+                Self::WorldIncludeStatement => "world include statement",
+                Self::WorldIncludeWithClause => "world include with clause",
+                Self::WorldIncludeItem => "world include item",
+                Self::WorldRef => "world reference",
+
                 Self::Expr => "expression",
                 Self::PrimaryExpr => "primary expression",
                 Self::NewExpr => "new expression",
@@ -141,6 +146,8 @@ mod pest {
                 Self::NewKeyword => "`new` keyword",
                 Self::LetKeyword => "`let` keyword",
                 Self::UseKeyword => "`use` keyword",
+                Self::IncludeKeyword => "`include` keyword",
+                Self::AsKeyword => "`as` keyword",
 
                 Self::Semicolon => "`;`",
                 Self::OpenBrace => "`{`",
