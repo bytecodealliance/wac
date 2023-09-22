@@ -1014,8 +1014,8 @@ display!(InterfaceBody);
 pub struct InterfaceItem<'a> {
     /// The doc comments for the interface item.
     pub docs: Vec<DocComment<'a>>,
-    /// The interface item kind.
-    pub kind: InterfaceItemKind<'a>,
+    /// The interface item statement.
+    pub stmt: InterfaceItemStatement<'a>,
 }
 
 impl AstDisplay for InterfaceItem<'_> {
@@ -1024,16 +1024,16 @@ impl AstDisplay for InterfaceItem<'_> {
             doc.fmt(f, indenter)?;
         }
 
-        self.kind.fmt(f, indenter)
+        self.stmt.fmt(f, indenter)
     }
 }
 
 display!(InterfaceItem);
 
-/// Represents an interface item kind in the AST.
+/// Represents an interface item statement in the AST.
 #[derive(Debug, Clone, FromPest)]
-#[pest_ast(rule(Rule::InterfaceItemKind))]
-pub enum InterfaceItemKind<'a> {
+#[pest_ast(rule(Rule::InterfaceItemStatement))]
+pub enum InterfaceItemStatement<'a> {
     /// The item is a use statement.
     Use(Box<UseStatement<'a>>),
     /// The item is a value type statement.
@@ -1042,7 +1042,7 @@ pub enum InterfaceItemKind<'a> {
     Export(InterfaceExportStatement<'a>),
 }
 
-impl AstDisplay for InterfaceItemKind<'_> {
+impl AstDisplay for InterfaceItemStatement<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, indenter: &mut Indenter) -> fmt::Result {
         match self {
             Self::Use(u) => u.fmt(f, indenter),
@@ -1052,7 +1052,7 @@ impl AstDisplay for InterfaceItemKind<'_> {
     }
 }
 
-display!(InterfaceItemKind);
+display!(InterfaceItemStatement);
 
 /// Represents a use statement in the AST.
 #[derive(Debug, Clone, FromPest)]
@@ -1219,8 +1219,8 @@ display!(WorldBody);
 pub struct WorldItem<'a> {
     /// The doc comments for the world item.
     pub docs: Vec<DocComment<'a>>,
-    /// The world item kind.
-    pub kind: WorldItemKind<'a>,
+    /// The world item statement.
+    pub stmt: WorldItemStatement<'a>,
 }
 
 impl AstDisplay for WorldItem<'_> {
@@ -1229,16 +1229,16 @@ impl AstDisplay for WorldItem<'_> {
             doc.fmt(f, indenter)?;
         }
 
-        self.kind.fmt(f, indenter)
+        self.stmt.fmt(f, indenter)
     }
 }
 
 display!(WorldItem);
 
-/// Represents a world item kind in the AST.
+/// Represents a world item statement in the AST.
 #[derive(Debug, Clone, FromPest)]
-#[pest_ast(rule(Rule::WorldItemKind))]
-pub enum WorldItemKind<'a> {
+#[pest_ast(rule(Rule::WorldItemStatement))]
+pub enum WorldItemStatement<'a> {
     /// The item is a use statement.
     Use(Box<UseStatement<'a>>),
     /// The item is a value type statement.
@@ -1251,7 +1251,7 @@ pub enum WorldItemKind<'a> {
     Include(WorldIncludeStatement<'a>),
 }
 
-impl AstDisplay for WorldItemKind<'_> {
+impl AstDisplay for WorldItemStatement<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, indenter: &mut Indenter) -> fmt::Result {
         match self {
             Self::Use(u) => u.fmt(f, indenter),
@@ -1263,7 +1263,7 @@ impl AstDisplay for WorldItemKind<'_> {
     }
 }
 
-display!(WorldItemKind);
+display!(WorldItemStatement);
 
 /// Represents a world import statement in the AST.
 #[derive(Debug, Clone, FromPest)]

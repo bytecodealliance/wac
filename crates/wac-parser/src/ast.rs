@@ -113,8 +113,8 @@ struct EndOfInput;
 #[derive(Debug, Clone, FromPest)]
 #[pest_ast(rule(Rule::Document))]
 pub struct Document<'a> {
-    /// The statements in the document.
-    pub statements: Vec<Statement<'a>>,
+    /// The top-level statements in the document.
+    pub statements: Vec<TopLevelStatement<'a>>,
     _eoi: EndOfInput,
 }
 
@@ -208,32 +208,32 @@ impl AstDisplay for Document<'_> {
 
 display!(Document);
 
-/// Represents a statement in the AST.
+/// Represents a top-level statement in the AST.
 #[derive(Debug, Clone, FromPest)]
-#[pest_ast(rule(Rule::Statement))]
-pub struct Statement<'a> {
+#[pest_ast(rule(Rule::TopLevelStatement))]
+pub struct TopLevelStatement<'a> {
     /// The doc comments for the statement.
     pub docs: Vec<DocComment<'a>>,
-    /// The statement kind.
-    pub kind: StatementKind<'a>,
+    /// The statement.
+    pub stmt: Statement<'a>,
 }
 
-impl AstDisplay for Statement<'_> {
+impl AstDisplay for TopLevelStatement<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, indenter: &mut Indenter) -> fmt::Result {
         for doc in &self.docs {
             doc.fmt(f, indenter)?;
         }
 
-        self.kind.fmt(f, indenter)
+        self.stmt.fmt(f, indenter)
     }
 }
 
-display!(Statement);
+display!(TopLevelStatement);
 
-/// Represents a statement kind in the AST.
+/// Represents a statement in the AST.
 #[derive(Debug, Clone, FromPest)]
-#[pest_ast(rule(Rule::StatementKind))]
-pub enum StatementKind<'a> {
+#[pest_ast(rule(Rule::Statement))]
+pub enum Statement<'a> {
     /// An import statement.
     Import(ImportStatement<'a>),
     /// A type statement.
@@ -244,7 +244,7 @@ pub enum StatementKind<'a> {
     Export(ExportStatement<'a>),
 }
 
-impl AstDisplay for StatementKind<'_> {
+impl AstDisplay for Statement<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, indenter: &mut Indenter) -> fmt::Result {
         match self {
             Self::Import(import) => import.fmt(f, indenter),
@@ -255,7 +255,7 @@ impl AstDisplay for StatementKind<'_> {
     }
 }
 
-display!(StatementKind);
+display!(Statement);
 
 /// Represents an identifier in the AST.
 #[derive(Debug, Clone, FromPest)]

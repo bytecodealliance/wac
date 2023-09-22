@@ -21,7 +21,7 @@ mod pest {
                 Self::LineComment => "line comment",
                 Self::BlockComment => "block comment",
 
-                Self::Document | Self::Statement | Self::StatementKind => "statement",
+                Self::Document | Self::TopLevelStatement | Self::Statement => "statement",
                 Self::ImportStatement => "import statement",
                 Self::TypeStatement => "type statement",
                 Self::ValueTypeStatement => "value type statement",
@@ -74,12 +74,12 @@ mod pest {
 
                 Self::InterfaceBody => "interface body",
                 Self::InterfaceItem => "interface item",
-                Self::InterfaceItemKind => "interface item kind",
+                Self::InterfaceItemStatement => "interface item statement",
                 Self::InterfaceExportStatement => "interface export statement",
 
                 Self::WorldBody => "world body",
                 Self::WorldItem => "world item",
-                Self::WorldItemKind => "world item kind",
+                Self::WorldItemStatement => "world item statement",
                 Self::WorldImportStatement => "world import statement",
                 Self::WorldExportStatement => "world export statement",
                 Self::WorldItemDecl => "world item declaration",
