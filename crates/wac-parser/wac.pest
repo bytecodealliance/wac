@@ -72,11 +72,10 @@ InterfaceBody            = !{ OpenBrace ~ InterfaceItem* ~ CloseBrace }
 InterfaceItem            = ${ DocComment* ~ WHITESPACE* ~ InterfaceItemKind }
 InterfaceItemKind        = !{ UseStatement | ValueTypeStatement | InterfaceExportStatement }
 InterfaceExportStatement =  { Ident ~ Colon ~ FuncTypeRef ~ Semicolon }
-// TODO: support world include statements
 WorldDecl            = ${ WorldKeyword ~ DelimitingSpace+ ~ Ident ~ DelimitingSpace* ~ WorldBody }
 WorldBody            = !{ OpenBrace ~ WorldItem* ~ CloseBrace }
 WorldItem            = ${ DocComment* ~ WHITESPACE* ~ WorldItemKind }
-WorldItemKind        = !{ UseStatement | ValueTypeStatement | WorldImportStatement | WorldExportStatement }
+WorldItemKind        = !{ UseStatement | ValueTypeStatement | WorldImportStatement | WorldExportStatement | WorldIncludeStatement }
 WorldImportStatement = ${ ImportKeyword ~ DelimitingSpace+ ~ WorldItemDecl ~ DelimitingSpace* ~ Semicolon }
 WorldExportStatement = ${ ExportKeyword ~ DelimitingSpace+ ~ WorldItemDecl ~ DelimitingSpace* ~ Semicolon }
 WorldItemDecl        = !{ WorldNamedItem | InterfaceRef }
@@ -84,6 +83,11 @@ WorldNamedItem       = ${ Ident ~ DelimitingSpace* ~ Colon ~ DelimitingSpace+ ~ 
 InterfaceRef         =  { PackagePath | Ident }
 ExternType           = !{ FuncType | InlineInterface | Ident }
 InlineInterface      =  { InterfaceKeyword ~ InterfaceBody }
+
+WorldIncludeStatement  = ${ IncludeKeyword ~ DelimitingSpace+ ~ WorldRef ~ DelimitingSpace* ~ WorldIncludeWithClause? ~ DelimitingSpace* ~ Semicolon }
+WorldIncludeWithClause = !{ WithKeyword ~ OpenBrace ~ WorldIncludeItem ~ ("," ~ WorldIncludeItem)* ~ ","? ~ CloseBrace }
+WorldIncludeItem       = ${ Ident ~ DelimitingSpace+ ~ AsKeyword ~ DelimitingSpace+ ~ Ident }
+WorldRef               = { PackagePath | Ident }
 
 // Let statement
 LetStatement = ${ LetKeyword ~ DelimitingSpace+ ~ Ident ~ DelimitingSpace* ~ Equals ~ DelimitingSpace* ~ Expr ~ DelimitingSpace* ~ Semicolon }
@@ -112,7 +116,7 @@ UsePath      =  { PackagePath | Ident }
 
 // Identifiers
 RawIdent  = _{ Percent ~ IdentPart ~ (Hyphen ~ IdentPart)* }
-Ident     = @{ RawIdent | !Keyword ~ IdentPart ~ (Hyphen ~ IdentPart)* }
+Ident     = @{ RawIdent | !(Keyword ~ !Hyphen) ~ IdentPart ~ (Hyphen ~ IdentPart)* }
 IdentPart = @{ ASCII_ALPHA_LOWER ~ (ASCII_ALPHA_LOWER | ASCII_DIGIT)* }
 
 // Strings
@@ -154,6 +158,8 @@ ExportKeyword      =  { "export" }
 NewKeyword         =  { "new" }
 LetKeyword         =  { "let" }
 UseKeyword         =  { "use" }
+IncludeKeyword     =  { "include" }
+AsKeyword          =  { "as" }
 Keyword            = _{
     ImportKeyword
   | WithKeyword
@@ -190,6 +196,8 @@ Keyword            = _{
   | NewKeyword
   | LetKeyword
   | UseKeyword
+  | IncludeKeyword
+  | AsKeyword
 }
 
 // Comments

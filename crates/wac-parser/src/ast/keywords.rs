@@ -71,4 +71,6 @@ keywords!(
     (New, Rule::NewKeyword, "new"),
     (Let, Rule::LetKeyword, "let"),
     (Use, Rule::UseKeyword, "use"),
+    (Include, Rule::IncludeKeyword, "include"),
+    (As, Rule::AsKeyword, "as"),
 );

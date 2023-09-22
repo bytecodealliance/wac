@@ -1,8 +1,8 @@
 use super::{
     display,
     keywords::{
-        self, Bool, Enum, Export, Flags, Float32, Float64, Func, Import, Interface, Record,
-        Resource, Static, Use, Variant, World, S16, S32, S64, S8, U16, U32, U64, U8,
+        self, As, Bool, Enum, Export, Flags, Float32, Float64, Func, Import, Include, Interface,
+        Record, Resource, Static, Use, Variant, With, World, S16, S32, S64, S8, U16, U32, U64, U8,
     },
     symbols::{
         Arrow, CloseAngle, CloseBrace, CloseParen, Colon, Dot, Equals, OpenAngle, OpenBrace,
@@ -1247,6 +1247,8 @@ pub enum WorldItemKind<'a> {
     Import(WorldImportStatement<'a>),
     /// The item is a world export statement.
     Export(WorldExportStatement<'a>),
+    /// The item is a world include statement.
+    Include(WorldIncludeStatement<'a>),
 }
 
 impl AstDisplay for WorldItemKind<'_> {
@@ -1256,6 +1258,7 @@ impl AstDisplay for WorldItemKind<'_> {
             Self::Type(ty) => ty.fmt(f, indenter),
             Self::Import(i) => i.fmt(f, indenter),
             Self::Export(e) => e.fmt(f, indenter),
+            Self::Include(i) => i.fmt(f, indenter),
         }
     }
 }
@@ -1412,6 +1415,108 @@ impl AstDisplay for InlineInterface<'_> {
 }
 
 display!(InlineInterface);
+
+/// Represents a world include statement in the AST.
+#[derive(Debug, Clone, FromPest)]
+#[pest_ast(rule(Rule::WorldIncludeStatement))]
+pub struct WorldIncludeStatement<'a> {
+    /// The `include` keyword in the statement.
+    pub keyword: Include<'a>,
+    /// The reference to the world to include.
+    pub world: WorldRef<'a>,
+    /// The optional include-with clause.
+    pub with: std::option::Option<WorldIncludeWithClause<'a>>,
+    /// The semicolon of the include statement.
+    pub semicolon: Semicolon<'a>,
+}
+
+impl AstDisplay for WorldIncludeStatement<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, indenter: &mut Indenter) -> fmt::Result {
+        write!(f, "{indenter}{keyword} ", keyword = self.keyword)?;
+        self.world.fmt(f, indenter)?;
+        if let Some(with) = &self.with {
+            with.fmt(f, indenter)?;
+        }
+        write!(f, "{semi}", semi = self.semicolon)
+    }
+}
+
+display!(WorldIncludeStatement);
+
+/// Represents a reference to a world in the AST (local or foreign).
+#[derive(Debug, Clone, FromPest)]
+#[pest_ast(rule(Rule::WorldRef))]
+pub enum WorldRef<'a> {
+    /// The reference is by identifier.
+    Ident(Ident<'a>),
+    /// The reference is by package path.
+    Path(PackagePath<'a>),
+}
+
+impl AstDisplay for WorldRef<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, indenter: &mut Indenter) -> fmt::Result {
+        match self {
+            Self::Ident(id) => id.fmt(f, indenter),
+            Self::Path(path) => path.fmt(f, indenter),
+        }
+    }
+}
+
+display!(WorldRef);
+
+/// Represents the `with` clause of the `include` statement.
+#[derive(Debug, Clone, FromPest)]
+#[pest_ast(rule(Rule::WorldIncludeWithClause))]
+pub struct WorldIncludeWithClause<'a> {
+    /// The `with` keyword in the clause.
+    pub keyword: With<'a>,
+    /// The opening brace of the body.
+    pub open: OpenBrace<'a>,
+    /// The list of names to be included.
+    pub names: Vec<WorldIncludeItem<'a>>,
+    /// The closing brace of the body.
+    pub close: CloseBrace<'a>,
+}
+
+impl AstDisplay for WorldIncludeWithClause<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, indenter: &mut Indenter) -> fmt::Result {
+        write!(f, " {keyword} ", keyword = self.keyword)?;
+        writeln!(f, "{open}", open = self.open)?;
+        indenter.indent();
+        for name in &self.names {
+            write!(f, "{indenter}")?;
+            name.fmt(f, indenter)?;
+            writeln!(f, ",")?;
+        }
+        indenter.dedent();
+        write!(f, "{indenter}{close}", close = self.close)
+    }
+}
+
+display!(WorldIncludeWithClause);
+
+/// Represents a renaming of an included name.
+#[derive(Debug, Clone, FromPest)]
+#[pest_ast(rule(Rule::WorldIncludeItem))]
+pub struct WorldIncludeItem<'a> {
+    /// The source name include from a world.
+    pub name: Ident<'a>,
+    /// The `as` keyword.
+    pub keyword: As<'a>,
+    /// The new name given to the included name.
+    pub other: Ident<'a>,
+}
+
+impl AstDisplay for WorldIncludeItem<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, indenter: &mut Indenter) -> fmt::Result {
+        self.name.fmt(f, indenter)?;
+        write!(f, " {keyword} ", keyword = self.keyword)?;
+        self.other.fmt(f, indenter)
+    }
+}
+
+display!(WorldIncludeItem);
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -1610,6 +1715,30 @@ mod test {
 
             /// Export with package path
             export foo:bar/baz@1.0.0;
+
+            /// Include world from package path with 2 renames.
+            include foo:bar/baz with { a as a1, b as b1 };
+
+            /// Include world from package path with 1 rename.
+            include foo:bar/baz with {foo as foo1};
+
+            /// Include world from package path (spacing).
+            include foo:bar/baz with { foo as foo1 };
+
+            /// Include world from package path newline delimited renaming.
+            include foo:bar/baz with {
+                foo as foo1,
+                bar as bar1
+            };
+
+            /// Include local world.
+            include foo-bar;
+
+            /// Include local world with renaming.
+            include foo-bar with { foo as bar };
+};
+
+include myworld;
 }
             "#,
             r#"world foo {
@@ -1649,6 +1778,36 @@ mod test {
 
   /// Export with package path
   export foo:bar/baz@1.0.0;
+
+  /// Include world from package path with 2 renames.
+  include foo:bar/baz with {
+    a as a1,
+    b as b1,
+  };
+
+  /// Include world from package path with 1 rename.
+  include foo:bar/baz with {
+    foo as foo1,
+  };
+
+  /// Include world from package path (spacing).
+  include foo:bar/baz with {
+    foo as foo1,
+  };
+
+  /// Include world from package path newline delimited renaming.
+  include foo:bar/baz with {
+    foo as foo1,
+    bar as bar1,
+  };
+
+  /// Include local world.
+  include foo-bar;
+
+  /// Include local world with renaming.
+  include foo-bar with {
+    foo as bar,
+  };
 }"#,
         )
         .unwrap();
