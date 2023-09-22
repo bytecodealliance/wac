@@ -1474,7 +1474,7 @@ pub struct WorldIncludeWithClause<'a> {
     pub open: OpenBrace<'a>,
     /// The list of names to be included.
     pub names: Vec<WorldIncludeItem<'a>>,
-    /// The closing brace of the world body.
+    /// The closing brace of the body.
     pub close: CloseBrace<'a>,
 }
 
