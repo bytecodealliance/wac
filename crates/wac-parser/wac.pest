@@ -1,9 +1,9 @@
 // Top-level document rule
-Document = { SOI ~ Statement* ~ EOI }
+Document = { SOI ~ TopLevelStatement* ~ EOI }
 
 // Top-level statements
-Statement     = ${ DocComment* ~ WHITESPACE* ~ StatementKind }
-StatementKind = !{ ImportStatement | TypeStatement | LetStatement | ExportStatement }
+TopLevelStatement = { DocComment* ~ Statement }
+Statement         = { ImportStatement | TypeStatement | LetStatement | ExportStatement }
 
 // Import statement
 ImportStatement = ${ ImportKeyword ~ DelimitingSpace+ ~ Ident ~ (DelimitingSpace+ ~ WithClause)? ~ DelimitingSpace* ~ Colon ~ DelimitingSpace* ~ ImportType ~ DelimitingSpace* ~ Semicolon }
@@ -14,32 +14,57 @@ PackageName     = ${ Ident ~ (":" ~ Ident)+ }
 PackageVersion  =  { (ASCII_ALPHANUMERIC | "." | "-" | "+")+ }
 
 // Type statement
-TypeStatement            = !{ InterfaceDecl | WorldDecl | ValueTypeStatement }
-ValueTypeStatement       =  { ResourceDecl | VariantDecl | RecordDecl | FlagsDecl | EnumDecl | TypeAlias }
-ResourceDecl             = ${ ResourceKeyword ~ DelimitingSpace+ ~ Ident ~ DelimitingSpace* ~ ResourceBody }
-ResourceBody             = !{ Semicolon | (OpenBrace ~ (ResourceMethod ~ Semicolon)+ ~ CloseBrace) }
-VariantDecl              = ${ VariantKeyword ~ DelimitingSpace+ ~ Ident ~ DelimitingSpace* ~ VariantBody }
-VariantBody              = !{ OpenBrace ~ VariantCase ~ ("," ~ VariantCase)* ~ ","? ~ CloseBrace }
-VariantCase              =  { Ident ~ VariantType? }
-VariantType              =  { OpenParen ~ Type ~ CloseParen }
-RecordDecl               = ${ RecordKeyword ~ DelimitingSpace+ ~ Ident ~ DelimitingSpace* ~ RecordBody }
-RecordBody               = !{ OpenBrace ~ NamedType ~ ("," ~ NamedType)* ~ ","? ~ CloseBrace }
-FlagsDecl                = ${ FlagsKeyword ~ DelimitingSpace+ ~ Ident ~ DelimitingSpace* ~ FlagsBody }
-FlagsBody                = !{ OpenBrace ~ Ident ~ ("," ~ Ident)* ~ ","? ~ CloseBrace }
-EnumDecl                 = ${ EnumKeyword ~ DelimitingSpace+ ~ Ident ~ DelimitingSpace* ~ EnumBody }
-EnumBody                 = !{ OpenBrace ~ Ident ~ ("," ~ Ident)* ~ ","? ~ CloseBrace }
-TypeAlias                = ${ TypeKeyword ~ DelimitingSpace+ ~ Ident ~ DelimitingSpace* ~ Equals ~ DelimitingSpace* ~ TypeAliasKind ~ DelimitingSpace* ~ Semicolon }
-TypeAliasKind            = !{ FuncType | Type }
-ResourceMethod           =  { Constructor | Method }
-Constructor              =  { ConstructorKeyword ~ ParamList }
-Method                   =  { Ident ~ Colon ~ StaticKeyword? ~ FuncTypeRef }
-FuncTypeRef              =  { Ident | FuncType }
-FuncType                 =  { FuncKeyword ~ ParamList ~ ResultList? }
-ParamList                =  { OpenParen ~ (NamedType ~ ("," ~ NamedType)* ~ ","?)? ~ CloseParen }
-ResultList               =  { Arrow ~ (NamedResultList | Type) }
-NamedResultList          =  { OpenParen ~ (NamedType ~ ("," ~ NamedType)* ~ ","?)? ~ CloseParen }
-NamedType                =  { Ident ~ Colon ~ Type }
-Type                     =  {
+TypeStatement            =  { InterfaceDecl | WorldDecl | ValueTypeStatement }
+InterfaceDecl            = ${ InterfaceKeyword ~ DelimitingSpace+ ~ Ident ~ DelimitingSpace* ~ InterfaceBody }
+InterfaceBody            = !{ OpenBrace ~ InterfaceItem* ~ CloseBrace }
+InterfaceItem            =  { DocComment* ~ InterfaceItemStatement }
+InterfaceItemStatement   =  { UseStatement | ValueTypeStatement | InterfaceExportStatement }
+UseStatement             = ${ UseKeyword ~ DelimitingSpace+ ~ UseItems ~ DelimitingSpace* ~ Semicolon }
+UseItems                 = !{ UsePath ~ Dot ~ OpenBrace ~ Ident ~ ("," ~ Ident)* ~ ","? ~ CloseBrace }
+UsePath                  =  { PackagePath | Ident }
+InterfaceExportStatement =  { Ident ~ Colon ~ FuncTypeRef ~ Semicolon }
+WorldDecl                = ${ WorldKeyword ~ DelimitingSpace+ ~ Ident ~ DelimitingSpace* ~ WorldBody }
+WorldBody                = !{ OpenBrace ~ WorldItem* ~ CloseBrace }
+WorldItem                =  { DocComment* ~ WorldItemStatement }
+WorldItemStatement       =  { UseStatement | ValueTypeStatement | WorldImportStatement | WorldExportStatement | WorldIncludeStatement }
+WorldImportStatement     = ${ ImportKeyword ~ DelimitingSpace+ ~ WorldItemDecl ~ DelimitingSpace* ~ Semicolon }
+WorldExportStatement     = ${ ExportKeyword ~ DelimitingSpace+ ~ WorldItemDecl ~ DelimitingSpace* ~ Semicolon }
+WorldItemDecl            = !{ WorldNamedItem | InterfaceRef }
+WorldNamedItem           =  { Ident ~ Colon ~ ExternType ~ !Slash }
+InterfaceRef             =  { PackagePath | Ident }
+ExternType               =  { FuncType | InlineInterface | Ident }
+InlineInterface          =  { InterfaceKeyword ~ InterfaceBody }
+WorldIncludeStatement    = ${ IncludeKeyword ~ DelimitingSpace+ ~ WorldRef ~ DelimitingSpace* ~ WorldIncludeWithClause? ~ DelimitingSpace* ~ Semicolon }
+WorldIncludeWithClause   = !{ WithKeyword ~ OpenBrace ~ WorldIncludeItem ~ ("," ~ WorldIncludeItem)* ~ ","? ~ CloseBrace }
+WorldIncludeItem         = ${ Ident ~ DelimitingSpace+ ~ AsKeyword ~ DelimitingSpace+ ~ Ident }
+WorldRef                 =  { PackagePath | Ident }
+
+// Value type statement
+ValueTypeStatement =  { ResourceDecl | VariantDecl | RecordDecl | FlagsDecl | EnumDecl | TypeAlias }
+ResourceDecl       = ${ ResourceKeyword ~ DelimitingSpace+ ~ Ident ~ DelimitingSpace* ~ ResourceBody }
+ResourceBody       = !{ Semicolon | (OpenBrace ~ (ResourceMethod ~ Semicolon)+ ~ CloseBrace) }
+ResourceMethod     =  { Constructor | Method }
+Constructor        =  { ConstructorKeyword ~ ParamList }
+Method             =  { Ident ~ Colon ~ StaticKeyword? ~ FuncTypeRef }
+VariantDecl        = ${ VariantKeyword ~ DelimitingSpace+ ~ Ident ~ DelimitingSpace* ~ VariantBody }
+VariantBody        = !{ OpenBrace ~ VariantCase ~ ("," ~ VariantCase)* ~ ","? ~ CloseBrace }
+VariantCase        =  { Ident ~ VariantType? }
+VariantType        =  { OpenParen ~ Type ~ CloseParen }
+RecordDecl         = ${ RecordKeyword ~ DelimitingSpace+ ~ Ident ~ DelimitingSpace* ~ RecordBody }
+RecordBody         = !{ OpenBrace ~ NamedType ~ ("," ~ NamedType)* ~ ","? ~ CloseBrace }
+FlagsDecl          = ${ FlagsKeyword ~ DelimitingSpace+ ~ Ident ~ DelimitingSpace* ~ FlagsBody }
+FlagsBody          = !{ OpenBrace ~ Ident ~ ("," ~ Ident)* ~ ","? ~ CloseBrace }
+EnumDecl           = ${ EnumKeyword ~ DelimitingSpace+ ~ Ident ~ DelimitingSpace* ~ EnumBody }
+EnumBody           = !{ OpenBrace ~ Ident ~ ("," ~ Ident)* ~ ","? ~ CloseBrace }
+TypeAlias          = ${ TypeKeyword ~ DelimitingSpace+ ~ Ident ~ DelimitingSpace* ~ Equals ~ DelimitingSpace* ~ TypeAliasKind ~ DelimitingSpace* ~ Semicolon }
+TypeAliasKind      = !{ FuncType | Type }
+FuncTypeRef        =  { FuncType | Ident }
+FuncType           =  { FuncKeyword ~ ParamList ~ ResultList? }
+ParamList          =  { OpenParen ~ (NamedType ~ ("," ~ NamedType)* ~ ","?)? ~ CloseParen }
+ResultList         =  { Arrow ~ (NamedResultList | Type) }
+NamedResultList    =  { OpenParen ~ (NamedType ~ ("," ~ NamedType)* ~ ","?)? ~ CloseParen }
+NamedType          =  { Ident ~ Colon ~ Type }
+Type               =  {
     U8Keyword
   | S8Keyword
   | U16Keyword
@@ -60,34 +85,13 @@ Type                     =  {
   | Borrow
   | Ident
 }
-Tuple                    =  { TupleKeyword ~ OpenAngle ~ Type ~ ("," ~ Type)* ~ CloseAngle }
-List                     =  { ListKeyword ~ OpenAngle ~ Type ~ CloseAngle }
-Option                   =  { OptionKeyword ~ OpenAngle ~ Type ~ CloseAngle }
-Result                   =  { ResultKeyword ~ SpecifiedResult? }
-SpecifiedResult          =  { OpenAngle ~ OmitType ~ ("," ~ Type)? ~ CloseAngle }
-OmitType                 =  { Underscore | Type }
-Borrow                   =  { BorrowKeyword ~ OpenAngle ~ Ident ~ CloseAngle }
-InterfaceDecl            = ${ InterfaceKeyword ~ DelimitingSpace+ ~ Ident ~ DelimitingSpace* ~ InterfaceBody }
-InterfaceBody            = !{ OpenBrace ~ InterfaceItem* ~ CloseBrace }
-InterfaceItem            = ${ DocComment* ~ WHITESPACE* ~ InterfaceItemKind }
-InterfaceItemKind        = !{ UseStatement | ValueTypeStatement | InterfaceExportStatement }
-InterfaceExportStatement =  { Ident ~ Colon ~ FuncTypeRef ~ Semicolon }
-WorldDecl            = ${ WorldKeyword ~ DelimitingSpace+ ~ Ident ~ DelimitingSpace* ~ WorldBody }
-WorldBody            = !{ OpenBrace ~ WorldItem* ~ CloseBrace }
-WorldItem            = ${ DocComment* ~ WHITESPACE* ~ WorldItemKind }
-WorldItemKind        = !{ UseStatement | ValueTypeStatement | WorldImportStatement | WorldExportStatement | WorldIncludeStatement }
-WorldImportStatement = ${ ImportKeyword ~ DelimitingSpace+ ~ WorldItemDecl ~ DelimitingSpace* ~ Semicolon }
-WorldExportStatement = ${ ExportKeyword ~ DelimitingSpace+ ~ WorldItemDecl ~ DelimitingSpace* ~ Semicolon }
-WorldItemDecl        = !{ WorldNamedItem | InterfaceRef }
-WorldNamedItem       = ${ Ident ~ DelimitingSpace* ~ Colon ~ DelimitingSpace+ ~ ExternType }
-InterfaceRef         =  { PackagePath | Ident }
-ExternType           = !{ FuncType | InlineInterface | Ident }
-InlineInterface      =  { InterfaceKeyword ~ InterfaceBody }
-
-WorldIncludeStatement  = ${ IncludeKeyword ~ DelimitingSpace+ ~ WorldRef ~ DelimitingSpace* ~ WorldIncludeWithClause? ~ DelimitingSpace* ~ Semicolon }
-WorldIncludeWithClause = !{ WithKeyword ~ OpenBrace ~ WorldIncludeItem ~ ("," ~ WorldIncludeItem)* ~ ","? ~ CloseBrace }
-WorldIncludeItem       = ${ Ident ~ DelimitingSpace+ ~ AsKeyword ~ DelimitingSpace+ ~ Ident }
-WorldRef               = { PackagePath | Ident }
+Tuple              =  { TupleKeyword ~ OpenAngle ~ Type ~ ("," ~ Type)* ~ CloseAngle }
+List               =  { ListKeyword ~ OpenAngle ~ Type ~ CloseAngle }
+Option             =  { OptionKeyword ~ OpenAngle ~ Type ~ CloseAngle }
+Result             =  { ResultKeyword ~ SpecifiedResult? }
+SpecifiedResult    =  { OpenAngle ~ OmitType ~ ("," ~ Type)? ~ CloseAngle }
+OmitType           =  { Underscore | Type }
+Borrow             =  { BorrowKeyword ~ OpenAngle ~ Ident ~ CloseAngle }
 
 // Let statement
 LetStatement = ${ LetKeyword ~ DelimitingSpace+ ~ Ident ~ DelimitingSpace* ~ Equals ~ DelimitingSpace* ~ Expr ~ DelimitingSpace* ~ Semicolon }
@@ -108,11 +112,6 @@ NestedExpr                 =  { OpenParen ~ Expr ~ CloseParen }
 PostfixExpr                =  { AccessExpr | NamedAccessExpr }
 AccessExpr                 = ${ Dot ~ Ident }
 NamedAccessExpr            =  { OpenBracket ~ String ~ CloseBracket }
-
-// Use statement in interface and world definitinos
-UseStatement = ${ UseKeyword ~ DelimitingSpace+ ~ UseItems ~ DelimitingSpace* ~ Semicolon }
-UseItems     = !{ UsePath ~ Dot ~ OpenBrace ~ Ident ~ ("," ~ Ident)* ~ ","? ~ CloseBrace }
-UsePath      =  { PackagePath | Ident }
 
 // Identifiers
 RawIdent  = _{ Percent ~ IdentPart ~ (Hyphen ~ IdentPart)* }
