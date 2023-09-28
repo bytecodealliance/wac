@@ -58,7 +58,8 @@ fn compare_result(test: &Path, result: &str, should_fail: bool) -> Result<()> {
     }
 
     let expected = fs::read_to_string(&path)
-        .with_context(|| format!("failed to read result file `{path}`", path = path.display()))?;
+        .with_context(|| format!("failed to read result file `{path}`", path = path.display()))?
+        .replace("\r\n", "\n");
 
     if expected != result {
         bail!(
@@ -72,7 +73,7 @@ fn compare_result(test: &Path, result: &str, should_fail: bool) -> Result<()> {
 
 fn run_test(test: &Path, ntests: &AtomicUsize) -> Result<()> {
     let should_fail = test.parent().map(|p| p.ends_with("fail")).unwrap_or(false);
-    let source = std::fs::read_to_string(test)?;
+    let source = std::fs::read_to_string(test)?.replace("\r\n", "\n");
     let document = Document::parse(&source, test)?;
     let result = match ResolvedDocument::new(&document, "test:test", None) {
         Ok(doc) => {
