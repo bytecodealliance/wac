@@ -1,0 +1,5 @@
+type x = u32;
+
+interface a {
+    use x.{a};
+}

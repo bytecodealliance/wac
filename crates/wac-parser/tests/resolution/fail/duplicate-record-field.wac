@@ -1,0 +1,8 @@
+type x = string;
+
+record r {
+    a: s8,
+    b: u8,
+    c: x,
+    b: string,
+}

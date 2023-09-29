@@ -1,0 +1,9 @@
+function type `x` is not a world
+
+Caused by:
+     --> tests/resolution/fail/invalid-world-include.wac:4:13
+      |
+    4 |     include x;
+      |             ^
+      |
+      = function type `x` is not a world

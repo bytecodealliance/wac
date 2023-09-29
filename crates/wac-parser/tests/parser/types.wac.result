@@ -1,0 +1,1618 @@
+{
+  "statements": [
+    {
+      "docs": [
+        {
+          "str": "/// Defining an interface\n",
+          "start": 0,
+          "end": 26
+        }
+      ],
+      "stmt": {
+        "type": {
+          "interface": {
+            "keyword": {
+              "str": "interface",
+              "start": 26,
+              "end": 35
+            },
+            "id": {
+              "str": "i",
+              "start": 36,
+              "end": 37
+            },
+            "body": {
+              "open": {
+                "str": "{",
+                "start": 38,
+                "end": 39
+              },
+              "items": [
+                {
+                  "docs": [
+                    {
+                      "str": "/// Type alias a\n",
+                      "start": 44,
+                      "end": 61
+                    }
+                  ],
+                  "stmt": {
+                    "type": {
+                      "alias": {
+                        "keyword": {
+                          "str": "type",
+                          "start": 65,
+                          "end": 69
+                        },
+                        "id": {
+                          "str": "a",
+                          "start": 70,
+                          "end": 71
+                        },
+                        "equals": {
+                          "str": "=",
+                          "start": 72,
+                          "end": 73
+                        },
+                        "kind": {
+                          "func": {
+                            "keyword": {
+                              "str": "func",
+                              "start": 74,
+                              "end": 78
+                            },
+                            "params": {
+                              "open": {
+                                "str": "(",
+                                "start": 78,
+                                "end": 79
+                              },
+                              "list": [],
+                              "close": {
+                                "str": ")",
+                                "start": 79,
+                                "end": 80
+                              }
+                            },
+                            "results": null
+                          }
+                        },
+                        "semicolon": {
+                          "str": ";",
+                          "start": 80,
+                          "end": 81
+                        }
+                      }
+                    }
+                  }
+                },
+                {
+                  "docs": [
+                    {
+                      "str": "/// Record type\n",
+                      "start": 86,
+                      "end": 102
+                    }
+                  ],
+                  "stmt": {
+                    "type": {
+                      "record": {
+                        "keyword": {
+                          "str": "record",
+                          "start": 106,
+                          "end": 112
+                        },
+                        "id": {
+                          "str": "r",
+                          "start": 113,
+                          "end": 114
+                        },
+                        "body": {
+                          "open": {
+                            "str": "{",
+                            "start": 115,
+                            "end": 116
+                          },
+                          "fields": [
+                            {
+                              "id": {
+                                "str": "x",
+                                "start": 125,
+                                "end": 126
+                              },
+                              "colon": {
+                                "str": ":",
+                                "start": 126,
+                                "end": 127
+                              },
+                              "ty": {
+                                "u32": {
+                                  "str": "u32",
+                                  "start": 128,
+                                  "end": 131
+                                }
+                              }
+                            }
+                          ],
+                          "close": {
+                            "str": "}",
+                            "start": 136,
+                            "end": 137
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                {
+                  "docs": [
+                    {
+                      "str": "/// Export func\n",
+                      "start": 142,
+                      "end": 158
+                    }
+                  ],
+                  "stmt": {
+                    "export": {
+                      "id": {
+                        "str": "x",
+                        "start": 162,
+                        "end": 163
+                      },
+                      "colon": {
+                        "str": ":",
+                        "start": 163,
+                        "end": 164
+                      },
+                      "ty": {
+                        "func": {
+                          "keyword": {
+                            "str": "func",
+                            "start": 165,
+                            "end": 169
+                          },
+                          "params": {
+                            "open": {
+                              "str": "(",
+                              "start": 169,
+                              "end": 170
+                            },
+                            "list": [],
+                            "close": {
+                              "str": ")",
+                              "start": 170,
+                              "end": 171
+                            }
+                          },
+                          "results": null
+                        }
+                      },
+                      "semicolon": {
+                        "str": ";",
+                        "start": 171,
+                        "end": 172
+                      }
+                    }
+                  }
+                },
+                {
+                  "docs": [
+                    {
+                      "str": "/// Export func of type a\n",
+                      "start": 177,
+                      "end": 203
+                    }
+                  ],
+                  "stmt": {
+                    "export": {
+                      "id": {
+                        "str": "y",
+                        "start": 207,
+                        "end": 208
+                      },
+                      "colon": {
+                        "str": ":",
+                        "start": 208,
+                        "end": 209
+                      },
+                      "ty": {
+                        "ident": {
+                          "str": "a",
+                          "start": 210,
+                          "end": 211
+                        }
+                      },
+                      "semicolon": {
+                        "str": ";",
+                        "start": 211,
+                        "end": 212
+                      }
+                    }
+                  }
+                }
+              ],
+              "close": {
+                "str": "}",
+                "start": 213,
+                "end": 214
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "docs": [
+        {
+          "str": "/// Defining a second interface\n",
+          "start": 216,
+          "end": 248
+        }
+      ],
+      "stmt": {
+        "type": {
+          "interface": {
+            "keyword": {
+              "str": "interface",
+              "start": 248,
+              "end": 257
+            },
+            "id": {
+              "str": "i2",
+              "start": 258,
+              "end": 260
+            },
+            "body": {
+              "open": {
+                "str": "{",
+                "start": 261,
+                "end": 262
+              },
+              "items": [
+                {
+                  "docs": [
+                    {
+                      "str": "/// Use type r from i\n",
+                      "start": 267,
+                      "end": 289
+                    }
+                  ],
+                  "stmt": {
+                    "use": {
+                      "keyword": {
+                        "str": "use",
+                        "start": 293,
+                        "end": 296
+                      },
+                      "items": {
+                        "path": {
+                          "ident": {
+                            "str": "i",
+                            "start": 297,
+                            "end": 298
+                          }
+                        },
+                        "dot": {
+                          "str": ".",
+                          "start": 298,
+                          "end": 299
+                        },
+                        "open": {
+                          "str": "{",
+                          "start": 299,
+                          "end": 300
+                        },
+                        "list": [
+                          {
+                            "str": "r",
+                            "start": 300,
+                            "end": 301
+                          }
+                        ],
+                        "close": {
+                          "str": "}",
+                          "start": 301,
+                          "end": 302
+                        }
+                      },
+                      "semicolon": {
+                        "str": ";",
+                        "start": 302,
+                        "end": 303
+                      }
+                    }
+                  }
+                }
+              ],
+              "close": {
+                "str": "}",
+                "start": 304,
+                "end": 305
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "docs": [
+        {
+          "str": "/// Defining a world\n",
+          "start": 307,
+          "end": 328
+        }
+      ],
+      "stmt": {
+        "type": {
+          "world": {
+            "keyword": {
+              "str": "world",
+              "start": 328,
+              "end": 333
+            },
+            "id": {
+              "str": "w1",
+              "start": 334,
+              "end": 336
+            },
+            "body": {
+              "open": {
+                "str": "{",
+                "start": 337,
+                "end": 338
+              },
+              "items": [
+                {
+                  "docs": [
+                    {
+                      "str": "/// Use type r from foo:bar/i\n",
+                      "start": 343,
+                      "end": 373
+                    }
+                  ],
+                  "stmt": {
+                    "use": {
+                      "keyword": {
+                        "str": "use",
+                        "start": 377,
+                        "end": 380
+                      },
+                      "items": {
+                        "path": {
+                          "package": {
+                            "name": {
+                              "parts": [
+                                {
+                                  "str": "foo",
+                                  "start": 381,
+                                  "end": 384
+                                },
+                                {
+                                  "str": "bar",
+                                  "start": 385,
+                                  "end": 388
+                                }
+                              ]
+                            },
+                            "path": [
+                              [
+                                {
+                                  "str": "/",
+                                  "start": 388,
+                                  "end": 389
+                                },
+                                {
+                                  "str": "i",
+                                  "start": 389,
+                                  "end": 390
+                                }
+                              ]
+                            ],
+                            "version": null
+                          }
+                        },
+                        "dot": {
+                          "str": ".",
+                          "start": 390,
+                          "end": 391
+                        },
+                        "open": {
+                          "str": "{",
+                          "start": 391,
+                          "end": 392
+                        },
+                        "list": [
+                          {
+                            "str": "r",
+                            "start": 392,
+                            "end": 393
+                          }
+                        ],
+                        "close": {
+                          "str": "}",
+                          "start": 393,
+                          "end": 394
+                        }
+                      },
+                      "semicolon": {
+                        "str": ";",
+                        "start": 394,
+                        "end": 395
+                      }
+                    }
+                  }
+                },
+                {
+                  "docs": [
+                    {
+                      "str": "/// Import a function\n",
+                      "start": 401,
+                      "end": 423
+                    }
+                  ],
+                  "stmt": {
+                    "import": {
+                      "keyword": {
+                        "str": "import",
+                        "start": 427,
+                        "end": 433
+                      },
+                      "decl": {
+                        "named": {
+                          "id": {
+                            "str": "a",
+                            "start": 434,
+                            "end": 435
+                          },
+                          "colon": {
+                            "str": ":",
+                            "start": 435,
+                            "end": 436
+                          },
+                          "ty": {
+                            "func": {
+                              "keyword": {
+                                "str": "func",
+                                "start": 437,
+                                "end": 441
+                              },
+                              "params": {
+                                "open": {
+                                  "str": "(",
+                                  "start": 441,
+                                  "end": 442
+                                },
+                                "list": [],
+                                "close": {
+                                  "str": ")",
+                                  "start": 442,
+                                  "end": 443
+                                }
+                              },
+                              "results": null
+                            }
+                          }
+                        }
+                      },
+                      "semicolon": {
+                        "str": ";",
+                        "start": 443,
+                        "end": 444
+                      }
+                    }
+                  }
+                },
+                {
+                  "docs": [
+                    {
+                      "str": "/// Import an interface\n",
+                      "start": 449,
+                      "end": 473
+                    }
+                  ],
+                  "stmt": {
+                    "import": {
+                      "keyword": {
+                        "str": "import",
+                        "start": 477,
+                        "end": 483
+                      },
+                      "decl": {
+                        "interface": {
+                          "ident": {
+                            "str": "i",
+                            "start": 484,
+                            "end": 485
+                          }
+                        }
+                      },
+                      "semicolon": {
+                        "str": ";",
+                        "start": 485,
+                        "end": 486
+                      }
+                    }
+                  }
+                },
+                {
+                  "docs": [
+                    {
+                      "str": "/// Import by name with type `c`\n",
+                      "start": 491,
+                      "end": 524
+                    }
+                  ],
+                  "stmt": {
+                    "import": {
+                      "keyword": {
+                        "str": "import",
+                        "start": 528,
+                        "end": 534
+                      },
+                      "decl": {
+                        "named": {
+                          "id": {
+                            "str": "c",
+                            "start": 535,
+                            "end": 536
+                          },
+                          "colon": {
+                            "str": ":",
+                            "start": 536,
+                            "end": 537
+                          },
+                          "ty": {
+                            "ident": {
+                              "str": "c",
+                              "start": 538,
+                              "end": 539
+                            }
+                          }
+                        }
+                      },
+                      "semicolon": {
+                        "str": ";",
+                        "start": 539,
+                        "end": 540
+                      }
+                    }
+                  }
+                },
+                {
+                  "docs": [
+                    {
+                      "str": "/// Export an inline interface\n",
+                      "start": 546,
+                      "end": 577
+                    }
+                  ],
+                  "stmt": {
+                    "export": {
+                      "keyword": {
+                        "str": "export",
+                        "start": 581,
+                        "end": 587
+                      },
+                      "decl": {
+                        "named": {
+                          "id": {
+                            "str": "d",
+                            "start": 588,
+                            "end": 589
+                          },
+                          "colon": {
+                            "str": ":",
+                            "start": 589,
+                            "end": 590
+                          },
+                          "ty": {
+                            "interface": {
+                              "keyword": {
+                                "str": "interface",
+                                "start": 591,
+                                "end": 600
+                              },
+                              "body": {
+                                "open": {
+                                  "str": "{",
+                                  "start": 601,
+                                  "end": 602
+                                },
+                                "items": [
+                                  {
+                                    "docs": [],
+                                    "stmt": {
+                                      "export": {
+                                        "id": {
+                                          "str": "x",
+                                          "start": 611,
+                                          "end": 612
+                                        },
+                                        "colon": {
+                                          "str": ":",
+                                          "start": 612,
+                                          "end": 613
+                                        },
+                                        "ty": {
+                                          "func": {
+                                            "keyword": {
+                                              "str": "func",
+                                              "start": 614,
+                                              "end": 618
+                                            },
+                                            "params": {
+                                              "open": {
+                                                "str": "(",
+                                                "start": 618,
+                                                "end": 619
+                                              },
+                                              "list": [],
+                                              "close": {
+                                                "str": ")",
+                                                "start": 619,
+                                                "end": 620
+                                              }
+                                            },
+                                            "results": null
+                                          }
+                                        },
+                                        "semicolon": {
+                                          "str": ";",
+                                          "start": 620,
+                                          "end": 621
+                                        }
+                                      }
+                                    }
+                                  }
+                                ],
+                                "close": {
+                                  "str": "}",
+                                  "start": 626,
+                                  "end": 627
+                                }
+                              }
+                            }
+                          }
+                        }
+                      },
+                      "semicolon": {
+                        "str": ";",
+                        "start": 627,
+                        "end": 628
+                      }
+                    }
+                  }
+                },
+                {
+                  "docs": [
+                    {
+                      "str": "/// Export an interface\n",
+                      "start": 633,
+                      "end": 657
+                    }
+                  ],
+                  "stmt": {
+                    "export": {
+                      "keyword": {
+                        "str": "export",
+                        "start": 661,
+                        "end": 667
+                      },
+                      "decl": {
+                        "interface": {
+                          "ident": {
+                            "str": "i2",
+                            "start": 668,
+                            "end": 670
+                          }
+                        }
+                      },
+                      "semicolon": {
+                        "str": ";",
+                        "start": 670,
+                        "end": 671
+                      }
+                    }
+                  }
+                },
+                {
+                  "docs": [
+                    {
+                      "str": "/// Export by name with type `f`\n",
+                      "start": 676,
+                      "end": 709
+                    }
+                  ],
+                  "stmt": {
+                    "export": {
+                      "keyword": {
+                        "str": "export",
+                        "start": 713,
+                        "end": 719
+                      },
+                      "decl": {
+                        "named": {
+                          "id": {
+                            "str": "f",
+                            "start": 720,
+                            "end": 721
+                          },
+                          "colon": {
+                            "str": ":",
+                            "start": 721,
+                            "end": 722
+                          },
+                          "ty": {
+                            "ident": {
+                              "str": "f",
+                              "start": 723,
+                              "end": 724
+                            }
+                          }
+                        }
+                      },
+                      "semicolon": {
+                        "str": ";",
+                        "start": 724,
+                        "end": 725
+                      }
+                    }
+                  }
+                }
+              ],
+              "close": {
+                "str": "}",
+                "start": 726,
+                "end": 727
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "docs": [
+        {
+          "str": "/// Defining a second world\n",
+          "start": 729,
+          "end": 757
+        }
+      ],
+      "stmt": {
+        "type": {
+          "world": {
+            "keyword": {
+              "str": "world",
+              "start": 757,
+              "end": 762
+            },
+            "id": {
+              "str": "w2",
+              "start": 763,
+              "end": 765
+            },
+            "body": {
+              "open": {
+                "str": "{",
+                "start": 766,
+                "end": 767
+              },
+              "items": [
+                {
+                  "docs": [
+                    {
+                      "str": "/// Include the first world\n",
+                      "start": 772,
+                      "end": 800
+                    }
+                  ],
+                  "stmt": {
+                    "include": {
+                      "keyword": {
+                        "str": "include",
+                        "start": 804,
+                        "end": 811
+                      },
+                      "world": {
+                        "ident": {
+                          "str": "w1",
+                          "start": 812,
+                          "end": 814
+                        }
+                      },
+                      "with": null,
+                      "semicolon": {
+                        "str": ";",
+                        "start": 814,
+                        "end": 815
+                      }
+                    }
+                  }
+                },
+                {
+                  "docs": [
+                    {
+                      "str": "/// Include a world by path\n",
+                      "start": 821,
+                      "end": 849
+                    }
+                  ],
+                  "stmt": {
+                    "include": {
+                      "keyword": {
+                        "str": "include",
+                        "start": 853,
+                        "end": 860
+                      },
+                      "world": {
+                        "path": {
+                          "name": {
+                            "parts": [
+                              {
+                                "str": "foo",
+                                "start": 861,
+                                "end": 864
+                              },
+                              {
+                                "str": "bar",
+                                "start": 865,
+                                "end": 868
+                              }
+                            ]
+                          },
+                          "path": [
+                            [
+                              {
+                                "str": "/",
+                                "start": 868,
+                                "end": 869
+                              },
+                              {
+                                "str": "baz",
+                                "start": 869,
+                                "end": 872
+                              }
+                            ]
+                          ],
+                          "version": null
+                        }
+                      },
+                      "with": null,
+                      "semicolon": {
+                        "str": ";",
+                        "start": 872,
+                        "end": 873
+                      }
+                    }
+                  }
+                }
+              ],
+              "close": {
+                "str": "}",
+                "start": 874,
+                "end": 875
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "docs": [
+        {
+          "str": "/// Defining a resource\n",
+          "start": 877,
+          "end": 901
+        }
+      ],
+      "stmt": {
+        "type": {
+          "type": {
+            "resource": {
+              "keyword": {
+                "str": "resource",
+                "start": 901,
+                "end": 909
+              },
+              "id": {
+                "str": "res",
+                "start": 910,
+                "end": 913
+              },
+              "body": {
+                "methods": {
+                  "open": {
+                    "str": "{",
+                    "start": 914,
+                    "end": 915
+                  },
+                  "methods": [
+                    [
+                      {
+                        "constructor": {
+                          "keyword": {
+                            "str": "constructor",
+                            "start": 920,
+                            "end": 931
+                          },
+                          "params": {
+                            "open": {
+                              "str": "(",
+                              "start": 931,
+                              "end": 932
+                            },
+                            "list": [],
+                            "close": {
+                              "str": ")",
+                              "start": 932,
+                              "end": 933
+                            }
+                          }
+                        }
+                      },
+                      {
+                        "str": ";",
+                        "start": 933,
+                        "end": 934
+                      }
+                    ]
+                  ],
+                  "close": {
+                    "str": "}",
+                    "start": 935,
+                    "end": 936
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "docs": [
+        {
+          "str": "/// Defining a variant\n",
+          "start": 938,
+          "end": 961
+        }
+      ],
+      "stmt": {
+        "type": {
+          "type": {
+            "variant": {
+              "keyword": {
+                "str": "variant",
+                "start": 961,
+                "end": 968
+              },
+              "id": {
+                "str": "v",
+                "start": 969,
+                "end": 970
+              },
+              "body": {
+                "open": {
+                  "str": "{",
+                  "start": 971,
+                  "end": 972
+                },
+                "cases": [
+                  {
+                    "id": {
+                      "str": "a",
+                      "start": 977,
+                      "end": 978
+                    },
+                    "ty": {
+                      "open": {
+                        "str": "(",
+                        "start": 978,
+                        "end": 979
+                      },
+                      "ty": {
+                        "ident": {
+                          "str": "x",
+                          "start": 979,
+                          "end": 980
+                        }
+                      },
+                      "close": {
+                        "str": ")",
+                        "start": 980,
+                        "end": 981
+                      }
+                    }
+                  },
+                  {
+                    "id": {
+                      "str": "b",
+                      "start": 987,
+                      "end": 988
+                    },
+                    "ty": {
+                      "open": {
+                        "str": "(",
+                        "start": 988,
+                        "end": 989
+                      },
+                      "ty": {
+                        "string": {
+                          "str": "string",
+                          "start": 989,
+                          "end": 995
+                        }
+                      },
+                      "close": {
+                        "str": ")",
+                        "start": 995,
+                        "end": 996
+                      }
+                    }
+                  },
+                  {
+                    "id": {
+                      "str": "c",
+                      "start": 1002,
+                      "end": 1003
+                    },
+                    "ty": {
+                      "open": {
+                        "str": "(",
+                        "start": 1003,
+                        "end": 1004
+                      },
+                      "ty": {
+                        "u32": {
+                          "str": "u32",
+                          "start": 1004,
+                          "end": 1007
+                        }
+                      },
+                      "close": {
+                        "str": ")",
+                        "start": 1007,
+                        "end": 1008
+                      }
+                    }
+                  },
+                  {
+                    "id": {
+                      "str": "d",
+                      "start": 1014,
+                      "end": 1015
+                    },
+                    "ty": null
+                  }
+                ],
+                "close": {
+                  "str": "}",
+                  "start": 1017,
+                  "end": 1018
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "docs": [
+        {
+          "str": "/// Defining a record\n",
+          "start": 1020,
+          "end": 1042
+        }
+      ],
+      "stmt": {
+        "type": {
+          "type": {
+            "record": {
+              "keyword": {
+                "str": "record",
+                "start": 1042,
+                "end": 1048
+              },
+              "id": {
+                "str": "r",
+                "start": 1049,
+                "end": 1050
+              },
+              "body": {
+                "open": {
+                  "str": "{",
+                  "start": 1051,
+                  "end": 1052
+                },
+                "fields": [
+                  {
+                    "id": {
+                      "str": "x",
+                      "start": 1057,
+                      "end": 1058
+                    },
+                    "colon": {
+                      "str": ":",
+                      "start": 1058,
+                      "end": 1059
+                    },
+                    "ty": {
+                      "u32": {
+                        "str": "u32",
+                        "start": 1060,
+                        "end": 1063
+                      }
+                    }
+                  },
+                  {
+                    "id": {
+                      "str": "y",
+                      "start": 1069,
+                      "end": 1070
+                    },
+                    "colon": {
+                      "str": ":",
+                      "start": 1070,
+                      "end": 1071
+                    },
+                    "ty": {
+                      "string": {
+                        "str": "string",
+                        "start": 1072,
+                        "end": 1078
+                      }
+                    }
+                  },
+                  {
+                    "id": {
+                      "str": "z",
+                      "start": 1084,
+                      "end": 1085
+                    },
+                    "colon": {
+                      "str": ":",
+                      "start": 1085,
+                      "end": 1086
+                    },
+                    "ty": {
+                      "ident": {
+                        "str": "v",
+                        "start": 1087,
+                        "end": 1088
+                      }
+                    }
+                  }
+                ],
+                "close": {
+                  "str": "}",
+                  "start": 1090,
+                  "end": 1091
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "docs": [
+        {
+          "str": "/// Defining flags\n",
+          "start": 1094,
+          "end": 1113
+        }
+      ],
+      "stmt": {
+        "type": {
+          "type": {
+            "flags": {
+              "keyword": {
+                "str": "flags",
+                "start": 1113,
+                "end": 1118
+              },
+              "id": {
+                "str": "f",
+                "start": 1119,
+                "end": 1120
+              },
+              "body": {
+                "open": {
+                  "str": "{",
+                  "start": 1121,
+                  "end": 1122
+                },
+                "flags": [
+                  {
+                    "str": "a",
+                    "start": 1127,
+                    "end": 1128
+                  },
+                  {
+                    "str": "b",
+                    "start": 1134,
+                    "end": 1135
+                  },
+                  {
+                    "str": "c",
+                    "start": 1141,
+                    "end": 1142
+                  }
+                ],
+                "close": {
+                  "str": "}",
+                  "start": 1144,
+                  "end": 1145
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "docs": [
+        {
+          "str": "/// Defining an enum\n",
+          "start": 1147,
+          "end": 1168
+        }
+      ],
+      "stmt": {
+        "type": {
+          "type": {
+            "enum": {
+              "keyword": {
+                "str": "enum",
+                "start": 1168,
+                "end": 1172
+              },
+              "id": {
+                "str": "e",
+                "start": 1173,
+                "end": 1174
+              },
+              "body": {
+                "open": {
+                  "str": "{",
+                  "start": 1175,
+                  "end": 1176
+                },
+                "cases": [
+                  {
+                    "str": "a",
+                    "start": 1181,
+                    "end": 1182
+                  },
+                  {
+                    "str": "b",
+                    "start": 1188,
+                    "end": 1189
+                  },
+                  {
+                    "str": "c",
+                    "start": 1195,
+                    "end": 1196
+                  }
+                ],
+                "close": {
+                  "str": "}",
+                  "start": 1198,
+                  "end": 1199
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "docs": [
+        {
+          "str": "/// Type aliases\n",
+          "start": 1201,
+          "end": 1218
+        }
+      ],
+      "stmt": {
+        "type": {
+          "type": {
+            "alias": {
+              "keyword": {
+                "str": "type",
+                "start": 1218,
+                "end": 1222
+              },
+              "id": {
+                "str": "t",
+                "start": 1223,
+                "end": 1224
+              },
+              "equals": {
+                "str": "=",
+                "start": 1225,
+                "end": 1226
+              },
+              "kind": {
+                "type": {
+                  "ident": {
+                    "str": "e",
+                    "start": 1227,
+                    "end": 1228
+                  }
+                }
+              },
+              "semicolon": {
+                "str": ";",
+                "start": 1228,
+                "end": 1229
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "docs": [],
+      "stmt": {
+        "type": {
+          "type": {
+            "alias": {
+              "keyword": {
+                "str": "type",
+                "start": 1230,
+                "end": 1234
+              },
+              "id": {
+                "str": "t2",
+                "start": 1235,
+                "end": 1237
+              },
+              "equals": {
+                "str": "=",
+                "start": 1238,
+                "end": 1239
+              },
+              "kind": {
+                "type": {
+                  "string": {
+                    "str": "string",
+                    "start": 1240,
+                    "end": 1246
+                  }
+                }
+              },
+              "semicolon": {
+                "str": ";",
+                "start": 1246,
+                "end": 1247
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "docs": [],
+      "stmt": {
+        "type": {
+          "type": {
+            "alias": {
+              "keyword": {
+                "str": "type",
+                "start": 1248,
+                "end": 1252
+              },
+              "id": {
+                "str": "t3",
+                "start": 1253,
+                "end": 1255
+              },
+              "equals": {
+                "str": "=",
+                "start": 1256,
+                "end": 1257
+              },
+              "kind": {
+                "func": {
+                  "keyword": {
+                    "str": "func",
+                    "start": 1258,
+                    "end": 1262
+                  },
+                  "params": {
+                    "open": {
+                      "str": "(",
+                      "start": 1262,
+                      "end": 1263
+                    },
+                    "list": [
+                      {
+                        "id": {
+                          "str": "a",
+                          "start": 1263,
+                          "end": 1264
+                        },
+                        "colon": {
+                          "str": ":",
+                          "start": 1264,
+                          "end": 1265
+                        },
+                        "ty": {
+                          "u32": {
+                            "str": "u32",
+                            "start": 1266,
+                            "end": 1269
+                          }
+                        }
+                      },
+                      {
+                        "id": {
+                          "str": "b",
+                          "start": 1271,
+                          "end": 1272
+                        },
+                        "colon": {
+                          "str": ":",
+                          "start": 1272,
+                          "end": 1273
+                        },
+                        "ty": {
+                          "ident": {
+                            "str": "r",
+                            "start": 1274,
+                            "end": 1275
+                          }
+                        }
+                      }
+                    ],
+                    "close": {
+                      "str": ")",
+                      "start": 1275,
+                      "end": 1276
+                    }
+                  },
+                  "results": {
+                    "single": {
+                      "arrow": {
+                        "str": "->",
+                        "start": 1277,
+                        "end": 1279
+                      },
+                      "ty": {
+                        "u32": {
+                          "str": "u32",
+                          "start": 1280,
+                          "end": 1283
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "semicolon": {
+                "str": ";",
+                "start": 1283,
+                "end": 1284
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "docs": [],
+      "stmt": {
+        "type": {
+          "type": {
+            "alias": {
+              "keyword": {
+                "str": "type",
+                "start": 1285,
+                "end": 1289
+              },
+              "id": {
+                "str": "t4",
+                "start": 1290,
+                "end": 1292
+              },
+              "equals": {
+                "str": "=",
+                "start": 1293,
+                "end": 1294
+              },
+              "kind": {
+                "func": {
+                  "keyword": {
+                    "str": "func",
+                    "start": 1295,
+                    "end": 1299
+                  },
+                  "params": {
+                    "open": {
+                      "str": "(",
+                      "start": 1299,
+                      "end": 1300
+                    },
+                    "list": [],
+                    "close": {
+                      "str": ")",
+                      "start": 1300,
+                      "end": 1301
+                    }
+                  },
+                  "results": {
+                    "named": {
+                      "arrow": {
+                        "str": "->",
+                        "start": 1302,
+                        "end": 1304
+                      },
+                      "results": {
+                        "open": {
+                          "str": "(",
+                          "start": 1305,
+                          "end": 1306
+                        },
+                        "list": [
+                          {
+                            "id": {
+                              "str": "a",
+                              "start": 1306,
+                              "end": 1307
+                            },
+                            "colon": {
+                              "str": ":",
+                              "start": 1307,
+                              "end": 1308
+                            },
+                            "ty": {
+                              "u32": {
+                                "str": "u32",
+                                "start": 1309,
+                                "end": 1312
+                              }
+                            }
+                          },
+                          {
+                            "id": {
+                              "str": "b",
+                              "start": 1314,
+                              "end": 1315
+                            },
+                            "colon": {
+                              "str": ":",
+                              "start": 1315,
+                              "end": 1316
+                            },
+                            "ty": {
+                              "string": {
+                                "str": "string",
+                                "start": 1317,
+                                "end": 1323
+                              }
+                            }
+                          }
+                        ],
+                        "close": {
+                          "str": ")",
+                          "start": 1323,
+                          "end": 1324
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "semicolon": {
+                "str": ";",
+                "start": 1324,
+                "end": 1325
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
+}

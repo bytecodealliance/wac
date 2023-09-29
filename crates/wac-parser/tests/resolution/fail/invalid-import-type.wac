@@ -1,0 +1,2 @@
+type x = u32;
+import x: x;

@@ -1,0 +1,1251 @@
+{
+  "statements": [
+    {
+      "docs": [
+        {
+          "str": "/// u8\n",
+          "start": 0,
+          "end": 7
+        }
+      ],
+      "stmt": {
+        "type": {
+          "type": {
+            "alias": {
+              "keyword": {
+                "str": "type",
+                "start": 7,
+                "end": 11
+              },
+              "id": {
+                "str": "a",
+                "start": 12,
+                "end": 13
+              },
+              "equals": {
+                "str": "=",
+                "start": 14,
+                "end": 15
+              },
+              "kind": {
+                "type": {
+                  "u8": {
+                    "str": "u8",
+                    "start": 16,
+                    "end": 18
+                  }
+                }
+              },
+              "semicolon": {
+                "str": ";",
+                "start": 18,
+                "end": 19
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "docs": [
+        {
+          "str": "/// s8\n",
+          "start": 20,
+          "end": 27
+        }
+      ],
+      "stmt": {
+        "type": {
+          "type": {
+            "alias": {
+              "keyword": {
+                "str": "type",
+                "start": 27,
+                "end": 31
+              },
+              "id": {
+                "str": "b",
+                "start": 32,
+                "end": 33
+              },
+              "equals": {
+                "str": "=",
+                "start": 34,
+                "end": 35
+              },
+              "kind": {
+                "type": {
+                  "s8": {
+                    "str": "s8",
+                    "start": 36,
+                    "end": 38
+                  }
+                }
+              },
+              "semicolon": {
+                "str": ";",
+                "start": 38,
+                "end": 39
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "docs": [
+        {
+          "str": "/// u16\n",
+          "start": 40,
+          "end": 48
+        }
+      ],
+      "stmt": {
+        "type": {
+          "type": {
+            "alias": {
+              "keyword": {
+                "str": "type",
+                "start": 48,
+                "end": 52
+              },
+              "id": {
+                "str": "c",
+                "start": 53,
+                "end": 54
+              },
+              "equals": {
+                "str": "=",
+                "start": 55,
+                "end": 56
+              },
+              "kind": {
+                "type": {
+                  "u16": {
+                    "str": "u16",
+                    "start": 57,
+                    "end": 60
+                  }
+                }
+              },
+              "semicolon": {
+                "str": ";",
+                "start": 60,
+                "end": 61
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "docs": [
+        {
+          "str": "/// s16\n",
+          "start": 62,
+          "end": 70
+        }
+      ],
+      "stmt": {
+        "type": {
+          "type": {
+            "alias": {
+              "keyword": {
+                "str": "type",
+                "start": 70,
+                "end": 74
+              },
+              "id": {
+                "str": "d",
+                "start": 75,
+                "end": 76
+              },
+              "equals": {
+                "str": "=",
+                "start": 77,
+                "end": 78
+              },
+              "kind": {
+                "type": {
+                  "s16": {
+                    "str": "s16",
+                    "start": 79,
+                    "end": 82
+                  }
+                }
+              },
+              "semicolon": {
+                "str": ";",
+                "start": 82,
+                "end": 83
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "docs": [
+        {
+          "str": "/// u32\n",
+          "start": 84,
+          "end": 92
+        }
+      ],
+      "stmt": {
+        "type": {
+          "type": {
+            "alias": {
+              "keyword": {
+                "str": "type",
+                "start": 92,
+                "end": 96
+              },
+              "id": {
+                "str": "e",
+                "start": 97,
+                "end": 98
+              },
+              "equals": {
+                "str": "=",
+                "start": 99,
+                "end": 100
+              },
+              "kind": {
+                "type": {
+                  "u32": {
+                    "str": "u32",
+                    "start": 101,
+                    "end": 104
+                  }
+                }
+              },
+              "semicolon": {
+                "str": ";",
+                "start": 104,
+                "end": 105
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "docs": [
+        {
+          "str": "/// s32\n",
+          "start": 106,
+          "end": 114
+        }
+      ],
+      "stmt": {
+        "type": {
+          "type": {
+            "alias": {
+              "keyword": {
+                "str": "type",
+                "start": 114,
+                "end": 118
+              },
+              "id": {
+                "str": "f",
+                "start": 119,
+                "end": 120
+              },
+              "equals": {
+                "str": "=",
+                "start": 121,
+                "end": 122
+              },
+              "kind": {
+                "type": {
+                  "s32": {
+                    "str": "s32",
+                    "start": 123,
+                    "end": 126
+                  }
+                }
+              },
+              "semicolon": {
+                "str": ";",
+                "start": 126,
+                "end": 127
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "docs": [
+        {
+          "str": "/// u64\n",
+          "start": 128,
+          "end": 136
+        }
+      ],
+      "stmt": {
+        "type": {
+          "type": {
+            "alias": {
+              "keyword": {
+                "str": "type",
+                "start": 136,
+                "end": 140
+              },
+              "id": {
+                "str": "g",
+                "start": 141,
+                "end": 142
+              },
+              "equals": {
+                "str": "=",
+                "start": 143,
+                "end": 144
+              },
+              "kind": {
+                "type": {
+                  "u64": {
+                    "str": "u64",
+                    "start": 145,
+                    "end": 148
+                  }
+                }
+              },
+              "semicolon": {
+                "str": ";",
+                "start": 148,
+                "end": 149
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "docs": [
+        {
+          "str": "/// s64\n",
+          "start": 150,
+          "end": 158
+        }
+      ],
+      "stmt": {
+        "type": {
+          "type": {
+            "alias": {
+              "keyword": {
+                "str": "type",
+                "start": 158,
+                "end": 162
+              },
+              "id": {
+                "str": "h",
+                "start": 163,
+                "end": 164
+              },
+              "equals": {
+                "str": "=",
+                "start": 165,
+                "end": 166
+              },
+              "kind": {
+                "type": {
+                  "s64": {
+                    "str": "s64",
+                    "start": 167,
+                    "end": 170
+                  }
+                }
+              },
+              "semicolon": {
+                "str": ";",
+                "start": 170,
+                "end": 171
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "docs": [
+        {
+          "str": "/// float32\n",
+          "start": 172,
+          "end": 184
+        }
+      ],
+      "stmt": {
+        "type": {
+          "type": {
+            "alias": {
+              "keyword": {
+                "str": "type",
+                "start": 184,
+                "end": 188
+              },
+              "id": {
+                "str": "i",
+                "start": 189,
+                "end": 190
+              },
+              "equals": {
+                "str": "=",
+                "start": 191,
+                "end": 192
+              },
+              "kind": {
+                "type": {
+                  "float32": {
+                    "str": "float32",
+                    "start": 193,
+                    "end": 200
+                  }
+                }
+              },
+              "semicolon": {
+                "str": ";",
+                "start": 200,
+                "end": 201
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "docs": [
+        {
+          "str": "/// float64\n",
+          "start": 202,
+          "end": 214
+        }
+      ],
+      "stmt": {
+        "type": {
+          "type": {
+            "alias": {
+              "keyword": {
+                "str": "type",
+                "start": 214,
+                "end": 218
+              },
+              "id": {
+                "str": "j",
+                "start": 219,
+                "end": 220
+              },
+              "equals": {
+                "str": "=",
+                "start": 221,
+                "end": 222
+              },
+              "kind": {
+                "type": {
+                  "float64": {
+                    "str": "float64",
+                    "start": 223,
+                    "end": 230
+                  }
+                }
+              },
+              "semicolon": {
+                "str": ";",
+                "start": 230,
+                "end": 231
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "docs": [
+        {
+          "str": "/// bool\n",
+          "start": 232,
+          "end": 241
+        }
+      ],
+      "stmt": {
+        "type": {
+          "type": {
+            "alias": {
+              "keyword": {
+                "str": "type",
+                "start": 241,
+                "end": 245
+              },
+              "id": {
+                "str": "k",
+                "start": 246,
+                "end": 247
+              },
+              "equals": {
+                "str": "=",
+                "start": 248,
+                "end": 249
+              },
+              "kind": {
+                "type": {
+                  "bool": {
+                    "str": "bool",
+                    "start": 250,
+                    "end": 254
+                  }
+                }
+              },
+              "semicolon": {
+                "str": ";",
+                "start": 254,
+                "end": 255
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "docs": [
+        {
+          "str": "/// char\n",
+          "start": 256,
+          "end": 265
+        }
+      ],
+      "stmt": {
+        "type": {
+          "type": {
+            "alias": {
+              "keyword": {
+                "str": "type",
+                "start": 265,
+                "end": 269
+              },
+              "id": {
+                "str": "l",
+                "start": 270,
+                "end": 271
+              },
+              "equals": {
+                "str": "=",
+                "start": 272,
+                "end": 273
+              },
+              "kind": {
+                "type": {
+                  "char": {
+                    "str": "char",
+                    "start": 274,
+                    "end": 278
+                  }
+                }
+              },
+              "semicolon": {
+                "str": ";",
+                "start": 278,
+                "end": 279
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "docs": [
+        {
+          "str": "/// string\n",
+          "start": 280,
+          "end": 291
+        }
+      ],
+      "stmt": {
+        "type": {
+          "type": {
+            "alias": {
+              "keyword": {
+                "str": "type",
+                "start": 291,
+                "end": 295
+              },
+              "id": {
+                "str": "m",
+                "start": 296,
+                "end": 297
+              },
+              "equals": {
+                "str": "=",
+                "start": 298,
+                "end": 299
+              },
+              "kind": {
+                "type": {
+                  "string": {
+                    "str": "string",
+                    "start": 300,
+                    "end": 306
+                  }
+                }
+              },
+              "semicolon": {
+                "str": ";",
+                "start": 306,
+                "end": 307
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "docs": [
+        {
+          "str": "/// tuple<u8, s8>\n",
+          "start": 308,
+          "end": 326
+        }
+      ],
+      "stmt": {
+        "type": {
+          "type": {
+            "alias": {
+              "keyword": {
+                "str": "type",
+                "start": 326,
+                "end": 330
+              },
+              "id": {
+                "str": "n",
+                "start": 331,
+                "end": 332
+              },
+              "equals": {
+                "str": "=",
+                "start": 333,
+                "end": 334
+              },
+              "kind": {
+                "type": {
+                  "tuple": {
+                    "keyword": {
+                      "str": "tuple",
+                      "start": 335,
+                      "end": 340
+                    },
+                    "open": {
+                      "str": "<",
+                      "start": 340,
+                      "end": 341
+                    },
+                    "types": [
+                      {
+                        "u8": {
+                          "str": "u8",
+                          "start": 341,
+                          "end": 343
+                        }
+                      },
+                      {
+                        "s8": {
+                          "str": "s8",
+                          "start": 345,
+                          "end": 347
+                        }
+                      }
+                    ],
+                    "close": {
+                      "str": ">",
+                      "start": 347,
+                      "end": 348
+                    }
+                  }
+                }
+              },
+              "semicolon": {
+                "str": ";",
+                "start": 348,
+                "end": 349
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "docs": [
+        {
+          "str": "/// list<tuple<u8>>\n",
+          "start": 350,
+          "end": 370
+        }
+      ],
+      "stmt": {
+        "type": {
+          "type": {
+            "alias": {
+              "keyword": {
+                "str": "type",
+                "start": 370,
+                "end": 374
+              },
+              "id": {
+                "str": "o",
+                "start": 375,
+                "end": 376
+              },
+              "equals": {
+                "str": "=",
+                "start": 377,
+                "end": 378
+              },
+              "kind": {
+                "type": {
+                  "list": {
+                    "keyword": {
+                      "str": "list",
+                      "start": 379,
+                      "end": 383
+                    },
+                    "open": {
+                      "str": "<",
+                      "start": 383,
+                      "end": 384
+                    },
+                    "ty": {
+                      "tuple": {
+                        "keyword": {
+                          "str": "tuple",
+                          "start": 384,
+                          "end": 389
+                        },
+                        "open": {
+                          "str": "<",
+                          "start": 389,
+                          "end": 390
+                        },
+                        "types": [
+                          {
+                            "u8": {
+                              "str": "u8",
+                              "start": 390,
+                              "end": 392
+                            }
+                          }
+                        ],
+                        "close": {
+                          "str": ">",
+                          "start": 392,
+                          "end": 393
+                        }
+                      }
+                    },
+                    "close": {
+                      "str": ">",
+                      "start": 393,
+                      "end": 394
+                    }
+                  }
+                }
+              },
+              "semicolon": {
+                "str": ";",
+                "start": 394,
+                "end": 395
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "docs": [
+        {
+          "str": "/// option<string>\n",
+          "start": 396,
+          "end": 415
+        }
+      ],
+      "stmt": {
+        "type": {
+          "type": {
+            "alias": {
+              "keyword": {
+                "str": "type",
+                "start": 415,
+                "end": 419
+              },
+              "id": {
+                "str": "p",
+                "start": 420,
+                "end": 421
+              },
+              "equals": {
+                "str": "=",
+                "start": 422,
+                "end": 423
+              },
+              "kind": {
+                "type": {
+                  "option": {
+                    "keyword": {
+                      "str": "option",
+                      "start": 424,
+                      "end": 430
+                    },
+                    "open": {
+                      "str": "<",
+                      "start": 430,
+                      "end": 431
+                    },
+                    "ty": {
+                      "string": {
+                        "str": "string",
+                        "start": 431,
+                        "end": 437
+                      }
+                    },
+                    "close": {
+                      "str": ">",
+                      "start": 437,
+                      "end": 438
+                    }
+                  }
+                }
+              },
+              "semicolon": {
+                "str": ";",
+                "start": 438,
+                "end": 439
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "docs": [
+        {
+          "str": "/// result\n",
+          "start": 440,
+          "end": 451
+        }
+      ],
+      "stmt": {
+        "type": {
+          "type": {
+            "alias": {
+              "keyword": {
+                "str": "type",
+                "start": 451,
+                "end": 455
+              },
+              "id": {
+                "str": "q",
+                "start": 456,
+                "end": 457
+              },
+              "equals": {
+                "str": "=",
+                "start": 458,
+                "end": 459
+              },
+              "kind": {
+                "type": {
+                  "result": {
+                    "keyword": {
+                      "str": "result",
+                      "start": 460,
+                      "end": 466
+                    },
+                    "specified": null
+                  }
+                }
+              },
+              "semicolon": {
+                "str": ";",
+                "start": 466,
+                "end": 467
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "docs": [
+        {
+          "str": "/// result<u8>\n",
+          "start": 468,
+          "end": 483
+        }
+      ],
+      "stmt": {
+        "type": {
+          "type": {
+            "alias": {
+              "keyword": {
+                "str": "type",
+                "start": 483,
+                "end": 487
+              },
+              "id": {
+                "str": "r",
+                "start": 488,
+                "end": 489
+              },
+              "equals": {
+                "str": "=",
+                "start": 490,
+                "end": 491
+              },
+              "kind": {
+                "type": {
+                  "result": {
+                    "keyword": {
+                      "str": "result",
+                      "start": 492,
+                      "end": 498
+                    },
+                    "specified": {
+                      "open": {
+                        "str": "<",
+                        "start": 498,
+                        "end": 499
+                      },
+                      "ok": {
+                        "type": {
+                          "u8": {
+                            "str": "u8",
+                            "start": 499,
+                            "end": 501
+                          }
+                        }
+                      },
+                      "err": null,
+                      "close": {
+                        "str": ">",
+                        "start": 501,
+                        "end": 502
+                      }
+                    }
+                  }
+                }
+              },
+              "semicolon": {
+                "str": ";",
+                "start": 502,
+                "end": 503
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "docs": [
+        {
+          "str": "/// result<_, s8>\n",
+          "start": 504,
+          "end": 522
+        }
+      ],
+      "stmt": {
+        "type": {
+          "type": {
+            "alias": {
+              "keyword": {
+                "str": "type",
+                "start": 522,
+                "end": 526
+              },
+              "id": {
+                "str": "s",
+                "start": 527,
+                "end": 528
+              },
+              "equals": {
+                "str": "=",
+                "start": 529,
+                "end": 530
+              },
+              "kind": {
+                "type": {
+                  "result": {
+                    "keyword": {
+                      "str": "result",
+                      "start": 531,
+                      "end": 537
+                    },
+                    "specified": {
+                      "open": {
+                        "str": "<",
+                        "start": 537,
+                        "end": 538
+                      },
+                      "ok": {
+                        "omitted": {
+                          "str": "_",
+                          "start": 538,
+                          "end": 539
+                        }
+                      },
+                      "err": {
+                        "s8": {
+                          "str": "s8",
+                          "start": 541,
+                          "end": 543
+                        }
+                      },
+                      "close": {
+                        "str": ">",
+                        "start": 543,
+                        "end": 544
+                      }
+                    }
+                  }
+                }
+              },
+              "semicolon": {
+                "str": ";",
+                "start": 544,
+                "end": 545
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "docs": [
+        {
+          "str": "/// result<u8, string>\n",
+          "start": 546,
+          "end": 569
+        }
+      ],
+      "stmt": {
+        "type": {
+          "type": {
+            "alias": {
+              "keyword": {
+                "str": "type",
+                "start": 569,
+                "end": 573
+              },
+              "id": {
+                "str": "t",
+                "start": 574,
+                "end": 575
+              },
+              "equals": {
+                "str": "=",
+                "start": 576,
+                "end": 577
+              },
+              "kind": {
+                "type": {
+                  "result": {
+                    "keyword": {
+                      "str": "result",
+                      "start": 578,
+                      "end": 584
+                    },
+                    "specified": {
+                      "open": {
+                        "str": "<",
+                        "start": 584,
+                        "end": 585
+                      },
+                      "ok": {
+                        "type": {
+                          "u8": {
+                            "str": "u8",
+                            "start": 585,
+                            "end": 587
+                          }
+                        }
+                      },
+                      "err": {
+                        "string": {
+                          "str": "string",
+                          "start": 589,
+                          "end": 595
+                        }
+                      },
+                      "close": {
+                        "str": ">",
+                        "start": 595,
+                        "end": 596
+                      }
+                    }
+                  }
+                }
+              },
+              "semicolon": {
+                "str": ";",
+                "start": 596,
+                "end": 597
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "docs": [
+        {
+          "str": "/// borrow<x>\n",
+          "start": 598,
+          "end": 612
+        }
+      ],
+      "stmt": {
+        "type": {
+          "type": {
+            "alias": {
+              "keyword": {
+                "str": "type",
+                "start": 612,
+                "end": 616
+              },
+              "id": {
+                "str": "u",
+                "start": 617,
+                "end": 618
+              },
+              "equals": {
+                "str": "=",
+                "start": 619,
+                "end": 620
+              },
+              "kind": {
+                "type": {
+                  "borrow": {
+                    "keyword": {
+                      "str": "borrow",
+                      "start": 621,
+                      "end": 627
+                    },
+                    "open": {
+                      "str": "<",
+                      "start": 627,
+                      "end": 628
+                    },
+                    "id": {
+                      "str": "x",
+                      "start": 628,
+                      "end": 629
+                    },
+                    "close": {
+                      "str": ">",
+                      "start": 629,
+                      "end": 630
+                    }
+                  }
+                }
+              },
+              "semicolon": {
+                "str": ";",
+                "start": 630,
+                "end": 631
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "docs": [
+        {
+          "str": "/// x\n",
+          "start": 632,
+          "end": 638
+        }
+      ],
+      "stmt": {
+        "type": {
+          "type": {
+            "alias": {
+              "keyword": {
+                "str": "type",
+                "start": 638,
+                "end": 642
+              },
+              "id": {
+                "str": "v",
+                "start": 643,
+                "end": 644
+              },
+              "equals": {
+                "str": "=",
+                "start": 645,
+                "end": 646
+              },
+              "kind": {
+                "type": {
+                  "ident": {
+                    "str": "x",
+                    "start": 647,
+                    "end": 648
+                  }
+                }
+              },
+              "semicolon": {
+                "str": ";",
+                "start": 648,
+                "end": 649
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "docs": [
+        {
+          "str": "/// keyword\n",
+          "start": 650,
+          "end": 662
+        }
+      ],
+      "stmt": {
+        "type": {
+          "type": {
+            "alias": {
+              "keyword": {
+                "str": "type",
+                "start": 662,
+                "end": 666
+              },
+              "id": {
+                "str": "%type",
+                "start": 667,
+                "end": 672
+              },
+              "equals": {
+                "str": "=",
+                "start": 673,
+                "end": 674
+              },
+              "kind": {
+                "type": {
+                  "ident": {
+                    "str": "v",
+                    "start": 675,
+                    "end": 676
+                  }
+                }
+              },
+              "semicolon": {
+                "str": ";",
+                "start": 676,
+                "end": 677
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+interface `i` cannot be used as a value type
+
+Caused by:
+     --> tests/resolution/fail/invalid-value-type.wac:5:18
+      |
+    5 | type x = func(i: i);
+      |                  ^
+      |
+      = interface `i` cannot be used as a value type

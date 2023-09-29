@@ -1,0 +1,9 @@
+duplicate interface export `x` for interface `x`
+
+Caused by:
+     --> tests/resolution/fail/duplicate-interface-export.wac:3:5
+      |
+    3 |     x: func();
+      |     ^
+      |
+      = duplicate interface export `x` for interface `x`

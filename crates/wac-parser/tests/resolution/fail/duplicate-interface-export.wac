@@ -1,0 +1,4 @@
+interface x {
+    x: func();
+    x: func();
+}

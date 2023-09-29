@@ -1,0 +1,9 @@
+value type `x` is not a function type
+
+Caused by:
+     --> tests/resolution/fail/invalid-func-type-ref.wac:4:8
+      |
+    4 |     x: x;
+      |        ^
+      |
+      = value type `x` is not a function type

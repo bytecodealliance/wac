@@ -1,0 +1,9 @@
+`x` is not an interface
+
+Caused by:
+     --> tests/resolution/fail/invalid-use.wac:4:9
+      |
+    4 |     use x.{a};
+      |         ^
+      |
+      = `x` is not an interface

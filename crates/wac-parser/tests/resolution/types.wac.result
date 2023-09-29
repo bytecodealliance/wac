@@ -1,0 +1,487 @@
+{
+  "package": "test:test",
+  "types": [
+    {
+      "record": {
+        "fields": {
+          "x": "u32"
+        }
+      }
+    },
+    {
+      "resource": {
+        "methods": [
+          {
+            "constructor": []
+          }
+        ]
+      }
+    },
+    {
+      "alias": {
+        "ty": "u32"
+      }
+    },
+    {
+      "variant": {
+        "cases": {
+          "a": {
+            "id": 2
+          },
+          "b": "string",
+          "c": "u32",
+          "d": null
+        }
+      }
+    },
+    {
+      "record": {
+        "fields": {
+          "x": "u32",
+          "y": "string",
+          "z": {
+            "id": 3
+          }
+        }
+      }
+    },
+    {
+      "flags": {
+        "flags": [
+          "a",
+          "b",
+          "c"
+        ]
+      }
+    },
+    {
+      "enum": {
+        "cases": [
+          "a",
+          "b",
+          "c"
+        ]
+      }
+    },
+    {
+      "alias": {
+        "ty": {
+          "id": 6
+        }
+      }
+    },
+    {
+      "alias": {
+        "ty": "string"
+      }
+    }
+  ],
+  "funcs": [
+    {
+      "params": {},
+      "results": null
+    },
+    {
+      "params": {},
+      "results": null
+    },
+    {
+      "params": {},
+      "results": null
+    },
+    {
+      "params": {},
+      "results": null
+    },
+    {
+      "params": {},
+      "results": null
+    },
+    {
+      "params": {
+        "a": "u32",
+        "b": {
+          "id": 4
+        }
+      },
+      "results": {
+        "single": "u32"
+      }
+    },
+    {
+      "params": {},
+      "results": {
+        "named": {
+          "a": "u32",
+          "b": "string"
+        }
+      }
+    }
+  ],
+  "interfaces": [
+    {
+      "kind": {
+        "declared": {
+          "id": "test:test/i"
+        }
+      },
+      "types": {
+        "a": {
+          "funcType": 0
+        },
+        "r": {
+          "type": {
+            "id": 0
+          }
+        }
+      },
+      "exports": {
+        "x": 1,
+        "y": 0
+      }
+    },
+    {
+      "kind": {
+        "declared": {
+          "id": "test:test/i2"
+        }
+      },
+      "types": {
+        "r": {
+          "type": {
+            "id": 0
+          }
+        }
+      },
+      "exports": {}
+    },
+    {
+      "kind": "inline",
+      "types": {},
+      "exports": {
+        "x": 4
+      }
+    }
+  ],
+  "worlds": [
+    {
+      "types": {},
+      "imports": {
+        "a": {
+          "func": 3
+        },
+        "test:test/i": {
+          "interface": {
+            "id": 0,
+            "scope": 1
+          }
+        },
+        "c": {
+          "func": 2
+        }
+      },
+      "exports": {
+        "d": {
+          "interface": {
+            "id": 2,
+            "scope": 4
+          }
+        },
+        "test:test/i2": {
+          "interface": {
+            "id": 1,
+            "scope": 2
+          }
+        },
+        "f": {
+          "func": 2
+        }
+      }
+    },
+    {
+      "types": {},
+      "imports": {
+        "a": {
+          "func": 3
+        },
+        "test:test/i": {
+          "interface": {
+            "id": 0,
+            "scope": 1
+          }
+        },
+        "c": {
+          "func": 2
+        }
+      },
+      "exports": {
+        "d": {
+          "interface": {
+            "id": 2,
+            "scope": 4
+          }
+        },
+        "test:test/i2": {
+          "interface": {
+            "id": 1,
+            "scope": 2
+          }
+        },
+        "f": {
+          "func": 2
+        }
+      }
+    }
+  ],
+  "scopes": [
+    {
+      "parent": null,
+      "names": {
+        "i": {
+          "span": {
+            "str": "i",
+            "start": 36,
+            "end": 37
+          },
+          "kind": {
+            "interface": {
+              "id": 0,
+              "scope": 1
+            }
+          }
+        },
+        "i2": {
+          "span": {
+            "str": "i2",
+            "start": 258,
+            "end": 260
+          },
+          "kind": {
+            "interface": {
+              "id": 1,
+              "scope": 2
+            }
+          }
+        },
+        "c": {
+          "span": {
+            "str": "c",
+            "start": 312,
+            "end": 313
+          },
+          "kind": {
+            "funcType": 2
+          }
+        },
+        "f": {
+          "span": {
+            "str": "f",
+            "start": 329,
+            "end": 330
+          },
+          "kind": {
+            "funcType": 2
+          }
+        },
+        "w1": {
+          "span": {
+            "str": "w1",
+            "start": 364,
+            "end": 366
+          },
+          "kind": {
+            "world": {
+              "id": 0,
+              "scope": 3
+            }
+          }
+        },
+        "w2": {
+          "span": {
+            "str": "w2",
+            "start": 800,
+            "end": 802
+          },
+          "kind": {
+            "world": {
+              "id": 1,
+              "scope": 5
+            }
+          }
+        },
+        "res": {
+          "span": {
+            "str": "res",
+            "start": 954,
+            "end": 957
+          },
+          "kind": {
+            "type": {
+              "id": 1
+            }
+          }
+        },
+        "x": {
+          "span": {
+            "str": "x",
+            "start": 987,
+            "end": 988
+          },
+          "kind": {
+            "type": {
+              "id": 2
+            }
+          }
+        },
+        "v": {
+          "span": {
+            "str": "v",
+            "start": 1028,
+            "end": 1029
+          },
+          "kind": {
+            "type": {
+              "id": 3
+            }
+          }
+        },
+        "r": {
+          "span": {
+            "str": "r",
+            "start": 1108,
+            "end": 1109
+          },
+          "kind": {
+            "type": {
+              "id": 4
+            }
+          }
+        },
+        "flags": {
+          "span": {
+            "str": "%flags",
+            "start": 1178,
+            "end": 1184
+          },
+          "kind": {
+            "type": {
+              "id": 5
+            }
+          }
+        },
+        "e": {
+          "span": {
+            "str": "e",
+            "start": 1237,
+            "end": 1238
+          },
+          "kind": {
+            "type": {
+              "id": 6
+            }
+          }
+        },
+        "t": {
+          "span": {
+            "str": "t",
+            "start": 1287,
+            "end": 1288
+          },
+          "kind": {
+            "type": {
+              "id": 7
+            }
+          }
+        },
+        "t2": {
+          "span": {
+            "str": "t2",
+            "start": 1299,
+            "end": 1301
+          },
+          "kind": {
+            "type": {
+              "id": 8
+            }
+          }
+        },
+        "t3": {
+          "span": {
+            "str": "t3",
+            "start": 1317,
+            "end": 1319
+          },
+          "kind": {
+            "funcType": 5
+          }
+        },
+        "t4": {
+          "span": {
+            "str": "t4",
+            "start": 1354,
+            "end": 1356
+          },
+          "kind": {
+            "funcType": 6
+          }
+        }
+      }
+    },
+    {
+      "parent": 0,
+      "names": {
+        "a": {
+          "span": {
+            "str": "a",
+            "start": 70,
+            "end": 71
+          },
+          "kind": {
+            "funcType": 0
+          }
+        },
+        "r": {
+          "span": {
+            "str": "r",
+            "start": 113,
+            "end": 114
+          },
+          "kind": {
+            "type": {
+              "id": 0
+            }
+          }
+        }
+      }
+    },
+    {
+      "parent": 0,
+      "names": {
+        "r": {
+          "span": {
+            "str": "r",
+            "start": 300,
+            "end": 301
+          },
+          "kind": {
+            "type": {
+              "id": 0
+            }
+          }
+        }
+      }
+    },
+    {
+      "parent": 0,
+      "names": {}
+    },
+    {
+      "parent": 3,
+      "names": {}
+    },
+    {
+      "parent": 0,
+      "names": {}
+    }
+  ]
+}

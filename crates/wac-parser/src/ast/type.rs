@@ -11,19 +11,22 @@ use super::{
     AstDisplay, DocComment, Ident, Indenter, PackagePath,
 };
 use crate::parser::Rule;
+use pest::Span;
 use pest_ast::FromPest;
-use std::fmt;
+use serde::Serialize;
+use std::{borrow::Cow, fmt};
 
 /// Represents a type statement in the AST.
-#[derive(Debug, Clone, FromPest)]
+#[derive(Debug, Clone, Serialize, FromPest)]
 #[pest_ast(rule(Rule::TypeStatement))]
+#[serde(rename_all = "camelCase")]
 pub enum TypeStatement<'a> {
     /// The statement is for an interface declaration.
     Interface(InterfaceDecl<'a>),
     /// The statement is for a world declaration.
     World(WorldDecl<'a>),
-    /// The statement is for a value type declaration.
-    Value(ValueTypeStatement<'a>),
+    /// The statement is for a type declaration.
+    Type(TypeDecl<'a>),
 }
 
 impl AstDisplay for TypeStatement<'_> {
@@ -33,32 +36,47 @@ impl AstDisplay for TypeStatement<'_> {
         match self {
             Self::Interface(interface) => interface.fmt(f, indenter),
             Self::World(world) => world.fmt(f, indenter),
-            Self::Value(value) => value.fmt(f, indenter),
+            Self::Type(ty) => ty.fmt(f, indenter),
         }
     }
 }
 
 display!(TypeStatement);
 
-/// Represents a value type statement in the AST.
-#[derive(Debug, Clone, FromPest)]
-#[pest_ast(rule(Rule::ValueTypeStatement))]
-pub enum ValueTypeStatement<'a> {
-    /// The statement is for a resource declaration.
+/// Represents a type declaration in the AST.
+#[derive(Debug, Clone, Serialize, FromPest)]
+#[pest_ast(rule(Rule::TypeDecl))]
+#[serde(rename_all = "camelCase")]
+pub enum TypeDecl<'a> {
+    /// The declaration is for a resource.
     Resource(ResourceDecl<'a>),
-    /// The statement is for a variant declaration.
+    /// The declaration is for a variant.
     Variant(VariantDecl<'a>),
-    /// The statement is for a record declaration.
+    /// The declaration is for a record.
     Record(RecordDecl<'a>),
-    /// The statement is for a flags declaration.
+    /// The declaration is for a flags.
     Flags(FlagsDecl<'a>),
-    /// The statement is for an enum declaration.
+    /// The declaration is for an enum.
     Enum(EnumDecl<'a>),
-    /// The statement is for a type alias.
+    /// The declaration is for a type alias.
     Alias(TypeAlias<'a>),
 }
 
-impl AstDisplay for ValueTypeStatement<'_> {
+impl TypeDecl<'_> {
+    /// Gets the identifier of the type being declared.
+    pub fn id(&self) -> Ident {
+        match self {
+            Self::Resource(resource) => resource.id,
+            Self::Variant(variant) => variant.id,
+            Self::Record(record) => record.id,
+            Self::Flags(flags) => flags.id,
+            Self::Enum(e) => e.id,
+            Self::Alias(alias) => alias.id,
+        }
+    }
+}
+
+impl AstDisplay for TypeDecl<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, indenter: &mut Indenter) -> fmt::Result {
         write!(f, "{indenter}")?;
 
@@ -73,11 +91,12 @@ impl AstDisplay for ValueTypeStatement<'_> {
     }
 }
 
-display!(ValueTypeStatement);
+display!(TypeDecl);
 
 /// Represents a resource declaration in the AST.
-#[derive(Debug, Clone, FromPest)]
+#[derive(Debug, Clone, Serialize, FromPest)]
 #[pest_ast(rule(Rule::ResourceDecl))]
+#[serde(rename_all = "camelCase")]
 pub struct ResourceDecl<'a> {
     /// The `resource` keyword in the declaration.
     pub keyword: Resource<'a>,
@@ -98,8 +117,9 @@ impl AstDisplay for ResourceDecl<'_> {
 display!(ResourceDecl);
 
 /// Represents a resource body in the AST.
-#[derive(Debug, Clone, FromPest)]
+#[derive(Debug, Clone, Serialize, FromPest)]
 #[pest_ast(rule(Rule::ResourceBody))]
+#[serde(rename_all = "camelCase")]
 pub enum ResourceBody<'a> {
     /// The resource body is empty.
     Empty(Semicolon<'a>),
@@ -142,8 +162,9 @@ impl AstDisplay for ResourceBody<'_> {
 display!(ResourceBody);
 
 /// Represents a variant declaration in the AST.
-#[derive(Debug, Clone, FromPest)]
+#[derive(Debug, Clone, Serialize, FromPest)]
 #[pest_ast(rule(Rule::VariantDecl))]
+#[serde(rename_all = "camelCase")]
 pub struct VariantDecl<'a> {
     /// The `variant` keyword in the declaration.
     pub keyword: Variant<'a>,
@@ -164,8 +185,9 @@ impl AstDisplay for VariantDecl<'_> {
 display!(VariantDecl);
 
 /// Represents a variant body in the AST.
-#[derive(Debug, Clone, FromPest)]
+#[derive(Debug, Clone, Serialize, FromPest)]
 #[pest_ast(rule(Rule::VariantBody))]
+#[serde(rename_all = "camelCase")]
 pub struct VariantBody<'a> {
     /// The opening brace of the variant body.
     pub open: OpenBrace<'a>,
@@ -194,8 +216,9 @@ impl AstDisplay for VariantBody<'_> {
 display!(VariantBody);
 
 /// Represents a variant case in the AST.
-#[derive(Debug, Clone, FromPest)]
+#[derive(Debug, Clone, Serialize, FromPest)]
 #[pest_ast(rule(Rule::VariantCase))]
+#[serde(rename_all = "camelCase")]
 pub struct VariantCase<'a> {
     /// The identifier of the case.
     pub id: Ident<'a>,
@@ -217,8 +240,9 @@ impl AstDisplay for VariantCase<'_> {
 display!(VariantCase);
 
 /// Represents a variant type in the AST.
-#[derive(Debug, Clone, FromPest)]
+#[derive(Debug, Clone, Serialize, FromPest)]
 #[pest_ast(rule(Rule::VariantType))]
+#[serde(rename_all = "camelCase")]
 pub struct VariantType<'a> {
     /// The opening parenthesis of the variant type.
     pub open: OpenParen<'a>,
@@ -239,8 +263,9 @@ impl AstDisplay for VariantType<'_> {
 display!(VariantType);
 
 /// Represents a record declaration in the AST.
-#[derive(Debug, Clone, FromPest)]
+#[derive(Debug, Clone, Serialize, FromPest)]
 #[pest_ast(rule(Rule::RecordDecl))]
+#[serde(rename_all = "camelCase")]
 pub struct RecordDecl<'a> {
     /// The `record` keyword in the declaration.
     pub keyword: Record<'a>,
@@ -261,8 +286,9 @@ impl AstDisplay for RecordDecl<'_> {
 display!(RecordDecl);
 
 /// Represents a record body in the AST.
-#[derive(Debug, Clone, FromPest)]
+#[derive(Debug, Clone, Serialize, FromPest)]
 #[pest_ast(rule(Rule::RecordBody))]
+#[serde(rename_all = "camelCase")]
 pub struct RecordBody<'a> {
     /// The opening brace of the record body.
     pub open: OpenBrace<'a>,
@@ -291,8 +317,9 @@ impl AstDisplay for RecordBody<'_> {
 display!(RecordBody);
 
 /// Represents a flags declaration in the AST.
-#[derive(Debug, Clone, FromPest)]
+#[derive(Debug, Clone, Serialize, FromPest)]
 #[pest_ast(rule(Rule::FlagsDecl))]
+#[serde(rename_all = "camelCase")]
 pub struct FlagsDecl<'a> {
     /// The `flags` keyword in the declaration.
     pub keyword: Flags<'a>,
@@ -313,8 +340,9 @@ impl AstDisplay for FlagsDecl<'_> {
 display!(FlagsDecl);
 
 /// Represents a flags body in the AST.
-#[derive(Debug, Clone, FromPest)]
+#[derive(Debug, Clone, Serialize, FromPest)]
 #[pest_ast(rule(Rule::FlagsBody))]
+#[serde(rename_all = "camelCase")]
 pub struct FlagsBody<'a> {
     /// The opening brace of the flags body.
     pub open: OpenBrace<'a>,
@@ -343,8 +371,9 @@ impl AstDisplay for FlagsBody<'_> {
 display!(FlagsBody);
 
 /// Represents an enum declaration in the AST.
-#[derive(Debug, Clone, FromPest)]
+#[derive(Debug, Clone, Serialize, FromPest)]
 #[pest_ast(rule(Rule::EnumDecl))]
+#[serde(rename_all = "camelCase")]
 pub struct EnumDecl<'a> {
     /// The `enum` keyword in the declaration.
     pub keyword: Enum<'a>,
@@ -365,8 +394,9 @@ impl AstDisplay for EnumDecl<'_> {
 display!(EnumDecl);
 
 /// Represents an enum body in the AST.
-#[derive(Debug, Clone, FromPest)]
+#[derive(Debug, Clone, Serialize, FromPest)]
 #[pest_ast(rule(Rule::EnumBody))]
+#[serde(rename_all = "camelCase")]
 pub struct EnumBody<'a> {
     /// The opening brace of the enum body.
     pub open: OpenBrace<'a>,
@@ -395,8 +425,9 @@ impl AstDisplay for EnumBody<'_> {
 display!(EnumBody);
 
 /// Represents a resource method in the AST.
-#[derive(Debug, Clone, FromPest)]
+#[derive(Debug, Clone, Serialize, FromPest)]
 #[pest_ast(rule(Rule::ResourceMethod))]
+#[serde(rename_all = "camelCase")]
 pub enum ResourceMethod<'a> {
     /// The method is a constructor.
     Constructor(Constructor<'a>),
@@ -416,8 +447,9 @@ impl AstDisplay for ResourceMethod<'_> {
 display!(ResourceMethod);
 
 /// Represents a resource constructor in the AST.
-#[derive(Debug, Clone, FromPest)]
+#[derive(Debug, Clone, Serialize, FromPest)]
 #[pest_ast(rule(Rule::Constructor))]
+#[serde(rename_all = "camelCase")]
 pub struct Constructor<'a> {
     /// The `constructor` keyword.
     pub keyword: keywords::Constructor<'a>,
@@ -435,8 +467,9 @@ impl AstDisplay for Constructor<'_> {
 display!(Constructor);
 
 /// Represents a resource method in the AST.
-#[derive(Debug, Clone, FromPest)]
+#[derive(Debug, Clone, Serialize, FromPest)]
 #[pest_ast(rule(Rule::Method))]
+#[serde(rename_all = "camelCase")]
 pub struct Method<'a> {
     /// The identifier of the method.
     pub id: Ident<'a>,
@@ -464,8 +497,9 @@ impl AstDisplay for Method<'_> {
 display!(Method);
 
 /// Represents a function type reference in the AST.
-#[derive(Debug, Clone, FromPest)]
+#[derive(Debug, Clone, Serialize, FromPest)]
 #[pest_ast(rule(Rule::FuncTypeRef))]
+#[serde(rename_all = "camelCase")]
 pub enum FuncTypeRef<'a> {
     /// The reference is a function type.
     Func(FuncType<'a>),
@@ -485,8 +519,9 @@ impl AstDisplay for FuncTypeRef<'_> {
 display!(FuncTypeRef);
 
 /// Represents a function type in the AST.
-#[derive(Debug, Clone, FromPest)]
+#[derive(Debug, Clone, Serialize, FromPest)]
 #[pest_ast(rule(Rule::FuncType))]
+#[serde(rename_all = "camelCase")]
 pub struct FuncType<'a> {
     /// The `func` keyword.
     pub keyword: Func<'a>,
@@ -514,8 +549,9 @@ impl AstDisplay for FuncType<'_> {
 display!(FuncType);
 
 /// Represents a parameter list in the AST.
-#[derive(Debug, Clone, FromPest)]
+#[derive(Debug, Clone, Serialize, FromPest)]
 #[pest_ast(rule(Rule::ParamList))]
+#[serde(rename_all = "camelCase")]
 pub struct ParamList<'a> {
     /// The opening parenthesis of the parameter list.
     pub open: OpenParen<'a>,
@@ -544,8 +580,9 @@ impl AstDisplay for ParamList<'_> {
 display!(ParamList);
 
 /// Represents a result list in the AST.
-#[derive(Debug, Clone, FromPest)]
+#[derive(Debug, Clone, Serialize, FromPest)]
 #[pest_ast(rule(Rule::ResultList))]
+#[serde(rename_all = "camelCase")]
 pub enum ResultList<'a> {
     /// The function has named results.
     Named {
@@ -581,8 +618,9 @@ impl AstDisplay for ResultList<'_> {
 display!(ResultList);
 
 /// Represents a named result list in the AST.
-#[derive(Debug, Clone, FromPest)]
+#[derive(Debug, Clone, Serialize, FromPest)]
 #[pest_ast(rule(Rule::NamedResultList))]
+#[serde(rename_all = "camelCase")]
 pub struct NamedResultList<'a> {
     /// The opening parenthesis of the result list.
     pub open: OpenParen<'a>,
@@ -611,8 +649,9 @@ impl AstDisplay for NamedResultList<'_> {
 display!(NamedResultList);
 
 /// Represents a name and an associated type in the AST.
-#[derive(Debug, Clone, FromPest)]
+#[derive(Debug, Clone, Serialize, FromPest)]
 #[pest_ast(rule(Rule::NamedType))]
+#[serde(rename_all = "camelCase")]
 pub struct NamedType<'a> {
     /// The identifier of the type.
     pub id: Ident<'a>,
@@ -633,8 +672,9 @@ impl AstDisplay for NamedType<'_> {
 display!(NamedType);
 
 /// Represents a type alias in the AST.
-#[derive(Debug, Clone, FromPest)]
+#[derive(Debug, Clone, Serialize, FromPest)]
 #[pest_ast(rule(Rule::TypeAlias))]
+#[serde(rename_all = "camelCase")]
 pub struct TypeAlias<'a> {
     /// The `type` keyword.
     pub keyword: keywords::Type<'a>,
@@ -661,12 +701,13 @@ impl AstDisplay for TypeAlias<'_> {
 display!(TypeAlias);
 
 /// Represents a type alias kind in the AST.
-#[derive(Debug, Clone, FromPest)]
+#[derive(Debug, Clone, Serialize, FromPest)]
 #[pest_ast(rule(Rule::TypeAliasKind))]
+#[serde(rename_all = "camelCase")]
 pub enum TypeAliasKind<'a> {
-    /// The alias is for a function type.
+    /// The alias is to a function type.
     Func(FuncType<'a>),
-    /// The alias is for a built-in type.
+    /// The alias is to another type.
     Type(Type<'a>),
 }
 
@@ -682,8 +723,9 @@ impl AstDisplay for TypeAliasKind<'_> {
 display!(TypeAliasKind);
 
 /// Represents a type in the AST.
-#[derive(Debug, Clone, FromPest)]
+#[derive(Debug, Clone, Serialize, FromPest)]
 #[pest_ast(rule(Rule::Type))]
+#[serde(rename_all = "camelCase")]
 pub enum Type<'a> {
     /// A `u8` type.
     U8(U8<'a>),
@@ -721,7 +763,7 @@ pub enum Type<'a> {
     Result(Result<'a>),
     /// A borrow type.
     Borrow(Borrow<'a>),
-    /// An identifier type.
+    /// An identifier to a value type.
     Ident(Ident<'a>),
 }
 
@@ -754,8 +796,9 @@ impl AstDisplay for Type<'_> {
 display!(Type);
 
 /// Represents a tuple type in the AST.
-#[derive(Debug, Clone, FromPest)]
+#[derive(Debug, Clone, Serialize, FromPest)]
 #[pest_ast(rule(Rule::Tuple))]
+#[serde(rename_all = "camelCase")]
 pub struct Tuple<'a> {
     /// The `tuple` keyword.
     pub keyword: keywords::Tuple<'a>,
@@ -791,8 +834,9 @@ impl AstDisplay for Tuple<'_> {
 display!(Tuple);
 
 /// Represents a list type in the AST.
-#[derive(Debug, Clone, FromPest)]
+#[derive(Debug, Clone, Serialize, FromPest)]
 #[pest_ast(rule(Rule::List))]
+#[serde(rename_all = "camelCase")]
 pub struct List<'a> {
     /// The `list` keyword.
     pub keyword: keywords::List<'a>,
@@ -820,8 +864,9 @@ impl AstDisplay for List<'_> {
 display!(List);
 
 /// Represents an option type in the AST.
-#[derive(Debug, Clone, FromPest)]
+#[derive(Debug, Clone, Serialize, FromPest)]
 #[pest_ast(rule(Rule::Option))]
+#[serde(rename_all = "camelCase")]
 pub struct Option<'a> {
     /// The `option` keyword.
     pub keyword: keywords::Option<'a>,
@@ -849,8 +894,9 @@ impl AstDisplay for Option<'_> {
 display!(Option);
 
 /// Represents a result type in the AST.
-#[derive(Debug, Clone, FromPest)]
+#[derive(Debug, Clone, Serialize, FromPest)]
 #[pest_ast(rule(Rule::Result))]
+#[serde(rename_all = "camelCase")]
 pub struct Result<'a> {
     /// The `result` keyword.
     pub keyword: keywords::Result<'a>,
@@ -873,8 +919,9 @@ impl AstDisplay for Result<'_> {
 display!(Result);
 
 /// Represents a specified result in the AST.
-#[derive(Debug, Clone, FromPest)]
+#[derive(Debug, Clone, Serialize, FromPest)]
 #[pest_ast(rule(Rule::SpecifiedResult))]
+#[serde(rename_all = "camelCase")]
 pub struct SpecifiedResult<'a> {
     /// The opening angle bracket of the result.
     pub open: OpenAngle<'a>,
@@ -904,8 +951,9 @@ impl AstDisplay for SpecifiedResult<'_> {
 display!(SpecifiedResult);
 
 /// Represents a possibly omitted type in the AST.
-#[derive(Debug, Clone, FromPest)]
+#[derive(Debug, Clone, Serialize, FromPest)]
 #[pest_ast(rule(Rule::OmitType))]
+#[serde(rename_all = "camelCase")]
 pub enum OmitType<'a> {
     /// The type was omitted with `_`.
     Omitted(Underscore<'a>),
@@ -925,14 +973,15 @@ impl AstDisplay for OmitType<'_> {
 display!(OmitType);
 
 /// Represents a borrow type in the AST.
-#[derive(Debug, Clone, FromPest)]
+#[derive(Debug, Clone, Serialize, FromPest)]
 #[pest_ast(rule(Rule::Borrow))]
+#[serde(rename_all = "camelCase")]
 pub struct Borrow<'a> {
     /// The `borrow` keyword.
     pub keyword: keywords::Borrow<'a>,
     /// The opening angle bracket of the borrow.
     pub open: OpenAngle<'a>,
-    /// The identifier of the borrowed type.
+    /// The identifier of the borrowed resource type.
     pub id: Ident<'a>,
     /// The closing angle bracket of the borrow.
     pub close: CloseAngle<'a>,
@@ -954,8 +1003,9 @@ impl AstDisplay for Borrow<'_> {
 display!(Borrow);
 
 /// Represents an interface declaration in the AST.
-#[derive(Debug, Clone, FromPest)]
+#[derive(Debug, Clone, Serialize, FromPest)]
 #[pest_ast(rule(Rule::InterfaceDecl))]
+#[serde(rename_all = "camelCase")]
 pub struct InterfaceDecl<'a> {
     /// The `interface` keyword.
     pub keyword: Interface<'a>,
@@ -976,8 +1026,9 @@ impl AstDisplay for InterfaceDecl<'_> {
 display!(InterfaceDecl);
 
 /// Represents an interface body in the AST.
-#[derive(Debug, Clone, FromPest)]
+#[derive(Debug, Clone, Serialize, FromPest)]
 #[pest_ast(rule(Rule::InterfaceBody))]
+#[serde(rename_all = "camelCase")]
 pub struct InterfaceBody<'a> {
     /// The opening brace of the interface body.
     pub open: OpenBrace<'a>,
@@ -1009,8 +1060,9 @@ impl AstDisplay for InterfaceBody<'_> {
 display!(InterfaceBody);
 
 /// Represents an interface item in the AST.
-#[derive(Debug, Clone, FromPest)]
+#[derive(Debug, Clone, Serialize, FromPest)]
 #[pest_ast(rule(Rule::InterfaceItem))]
+#[serde(rename_all = "camelCase")]
 pub struct InterfaceItem<'a> {
     /// The doc comments for the interface item.
     pub docs: Vec<DocComment<'a>>,
@@ -1031,13 +1083,14 @@ impl AstDisplay for InterfaceItem<'_> {
 display!(InterfaceItem);
 
 /// Represents an interface item statement in the AST.
-#[derive(Debug, Clone, FromPest)]
+#[derive(Debug, Clone, Serialize, FromPest)]
 #[pest_ast(rule(Rule::InterfaceItemStatement))]
+#[serde(rename_all = "camelCase")]
 pub enum InterfaceItemStatement<'a> {
     /// The item is a use statement.
     Use(Box<UseStatement<'a>>),
-    /// The item is a value type statement.
-    Type(ValueTypeStatement<'a>),
+    /// The item is a type declaration.
+    Type(TypeDecl<'a>),
     /// The item is an interface export statement.
     Export(InterfaceExportStatement<'a>),
 }
@@ -1055,8 +1108,9 @@ impl AstDisplay for InterfaceItemStatement<'_> {
 display!(InterfaceItemStatement);
 
 /// Represents a use statement in the AST.
-#[derive(Debug, Clone, FromPest)]
+#[derive(Debug, Clone, Serialize, FromPest)]
 #[pest_ast(rule(Rule::UseStatement))]
+#[serde(rename_all = "camelCase")]
 pub struct UseStatement<'a> {
     /// The use keyword in the statement.
     pub keyword: Use<'a>,
@@ -1077,8 +1131,9 @@ impl AstDisplay for UseStatement<'_> {
 display!(UseStatement);
 
 /// Represents the items being used in a use statement in the AST.
-#[derive(Debug, Clone, FromPest)]
+#[derive(Debug, Clone, Serialize, FromPest)]
 #[pest_ast(rule(Rule::UseItems))]
+#[serde(rename_all = "camelCase")]
 pub struct UseItems<'a> {
     /// The path to the interface or world being used.
     pub path: UsePath<'a>,
@@ -1087,7 +1142,7 @@ pub struct UseItems<'a> {
     /// The opening brace of the statement.
     pub open: OpenBrace<'a>,
     /// The items being used.
-    pub items: Vec<Ident<'a>>,
+    pub list: Vec<Ident<'a>>,
     /// The closing brace of the use items.
     pub close: CloseBrace<'a>,
 }
@@ -1097,7 +1152,7 @@ impl AstDisplay for UseItems<'_> {
         self.path.fmt(f, indenter)?;
         write!(f, "{dot}{open} ", dot = self.dot, open = self.open)?;
 
-        for (i, item) in self.items.iter().enumerate() {
+        for (i, item) in self.list.iter().enumerate() {
             if i > 0 {
                 write!(f, ", ")?;
             }
@@ -1112,8 +1167,9 @@ impl AstDisplay for UseItems<'_> {
 display!(UseItems);
 
 /// Represents a use path in the AST.
-#[derive(Debug, Clone, FromPest)]
+#[derive(Debug, Clone, Serialize, FromPest)]
 #[pest_ast(rule(Rule::UsePath))]
+#[serde(rename_all = "camelCase")]
 pub enum UsePath<'a> {
     /// The path is a package path.
     Package(PackagePath<'a>),
@@ -1133,8 +1189,9 @@ impl AstDisplay for UsePath<'_> {
 display!(UsePath);
 
 /// Represents an interface export statement in the AST.
-#[derive(Debug, Clone, FromPest)]
+#[derive(Debug, Clone, Serialize, FromPest)]
 #[pest_ast(rule(Rule::InterfaceExportStatement))]
+#[serde(rename_all = "camelCase")]
 pub struct InterfaceExportStatement<'a> {
     /// The identifier of the export.
     pub id: Ident<'a>,
@@ -1159,8 +1216,9 @@ impl AstDisplay for InterfaceExportStatement<'_> {
 display!(InterfaceExportStatement);
 
 /// Represents a world declaration in the AST.
-#[derive(Debug, Clone, FromPest)]
+#[derive(Debug, Clone, Serialize, FromPest)]
 #[pest_ast(rule(Rule::WorldDecl))]
+#[serde(rename_all = "camelCase")]
 pub struct WorldDecl<'a> {
     /// The `world` keyword.
     pub keyword: World<'a>,
@@ -1181,8 +1239,9 @@ impl AstDisplay for WorldDecl<'_> {
 display!(WorldDecl);
 
 /// Represents a world body in the AST.
-#[derive(Debug, Clone, FromPest)]
+#[derive(Debug, Clone, Serialize, FromPest)]
 #[pest_ast(rule(Rule::WorldBody))]
+#[serde(rename_all = "camelCase")]
 pub struct WorldBody<'a> {
     /// The opening brace of the world body.
     pub open: OpenBrace<'a>,
@@ -1214,8 +1273,9 @@ impl AstDisplay for WorldBody<'_> {
 display!(WorldBody);
 
 /// Represents a world item in the AST.
-#[derive(Debug, Clone, FromPest)]
+#[derive(Debug, Clone, Serialize, FromPest)]
 #[pest_ast(rule(Rule::WorldItem))]
+#[serde(rename_all = "camelCase")]
 pub struct WorldItem<'a> {
     /// The doc comments for the world item.
     pub docs: Vec<DocComment<'a>>,
@@ -1236,19 +1296,20 @@ impl AstDisplay for WorldItem<'_> {
 display!(WorldItem);
 
 /// Represents a world item statement in the AST.
-#[derive(Debug, Clone, FromPest)]
+#[derive(Debug, Clone, Serialize, FromPest)]
 #[pest_ast(rule(Rule::WorldItemStatement))]
+#[serde(rename_all = "camelCase")]
 pub enum WorldItemStatement<'a> {
     /// The item is a use statement.
     Use(Box<UseStatement<'a>>),
-    /// The item is a value type statement.
-    Type(ValueTypeStatement<'a>),
+    /// The item is a type declaration.
+    Type(TypeDecl<'a>),
     /// The item is a world export statement.
     Import(WorldImportStatement<'a>),
     /// The item is a world export statement.
     Export(WorldExportStatement<'a>),
     /// The item is a world include statement.
-    Include(WorldIncludeStatement<'a>),
+    Include(Box<WorldIncludeStatement<'a>>),
 }
 
 impl AstDisplay for WorldItemStatement<'_> {
@@ -1266,8 +1327,9 @@ impl AstDisplay for WorldItemStatement<'_> {
 display!(WorldItemStatement);
 
 /// Represents a world import statement in the AST.
-#[derive(Debug, Clone, FromPest)]
+#[derive(Debug, Clone, Serialize, FromPest)]
 #[pest_ast(rule(Rule::WorldImportStatement))]
+#[serde(rename_all = "camelCase")]
 pub struct WorldImportStatement<'a> {
     /// The `import` keyword in the statement.
     pub keyword: Import<'a>,
@@ -1288,8 +1350,9 @@ impl AstDisplay for WorldImportStatement<'_> {
 display!(WorldImportStatement);
 
 /// Represents a world export statement in the AST.
-#[derive(Debug, Clone, FromPest)]
+#[derive(Debug, Clone, Serialize, FromPest)]
 #[pest_ast(rule(Rule::WorldExportStatement))]
+#[serde(rename_all = "camelCase")]
 pub struct WorldExportStatement<'a> {
     /// The `export` keyword in the statement.
     pub keyword: Export<'a>,
@@ -1310,8 +1373,9 @@ impl AstDisplay for WorldExportStatement<'_> {
 display!(WorldExportStatement);
 
 /// Represents a world item declaration in the AST.
-#[derive(Debug, Clone, FromPest)]
+#[derive(Debug, Clone, Serialize, FromPest)]
 #[pest_ast(rule(Rule::WorldItemDecl))]
+#[serde(rename_all = "camelCase")]
 pub enum WorldItemDecl<'a> {
     /// The declaration is by name.
     Named(WorldNamedItem<'a>),
@@ -1331,8 +1395,9 @@ impl AstDisplay for WorldItemDecl<'_> {
 display!(WorldItemDecl);
 
 /// Represents a world named item in the AST.
-#[derive(Debug, Clone, FromPest)]
+#[derive(Debug, Clone, Serialize, FromPest)]
 #[pest_ast(rule(Rule::WorldNamedItem))]
+#[serde(rename_all = "camelCase")]
 pub struct WorldNamedItem<'a> {
     /// The identifier of the item being imported or exported.
     pub id: Ident<'a>,
@@ -1353,8 +1418,9 @@ impl AstDisplay for WorldNamedItem<'_> {
 display!(WorldNamedItem);
 
 /// Represents a reference to an interface in the AST.
-#[derive(Debug, Clone, FromPest)]
+#[derive(Debug, Clone, Serialize, FromPest)]
 #[pest_ast(rule(Rule::InterfaceRef))]
+#[serde(rename_all = "camelCase")]
 pub enum InterfaceRef<'a> {
     /// The reference is by identifier.
     Ident(Ident<'a>),
@@ -1374,8 +1440,9 @@ impl AstDisplay for InterfaceRef<'_> {
 display!(InterfaceRef);
 
 /// Represents the external type of a world item in the AST.
-#[derive(Debug, Clone, FromPest)]
+#[derive(Debug, Clone, Serialize, FromPest)]
 #[pest_ast(rule(Rule::ExternType))]
+#[serde(rename_all = "camelCase")]
 pub enum ExternType<'a> {
     /// The type is by identifier.
     Ident(Ident<'a>),
@@ -1398,8 +1465,9 @@ impl AstDisplay for ExternType<'_> {
 display!(ExternType);
 
 /// Represents an inline interface in the AST.
-#[derive(Debug, Clone, FromPest)]
+#[derive(Debug, Clone, Serialize, FromPest)]
 #[pest_ast(rule(Rule::InlineInterface))]
+#[serde(rename_all = "camelCase")]
 pub struct InlineInterface<'a> {
     /// The `interface` keyword in the inline interface.
     pub keyword: Interface<'a>,
@@ -1417,8 +1485,9 @@ impl AstDisplay for InlineInterface<'_> {
 display!(InlineInterface);
 
 /// Represents a world include statement in the AST.
-#[derive(Debug, Clone, FromPest)]
+#[derive(Debug, Clone, Serialize, FromPest)]
 #[pest_ast(rule(Rule::WorldIncludeStatement))]
+#[serde(rename_all = "camelCase")]
 pub struct WorldIncludeStatement<'a> {
     /// The `include` keyword in the statement.
     pub keyword: Include<'a>,
@@ -1444,13 +1513,32 @@ impl AstDisplay for WorldIncludeStatement<'_> {
 display!(WorldIncludeStatement);
 
 /// Represents a reference to a world in the AST (local or foreign).
-#[derive(Debug, Clone, FromPest)]
+#[derive(Debug, Clone, Serialize, FromPest)]
 #[pest_ast(rule(Rule::WorldRef))]
+#[serde(rename_all = "camelCase")]
 pub enum WorldRef<'a> {
     /// The reference is by identifier.
     Ident(Ident<'a>),
     /// The reference is by package path.
     Path(PackagePath<'a>),
+}
+
+impl<'a> WorldRef<'a> {
+    /// Gets the full name of the world ref.
+    pub fn name(&self) -> Cow<'a, str> {
+        match self {
+            Self::Ident(id) => Cow::Borrowed(id.as_str()),
+            Self::Path(path) => Cow::Owned(path.to_string()),
+        }
+    }
+
+    /// Gets the span of the world reference.
+    pub fn span(&self) -> Span {
+        match self {
+            Self::Ident(id) => id.0,
+            Self::Path(path) => path.span(),
+        }
+    }
 }
 
 impl AstDisplay for WorldRef<'_> {
@@ -1465,8 +1553,9 @@ impl AstDisplay for WorldRef<'_> {
 display!(WorldRef);
 
 /// Represents the `with` clause of the `include` statement.
-#[derive(Debug, Clone, FromPest)]
+#[derive(Debug, Clone, Serialize, FromPest)]
 #[pest_ast(rule(Rule::WorldIncludeWithClause))]
+#[serde(rename_all = "camelCase")]
 pub struct WorldIncludeWithClause<'a> {
     /// The `with` keyword in the clause.
     pub keyword: With<'a>,
@@ -1496,8 +1585,9 @@ impl AstDisplay for WorldIncludeWithClause<'_> {
 display!(WorldIncludeWithClause);
 
 /// Represents a renaming of an included name.
-#[derive(Debug, Clone, FromPest)]
+#[derive(Debug, Clone, Serialize, FromPest)]
 #[pest_ast(rule(Rule::WorldIncludeItem))]
+#[serde(rename_all = "camelCase")]
 pub struct WorldIncludeItem<'a> {
     /// The source name include from a world.
     pub name: Ident<'a>,

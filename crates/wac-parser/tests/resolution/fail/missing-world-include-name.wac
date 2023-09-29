@@ -1,0 +1,7 @@
+world w1 {
+
+}
+
+world w2 {
+    include w1 with { a as b };
+}

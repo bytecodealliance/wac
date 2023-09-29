@@ -1,0 +1,9 @@
+value type `x` is not a resource type
+
+Caused by:
+     --> tests/resolution/fail/invalid-borrow.wac:3:17
+      |
+    3 | type y = borrow<x>;
+      |                 ^
+      |
+      = value type `x` is not a resource type

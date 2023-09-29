@@ -1,0 +1,14 @@
+/// Resource without methods
+resource r1;
+
+/// Resource with only constructor
+resource r2 {
+    constructor();
+}
+
+/// Resource with constructor, instance method, and static method
+resource r3 {
+    constructor(a: u32);
+    a: func(b: u32);
+    b: static func(c: u32);
+}

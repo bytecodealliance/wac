@@ -1,0 +1,17 @@
+/// Instantiate without args
+let a = new foo:bar {};
+
+/// Instantiation with import-propagation.
+let b = new foo:bar { ... };
+
+/// Instantiation with arguments
+let c = new foo:bar { a, b, c: c, };
+
+/// Instantiation with arguments and import-propagation.
+let d = new foo:bar { a, b: (new foo:bar { }), c: c, ... };
+
+/// Nested expression
+let e = (b);
+
+/// Access expression
+let f = e["b-c"].c.d["foo:bar/baz"].e;

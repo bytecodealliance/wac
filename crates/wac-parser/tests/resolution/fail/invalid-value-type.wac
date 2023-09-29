@@ -1,0 +1,5 @@
+interface i {
+
+}
+
+type x = func(i: i);

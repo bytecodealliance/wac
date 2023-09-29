@@ -12,6 +12,7 @@ use pest::{
     Parser, Span,
 };
 use pest_ast::FromPest;
+use serde::{Serialize, Serializer};
 use std::{fmt, path::Path};
 
 mod export;
@@ -27,6 +28,36 @@ pub use expr::*;
 pub use import::*;
 pub use r#let::*;
 pub use r#type::*;
+
+pub(crate) fn serialize_span<S>(span: &Span, serializer: S) -> std::result::Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    use serde::ser::SerializeStruct;
+
+    let mut s = serializer.serialize_struct("Span", 2)?;
+    s.serialize_field("str", span.as_str())?;
+    s.serialize_field("start", &span.start())?;
+    s.serialize_field("end", &span.end())?;
+    s.end()
+}
+
+/// Creates a new error with the given message, file path, and span.
+pub fn new_error_with_span(msg: impl fmt::Display, path: &Path, span: Span) -> anyhow::Error {
+    let msg = msg.to_string();
+    let mut e = Error::new_from_span(
+        ErrorVariant::CustomError::<Rule> {
+            message: msg.clone(),
+        },
+        span,
+    );
+
+    if let Some(path) = path.to_str() {
+        e = e.with_path(path)
+    }
+
+    anyhow!(e).context(msg)
+}
 
 /// Used to indent output when displaying AST nodes.
 #[derive(Debug, Clone, Copy, Default)]
@@ -63,7 +94,7 @@ impl Indenter {
 }
 
 impl fmt::Display for Indenter {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let repeated = self.repeated.unwrap_or("  ");
 
         for _ in 0..self.level {
@@ -77,7 +108,7 @@ impl fmt::Display for Indenter {
 macro_rules! display {
     ($id:ident) => {
         impl std::fmt::Display for $id<'_> {
-            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
                 <Self as AstDisplay>::fmt(self, f, &mut crate::ast::Indenter::new())
             }
         }
@@ -95,49 +126,73 @@ pub trait AstDisplay {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, indenter: &mut Indenter) -> fmt::Result;
 }
 
-/// Creates a new error with the given message and span.
-pub fn new_error_with_span(msg: impl fmt::Display, span: Span) -> anyhow::Error {
-    anyhow!(Error::new_from_span(
-        ErrorVariant::CustomError::<Rule> {
-            message: msg.to_string()
-        },
-        span
-    ))
+impl<'a> AstDisplay for Vec<TopLevelStatement<'a>> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, indenter: &mut Indenter) -> fmt::Result {
+        for (i, statement) in self.iter().enumerate() {
+            if i > 0 {
+                writeln!(f)?;
+            }
+
+            statement.fmt(f, indenter)?;
+            writeln!(f)?;
+        }
+
+        Ok(())
+    }
 }
 
 #[derive(Debug, Clone, Copy, FromPest)]
 #[pest_ast(rule(Rule::EOI))]
 struct EndOfInput;
 
-/// Represents the top-level document in the AST.
 #[derive(Debug, Clone, FromPest)]
 #[pest_ast(rule(Rule::Document))]
-pub struct Document<'a> {
-    /// The top-level statements in the document.
-    pub statements: Vec<TopLevelStatement<'a>>,
+struct Ast<'a> {
+    statements: Vec<TopLevelStatement<'a>>,
     _eoi: EndOfInput,
+}
+
+impl AstDisplay for Ast<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, indenter: &mut Indenter) -> fmt::Result {
+        self.statements.fmt(f, indenter)
+    }
+}
+
+display!(Ast);
+
+/// Represents a top-level WAC document.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Document<'a> {
+    /// The path to the document, used for error reporting.
+    #[serde(skip)]
+    pub path: &'a Path,
+    /// The statements in the document.
+    pub statements: Vec<TopLevelStatement<'a>>,
 }
 
 impl<'a> Document<'a> {
     /// Parses the given string as a document.
     ///
-    /// The given path is the path to display in error messages.
-    pub fn parse(contents: &'a str, path: impl AsRef<Path>) -> anyhow::Result<Self> {
+    /// The given path is used for error reporting.
+    pub fn parse(contents: &'a str, path: &'a Path) -> anyhow::Result<Self> {
         Self::detect_invalid_input(contents)?;
 
-        let path = path.as_ref();
+        let mut iter = DocumentParser::parse(Rule::Document, contents).map_err(|e| {
+            let mut e = e.renamed_rules(|r| r.rename().to_owned());
+            if let Some(path) = path.as_os_str().to_str() {
+                e = e.with_path(path);
+            }
 
-        let mut iter = DocumentParser::parse(Rule::Document, contents)
-            .map_err(|mut e| {
-                if let Some(path) = path.as_os_str().to_str() {
-                    e = e.with_path(path);
-                }
+            let msg = e.variant.message().to_string();
+            anyhow!(e).context(msg)
+        })?;
 
-                e.renamed_rules(|r| r.rename().to_owned())
-            })
-            .with_context(|| format!("failed to parse `{path}`", path = path.display()))?;
-
-        Self::from_pest(&mut iter).context("failed to construct AST")
+        let document = Ast::from_pest(&mut iter).context("failed to construct AST")?;
+        Ok(Self {
+            path,
+            statements: document.statements,
+        })
     }
 
     fn detect_invalid_input(input: &str) -> anyhow::Result<()> {
@@ -193,24 +248,16 @@ impl<'a> Document<'a> {
 
 impl AstDisplay for Document<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, indenter: &mut Indenter) -> fmt::Result {
-        for (i, statement) in self.statements.iter().enumerate() {
-            if i > 0 {
-                writeln!(f)?;
-            }
-
-            statement.fmt(f, indenter)?;
-            writeln!(f)?;
-        }
-
-        Ok(())
+        self.statements.fmt(f, indenter)
     }
 }
 
 display!(Document);
 
 /// Represents a top-level statement in the AST.
-#[derive(Debug, Clone, FromPest)]
+#[derive(Debug, Clone, Serialize, FromPest)]
 #[pest_ast(rule(Rule::TopLevelStatement))]
+#[serde(rename_all = "camelCase")]
 pub struct TopLevelStatement<'a> {
     /// The doc comments for the statement.
     pub docs: Vec<DocComment<'a>>,
@@ -231,8 +278,9 @@ impl AstDisplay for TopLevelStatement<'_> {
 display!(TopLevelStatement);
 
 /// Represents a statement in the AST.
-#[derive(Debug, Clone, FromPest)]
+#[derive(Debug, Clone, Serialize, FromPest)]
 #[pest_ast(rule(Rule::Statement))]
+#[serde(rename_all = "camelCase")]
 pub enum Statement<'a> {
     /// An import statement.
     Import(ImportStatement<'a>),
@@ -258,15 +306,20 @@ impl AstDisplay for Statement<'_> {
 display!(Statement);
 
 /// Represents an identifier in the AST.
-#[derive(Debug, Clone, FromPest)]
+#[derive(Debug, Clone, Copy, Serialize, FromPest)]
 #[pest_ast(rule(Rule::Ident))]
-pub struct Ident<'a>(#[pest_ast(outer())] pub Span<'a>);
+#[serde(rename_all = "camelCase")]
+pub struct Ident<'a>(
+    #[pest_ast(outer())]
+    #[serde(serialize_with = "serialize_span")]
+    pub Span<'a>,
+);
 
-impl Ident<'_> {
+impl<'a> Ident<'a> {
     /// Gets the identifier as a string.
     ///
     /// This trims any leading `%` character in a raw identifier.
-    pub fn as_str(&self) -> &str {
+    pub fn as_str(&self) -> &'a str {
         self.0.as_str().trim_start_matches('%')
     }
 }
@@ -280,9 +333,14 @@ impl AstDisplay for Ident<'_> {
 display!(Ident);
 
 /// Represents a string in the AST.
-#[derive(Debug, Clone, FromPest)]
+#[derive(Debug, Clone, Serialize, FromPest)]
 #[pest_ast(rule(Rule::String))]
-pub struct String<'a>(#[pest_ast(outer())] pub Span<'a>);
+#[serde(rename_all = "camelCase")]
+pub struct String<'a>(
+    #[pest_ast(outer())]
+    #[serde(serialize_with = "serialize_span")]
+    pub Span<'a>,
+);
 
 impl String<'_> {
     /// Gets a string representation without the surrounding quotes.
@@ -300,9 +358,14 @@ impl AstDisplay for String<'_> {
 display!(String);
 
 /// Represents a documentation comment in the AST.
-#[derive(Debug, Clone, FromPest)]
+#[derive(Debug, Clone, Serialize, FromPest)]
 #[pest_ast(rule(Rule::DocComment))]
-pub struct DocComment<'a>(#[pest_ast(outer())] pub Span<'a>);
+#[serde(rename_all = "camelCase")]
+pub struct DocComment<'a>(
+    #[pest_ast(outer())]
+    #[serde(serialize_with = "serialize_span")]
+    pub Span<'a>,
+);
 
 impl DocComment<'_> {
     /// Gets the lines of the documentation comment.
@@ -361,7 +424,7 @@ mod test {
 
     #[test]
     fn document_roundtrip() {
-        roundtrip::<Document>(
+        roundtrip::<Ast>(
             Rule::Document,
             r#"/* ignore me */
 /// Doc comment #1!

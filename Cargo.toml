@@ -18,6 +18,8 @@ pretty_env_logger = { workspace = true }
 log = { workspace = true }
 tokio = { workspace = true }
 owo-colors = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
 
 [workspace.dependencies]
 wac-parser = { path = "crates/wac-parser" }
@@ -32,4 +34,7 @@ pretty_env_logger = "0.5.0"
 log = "0.4.20"
 tokio = { version = "1.32.0", default-features = false, features = ["macros", "rt-multi-thread"] }
 owo-colors = "3.5.0"
+indexmap = { version = "2.0.0", features = ["serde"] }
 id-arena = "2.2.1"
+serde = { version = "1.0.188", features = ["derive"] }
+serde_json = "1.0.107"

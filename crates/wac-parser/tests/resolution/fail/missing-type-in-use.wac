@@ -1,0 +1,7 @@
+interface a {
+
+}
+
+interface b {
+    use a.{x};
+}

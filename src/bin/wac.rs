@@ -27,7 +27,7 @@ async fn main() -> Result<()> {
     if let Err(e) = match Wac::parse() {
         Wac::Parse(cmd) => cmd.exec().await,
     } {
-        eprintln!("{error}: {e:?}", error = "error".red());
+        eprintln!("{error}: {e:?}", error = "error".red().bold());
         std::process::exit(1);
     }
 

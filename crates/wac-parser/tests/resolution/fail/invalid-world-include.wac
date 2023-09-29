@@ -1,0 +1,5 @@
+type x = func();
+
+world w {
+    include x;
+}

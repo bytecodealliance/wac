@@ -1,0 +1,9 @@
+duplicate field `b` for record type `r`
+
+Caused by:
+     --> tests/resolution/fail/duplicate-record-field.wac:7:5
+      |
+    7 |     b: string,
+      |     ^
+      |
+      = duplicate field `b` for record type `r`

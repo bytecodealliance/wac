@@ -1,0 +1,10 @@
+world w1 {
+    export a: func();
+}
+
+world w2 {
+    include w1;
+    export a: interface {
+
+    };
+}

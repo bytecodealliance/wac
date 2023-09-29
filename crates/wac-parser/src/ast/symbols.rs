@@ -1,20 +1,22 @@
 //! The symbols in the AST.
 
+use super::serialize_span;
 use crate::parser::Rule;
 use pest::Span;
 use pest_ast::FromPest;
+use serde::Serialize;
 use std::fmt;
 
 macro_rules! symbols {
     ($(($id:ident, $name:literal)),* $(,)?) => {
         $(
             #[doc = concat!("Represents the `", $name, "` symbol in the AST.")]
-            #[derive(Debug, Clone, FromPest)]
+            #[derive(Debug, Clone, Copy, Serialize, FromPest)]
             #[pest_ast(rule(Rule::$id))]
-            pub struct $id<'a>(#[pest_ast(outer())] pub Span<'a>);
+            pub struct $id<'a>(#[pest_ast(outer())] #[serde(serialize_with = "serialize_span")] pub Span<'a>);
 
             impl fmt::Display for $id<'_> {
-                fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
                     write!(f, "{span}", span = self.0.as_str())
                 }
             }
