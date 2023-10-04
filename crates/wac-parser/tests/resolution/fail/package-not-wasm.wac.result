@@ -1,0 +1,9 @@
+failed to parse package `foo:bar`: magic header not detected: bad magic number (at offset 0x0)
+
+Caused by:
+     --> tests/resolution/fail/package-not-wasm.wac:1:13
+      |
+    1 | import foo: foo:bar/qux;
+      |             ^-----^
+      |
+      = failed to parse package `foo:bar`: magic header not detected: bad magic number (at offset 0x0)

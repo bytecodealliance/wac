@@ -1,0 +1,9 @@
+unknown package `bar:baz`
+
+Caused by:
+     --> tests/resolution/fail/unknown-package.wac:1:13
+      |
+    1 | import foo: bar:baz/qux;
+      |             ^-----^
+      |
+      = unknown package `bar:baz`

@@ -1,0 +1,7 @@
+interface i {
+    use foo:bar/baz.{a, b, c};
+}
+
+world w {
+    use foo:bar/qux.{x, y, z};
+}

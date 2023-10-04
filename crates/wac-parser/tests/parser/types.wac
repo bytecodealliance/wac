@@ -16,6 +16,9 @@ interface i {
 interface i2 {
     /// Use type r from i
     use i.{r};
+
+    /// Use type r from i with alias z
+    use i.{r as z};
 }
 
 /// Defining a world

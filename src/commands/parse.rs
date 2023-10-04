@@ -2,12 +2,15 @@ use anyhow::{Context, Result};
 use clap::Args;
 use serde::Serialize;
 use std::{fs, path::PathBuf};
-use wac_parser::{ast::Document, resolution::ResolvedDocument};
+use wac_parser::{
+    ast::Document,
+    resolution::{FileSystemPackageResolver, ResolvedDocument},
+};
 
 #[derive(Serialize)]
 struct Output<'a> {
     ast: &'a Document<'a>,
-    resolved: &'a ResolvedDocument<'a>,
+    resolved: &'a ResolvedDocument,
 }
 
 /// Parses a composition into a WebAssembly component.
@@ -32,7 +35,11 @@ impl ParseCommand {
             .with_context(|| format!("failed to read file `{path}`", path = self.path.display()))?;
 
         let document = Document::parse(&contents, &self.path)?;
-        let resolved = ResolvedDocument::new(&document, self.package, None)?;
+        let resolved = ResolvedDocument::new(
+            &document,
+            self.package,
+            Some(Box::<FileSystemPackageResolver>::default()),
+        )?;
 
         serde_json::to_writer_pretty(
             std::io::stdout(),

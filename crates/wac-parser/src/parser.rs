@@ -70,6 +70,8 @@ mod pest {
 
                 Self::UseStatement => "use statement",
                 Self::UseItems => "use items",
+                Self::UseItem => "use item",
+                Self::UseAsClause => "use as clause",
                 Self::UsePath => "use path",
 
                 Self::InterfaceBody => "interface body",

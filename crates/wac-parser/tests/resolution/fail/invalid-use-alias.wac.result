@@ -1,0 +1,9 @@
+`b` was previously defined at tests/resolution/fail/invalid-use-alias.wac:6:10
+
+Caused by:
+     --> tests/resolution/fail/invalid-use-alias.wac:7:17
+      |
+    7 |     use a.{a as b};
+      |                 ^
+      |
+      = `b` was previously defined at tests/resolution/fail/invalid-use-alias.wac:6:10

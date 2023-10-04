@@ -1,52 +1,53 @@
 {
   "package": "test:test",
-  "types": [
-    {
-      "resource": {}
-    },
-    {
-      "borrow": 0
-    }
-  ],
-  "funcs": [
-    {
-      "params": {
-        "x": {
-          "id": 1
-        }
+  "definitions": {
+    "types": [
+      {
+        "resource": 0
       },
-      "results": null
-    }
-  ],
-  "interfaces": [],
-  "worlds": [],
+      {
+        "borrow": 0
+      }
+    ],
+    "resources": [
+      {}
+    ],
+    "funcs": [
+      {
+        "params": {
+          "x": 1
+        },
+        "results": null
+      }
+    ],
+    "interfaces": [],
+    "worlds": [],
+    "modules": []
+  },
   "scopes": [
     {
       "parent": null,
       "names": {
         "x": {
-          "span": {
-            "str": "x",
-            "start": 9,
-            "end": 10
-          },
+          "start": 9,
+          "end": 10,
           "kind": {
             "type": {
-              "id": 0
+              "value": 0
             }
           }
         },
         "f": {
-          "span": {
-            "str": "f",
-            "start": 18,
-            "end": 19
-          },
+          "start": 18,
+          "end": 19,
           "kind": {
-            "funcType": 0
+            "type": {
+              "func": 0
+            }
           }
         }
       }
     }
-  ]
+  ],
+  "rootScope": 0
 }

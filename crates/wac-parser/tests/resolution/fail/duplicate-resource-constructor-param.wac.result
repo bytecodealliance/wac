@@ -1,4 +1,4 @@
-duplicate constructor parameter `a` for resource `x`
+duplicate constructor parameter `a`
 
 Caused by:
      --> tests/resolution/fail/duplicate-resource-constructor-param.wac:2:25
@@ -6,4 +6,4 @@ Caused by:
     2 |     constructor(a: u32, a: string);
       |                         ^
       |
-      = duplicate constructor parameter `a` for resource `x`
+      = duplicate constructor parameter `a`

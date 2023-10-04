@@ -1,0 +1,111 @@
+{
+  "package": "test:test",
+  "definitions": {
+    "types": [
+      {
+        "primitive": "string"
+      },
+      {
+        "resource": 0
+      },
+      {
+        "borrow": 0
+      }
+    ],
+    "resources": [
+      {
+        "methods": [
+          {
+            "instance": {
+              "name": "x",
+              "ty": 0
+            }
+          }
+        ]
+      }
+    ],
+    "funcs": [
+      {
+        "params": {
+          "r": 1
+        },
+        "results": null
+      },
+      {
+        "params": {
+          "r": 2
+        },
+        "results": null
+      }
+    ],
+    "interfaces": [
+      {
+        "id": "foo:bar/i",
+        "exports": {
+          "x": {
+            "kind": {
+              "type": {
+                "value": 0
+              }
+            }
+          },
+          "r": {
+            "kind": {
+              "type": {
+                "value": 1
+              }
+            }
+          },
+          "y": {
+            "kind": {
+              "func": 1
+            }
+          }
+        },
+        "scope": null
+      }
+    ],
+    "worlds": [
+      {
+        "imports": {},
+        "exports": {
+          "foo:bar/i": {
+            "kind": {
+              "instance": 0
+            }
+          }
+        },
+        "scope": null
+      },
+      {
+        "imports": {},
+        "exports": {
+          "i": {
+            "kind": {
+              "type": {
+                "world": 0
+              }
+            }
+          }
+        },
+        "scope": null
+      }
+    ],
+    "modules": []
+  },
+  "scopes": [
+    {
+      "parent": null,
+      "names": {
+        "i": {
+          "start": 7,
+          "end": 8,
+          "kind": {
+            "instance": 0
+          }
+        }
+      }
+    }
+  ],
+  "rootScope": 0
+}

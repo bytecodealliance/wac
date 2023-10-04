@@ -1,0 +1,11 @@
+package foo:bar;
+
+interface i {
+    type x = string;
+
+    resource r {
+        x: func(r: r);
+    }
+
+    y: func(r: borrow<r>);
+}

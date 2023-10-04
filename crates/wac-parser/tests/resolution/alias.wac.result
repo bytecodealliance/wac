@@ -1,64 +1,58 @@
 {
   "package": "test:test",
-  "types": [
-    {
-      "alias": {
-        "ty": "u32"
+  "definitions": {
+    "types": [
+      {
+        "alias": "u32"
+      },
+      {
+        "alias": "string"
       }
-    },
-    {
-      "alias": {
-        "ty": "string"
+    ],
+    "resources": [],
+    "funcs": [
+      {
+        "params": {},
+        "results": null
       }
-    }
-  ],
-  "funcs": [
-    {
-      "params": {},
-      "results": null
-    }
-  ],
-  "interfaces": [],
-  "worlds": [],
+    ],
+    "interfaces": [],
+    "worlds": [],
+    "modules": []
+  },
   "scopes": [
     {
       "parent": null,
       "names": {
         "a": {
-          "span": {
-            "str": "a",
-            "start": 5,
-            "end": 6
-          },
+          "start": 5,
+          "end": 6,
           "kind": {
             "type": {
-              "id": 0
+              "value": 0
             }
           }
         },
         "b": {
-          "span": {
-            "str": "b",
-            "start": 20,
-            "end": 21
-          },
+          "start": 20,
+          "end": 21,
           "kind": {
             "type": {
-              "id": 1
+              "value": 1
             }
           }
         },
         "c": {
-          "span": {
-            "str": "c",
-            "start": 38,
-            "end": 39
-          },
+          "start": 38,
+          "end": 39,
           "kind": {
-            "funcType": 0
+            "type": {
+              "func": 0
+            }
           }
         }
       }
     }
-  ]
+  ],
+  "rootScope": 0
 }

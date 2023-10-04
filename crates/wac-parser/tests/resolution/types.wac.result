@@ -1,428 +1,404 @@
 {
   "package": "test:test",
-  "types": [
-    {
-      "record": {
-        "fields": {
-          "x": "u32"
-        }
-      }
-    },
-    {
-      "resource": {
-        "methods": [
-          {
-            "constructor": []
-          }
-        ]
-      }
-    },
-    {
-      "alias": {
-        "ty": "u32"
-      }
-    },
-    {
-      "variant": {
-        "cases": {
-          "a": {
-            "id": 2
-          },
-          "b": "string",
-          "c": "u32",
-          "d": null
-        }
-      }
-    },
-    {
-      "record": {
-        "fields": {
-          "x": "u32",
-          "y": "string",
-          "z": {
-            "id": 3
+  "definitions": {
+    "types": [
+      {
+        "record": {
+          "fields": {
+            "x": "u32"
           }
         }
-      }
-    },
-    {
-      "flags": {
+      },
+      {
+        "resource": 0
+      },
+      {
+        "alias": "u32"
+      },
+      {
+        "variant": {
+          "cases": {
+            "a": 2,
+            "b": "string",
+            "c": "u32",
+            "d": null
+          }
+        }
+      },
+      {
+        "record": {
+          "fields": {
+            "x": "u32",
+            "y": "string",
+            "z": 3
+          }
+        }
+      },
+      {
         "flags": [
           "a",
           "b",
           "c"
         ]
-      }
-    },
-    {
-      "enum": {
-        "cases": [
+      },
+      {
+        "enum": [
           "a",
           "b",
           "c"
         ]
-      }
-    },
-    {
-      "alias": {
-        "ty": {
-          "id": 6
-        }
-      }
-    },
-    {
-      "alias": {
-        "ty": "string"
-      }
-    }
-  ],
-  "funcs": [
-    {
-      "params": {},
-      "results": null
-    },
-    {
-      "params": {},
-      "results": null
-    },
-    {
-      "params": {},
-      "results": null
-    },
-    {
-      "params": {},
-      "results": null
-    },
-    {
-      "params": {},
-      "results": null
-    },
-    {
-      "params": {
-        "a": "u32",
-        "b": {
-          "id": 4
-        }
       },
-      "results": {
-        "single": "u32"
+      {
+        "alias": 6
+      },
+      {
+        "alias": "string"
       }
-    },
-    {
-      "params": {},
-      "results": {
-        "named": {
+    ],
+    "resources": [
+      {
+        "methods": [
+          {
+            "constructor": 5
+          }
+        ]
+      }
+    ],
+    "funcs": [
+      {
+        "params": {},
+        "results": null
+      },
+      {
+        "params": {},
+        "results": null
+      },
+      {
+        "params": {},
+        "results": null
+      },
+      {
+        "params": {},
+        "results": null
+      },
+      {
+        "params": {},
+        "results": null
+      },
+      {
+        "params": {},
+        "results": null
+      },
+      {
+        "params": {
           "a": "u32",
-          "b": "string"
+          "b": 4
+        },
+        "results": {
+          "scalar": "u32"
+        }
+      },
+      {
+        "params": {},
+        "results": {
+          "list": {
+            "a": "u32",
+            "b": "string"
+          }
         }
       }
-    }
-  ],
-  "interfaces": [
-    {
-      "kind": {
-        "declared": {
-          "id": "test:test/i"
-        }
-      },
-      "types": {
-        "a": {
-          "funcType": 0
-        },
-        "r": {
-          "type": {
-            "id": 0
+    ],
+    "interfaces": [
+      {
+        "id": "test:test/i",
+        "exports": {
+          "a": {
+            "kind": {
+              "type": {
+                "func": 0
+              }
+            }
+          },
+          "r": {
+            "kind": {
+              "type": {
+                "value": 0
+              }
+            }
+          },
+          "x": {
+            "kind": {
+              "func": 1
+            }
+          },
+          "y": {
+            "kind": {
+              "func": 0
+            }
           }
-        }
+        },
+        "scope": 1
       },
-      "exports": {
-        "x": 1,
-        "y": 0
+      {
+        "id": "test:test/i2",
+        "exports": {
+          "r": {
+            "use": {
+              "interface": 0,
+              "exportIndex": 1,
+              "ty": 0
+            }
+          },
+          "z": {
+            "use": {
+              "interface": 0,
+              "exportIndex": 1,
+              "ty": 0
+            }
+          }
+        },
+        "scope": 2
+      },
+      {
+        "id": null,
+        "exports": {
+          "x": {
+            "kind": {
+              "func": 4
+            }
+          }
+        },
+        "scope": 4
       }
-    },
-    {
-      "kind": {
-        "declared": {
-          "id": "test:test/i2"
-        }
-      },
-      "types": {
-        "r": {
-          "type": {
-            "id": 0
+    ],
+    "worlds": [
+      {
+        "imports": {
+          "a": {
+            "kind": {
+              "func": 3
+            }
+          },
+          "test:test/i": {
+            "kind": {
+              "instance": 0
+            }
+          },
+          "c": {
+            "kind": {
+              "func": 2
+            }
           }
-        }
+        },
+        "exports": {
+          "d": {
+            "kind": {
+              "type": {
+                "interface": 2
+              }
+            }
+          },
+          "test:test/i2": {
+            "kind": {
+              "instance": 1
+            }
+          },
+          "f": {
+            "kind": {
+              "func": 2
+            }
+          }
+        },
+        "scope": 3
       },
-      "exports": {}
-    },
-    {
-      "kind": "inline",
-      "types": {},
-      "exports": {
-        "x": 4
+      {
+        "imports": {
+          "a": {
+            "kind": {
+              "func": 3
+            }
+          },
+          "test:test/i": {
+            "kind": {
+              "instance": 0
+            }
+          },
+          "c": {
+            "kind": {
+              "func": 2
+            }
+          }
+        },
+        "exports": {
+          "d": {
+            "kind": {
+              "type": {
+                "interface": 2
+              }
+            }
+          },
+          "test:test/i2": {
+            "kind": {
+              "instance": 1
+            }
+          },
+          "f": {
+            "kind": {
+              "func": 2
+            }
+          }
+        },
+        "scope": 5
       }
-    }
-  ],
-  "worlds": [
-    {
-      "types": {},
-      "imports": {
-        "a": {
-          "func": 3
-        },
-        "test:test/i": {
-          "interface": {
-            "id": 0,
-            "scope": 1
-          }
-        },
-        "c": {
-          "func": 2
-        }
-      },
-      "exports": {
-        "d": {
-          "interface": {
-            "id": 2,
-            "scope": 4
-          }
-        },
-        "test:test/i2": {
-          "interface": {
-            "id": 1,
-            "scope": 2
-          }
-        },
-        "f": {
-          "func": 2
-        }
-      }
-    },
-    {
-      "types": {},
-      "imports": {
-        "a": {
-          "func": 3
-        },
-        "test:test/i": {
-          "interface": {
-            "id": 0,
-            "scope": 1
-          }
-        },
-        "c": {
-          "func": 2
-        }
-      },
-      "exports": {
-        "d": {
-          "interface": {
-            "id": 2,
-            "scope": 4
-          }
-        },
-        "test:test/i2": {
-          "interface": {
-            "id": 1,
-            "scope": 2
-          }
-        },
-        "f": {
-          "func": 2
-        }
-      }
-    }
-  ],
+    ],
+    "modules": []
+  },
   "scopes": [
     {
       "parent": null,
       "names": {
         "i": {
-          "span": {
-            "str": "i",
-            "start": 36,
-            "end": 37
-          },
+          "start": 36,
+          "end": 37,
           "kind": {
-            "interface": {
-              "id": 0,
-              "scope": 1
+            "type": {
+              "interface": 0
             }
           }
         },
         "i2": {
-          "span": {
-            "str": "i2",
-            "start": 258,
-            "end": 260
-          },
+          "start": 258,
+          "end": 260,
           "kind": {
-            "interface": {
-              "id": 1,
-              "scope": 2
+            "type": {
+              "interface": 1
             }
           }
         },
         "c": {
-          "span": {
-            "str": "c",
-            "start": 312,
-            "end": 313
-          },
+          "start": 364,
+          "end": 365,
           "kind": {
-            "funcType": 2
+            "type": {
+              "func": 2
+            }
           }
         },
         "f": {
-          "span": {
-            "str": "f",
-            "start": 329,
-            "end": 330
-          },
+          "start": 381,
+          "end": 382,
           "kind": {
-            "funcType": 2
+            "type": {
+              "func": 2
+            }
           }
         },
         "w1": {
-          "span": {
-            "str": "w1",
-            "start": 364,
-            "end": 366
-          },
+          "start": 416,
+          "end": 418,
           "kind": {
-            "world": {
-              "id": 0,
-              "scope": 3
+            "type": {
+              "world": 0
             }
           }
         },
         "w2": {
-          "span": {
-            "str": "w2",
-            "start": 800,
-            "end": 802
-          },
+          "start": 852,
+          "end": 854,
           "kind": {
-            "world": {
-              "id": 1,
-              "scope": 5
+            "type": {
+              "world": 1
             }
           }
         },
         "res": {
-          "span": {
-            "str": "res",
-            "start": 954,
-            "end": 957
-          },
+          "start": 1006,
+          "end": 1009,
           "kind": {
             "type": {
-              "id": 1
+              "value": 1
             }
           }
         },
         "x": {
-          "span": {
-            "str": "x",
-            "start": 987,
-            "end": 988
-          },
+          "start": 1039,
+          "end": 1040,
           "kind": {
             "type": {
-              "id": 2
+              "value": 2
             }
           }
         },
         "v": {
-          "span": {
-            "str": "v",
-            "start": 1028,
-            "end": 1029
-          },
+          "start": 1080,
+          "end": 1081,
           "kind": {
             "type": {
-              "id": 3
+              "value": 3
             }
           }
         },
         "r": {
-          "span": {
-            "str": "r",
-            "start": 1108,
-            "end": 1109
-          },
+          "start": 1160,
+          "end": 1161,
           "kind": {
             "type": {
-              "id": 4
+              "value": 4
             }
           }
         },
         "flags": {
-          "span": {
-            "str": "%flags",
-            "start": 1178,
-            "end": 1184
-          },
+          "start": 1230,
+          "end": 1236,
           "kind": {
             "type": {
-              "id": 5
+              "value": 5
             }
           }
         },
         "e": {
-          "span": {
-            "str": "e",
-            "start": 1237,
-            "end": 1238
-          },
+          "start": 1289,
+          "end": 1290,
           "kind": {
             "type": {
-              "id": 6
+              "value": 6
             }
           }
         },
         "t": {
-          "span": {
-            "str": "t",
-            "start": 1287,
-            "end": 1288
-          },
+          "start": 1339,
+          "end": 1340,
           "kind": {
             "type": {
-              "id": 7
+              "value": 7
             }
           }
         },
         "t2": {
-          "span": {
-            "str": "t2",
-            "start": 1299,
-            "end": 1301
-          },
+          "start": 1351,
+          "end": 1353,
           "kind": {
             "type": {
-              "id": 8
+              "value": 8
             }
           }
         },
         "t3": {
-          "span": {
-            "str": "t3",
-            "start": 1317,
-            "end": 1319
-          },
+          "start": 1369,
+          "end": 1371,
           "kind": {
-            "funcType": 5
+            "type": {
+              "func": 6
+            }
           }
         },
         "t4": {
-          "span": {
-            "str": "t4",
-            "start": 1354,
-            "end": 1356
-          },
+          "start": 1406,
+          "end": 1408,
           "kind": {
-            "funcType": 6
+            "type": {
+              "func": 7
+            }
           }
         }
       }
@@ -431,24 +407,20 @@
       "parent": 0,
       "names": {
         "a": {
-          "span": {
-            "str": "a",
-            "start": 70,
-            "end": 71
-          },
+          "start": 70,
+          "end": 71,
           "kind": {
-            "funcType": 0
+            "type": {
+              "func": 0
+            }
           }
         },
         "r": {
-          "span": {
-            "str": "r",
-            "start": 113,
-            "end": 114
-          },
+          "start": 113,
+          "end": 114,
           "kind": {
             "type": {
-              "id": 0
+              "value": 0
             }
           }
         }
@@ -458,14 +430,20 @@
       "parent": 0,
       "names": {
         "r": {
-          "span": {
-            "str": "r",
-            "start": 300,
-            "end": 301
-          },
+          "start": 300,
+          "end": 301,
           "kind": {
             "type": {
-              "id": 0
+              "value": 0
+            }
+          }
+        },
+        "z": {
+          "start": 352,
+          "end": 353,
+          "kind": {
+            "type": {
+              "value": 0
             }
           }
         }
@@ -483,5 +461,6 @@
       "parent": 0,
       "names": {}
     }
-  ]
+  ],
+  "rootScope": 0
 }

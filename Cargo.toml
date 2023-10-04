@@ -1,11 +1,19 @@
 [package]
 name = "wac"
+description = "A tool for encoding and decoding WebAssembly compositions."
+version = { workspace = true }
+edition = { workspace = true }
+authors = { workspace = true }
+license = { workspace = true }
+categories = { workspace = true }
+keywords = { workspace = true }
+repository = { workspace = true }
+
+[workspace.package]
 version = "0.1.0"
 edition = "2021"
 authors = ["Peter Huene <peter@huene.dev>"]
-description = "A tool for encoding and decoding WebAssembly compositions."
 license = "Apache-2.0 WITH LLVM-exception"
-documentation = "https://docs.rs/wac"
 categories = ["wasm"]
 keywords = ["webassembly", "wasm", "components", "component-model"]
 repository = "https://github.com/bytecodealliance/wac"
@@ -23,6 +31,9 @@ serde_json = { workspace = true }
 
 [workspace.dependencies]
 wac-parser = { path = "crates/wac-parser" }
+wit-parser = "0.12.1"
+wasmparser = "0.113.3"
+wit-component = "0.16.0"
 anyhow = "1.0.75"
 clap = { version = "4.4.3", features = ["derive"] }
 pest = "2.7.3"

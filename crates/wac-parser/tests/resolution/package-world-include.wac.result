@@ -1,0 +1,174 @@
+{
+  "package": "test:test",
+  "definitions": {
+    "types": [
+      {
+        "resource": 0
+      }
+    ],
+    "resources": [
+      {
+        "methods": [
+          {
+            "constructor": 0
+          },
+          {
+            "instance": {
+              "name": "a",
+              "ty": 1
+            }
+          },
+          {
+            "static": {
+              "name": "b",
+              "ty": 2
+            }
+          }
+        ]
+      }
+    ],
+    "funcs": [
+      {
+        "params": {},
+        "results": null
+      },
+      {
+        "params": {},
+        "results": null
+      },
+      {
+        "params": {},
+        "results": null
+      }
+    ],
+    "interfaces": [
+      {
+        "id": "foo:bar/i",
+        "exports": {
+          "x": {
+            "kind": {
+              "type": {
+                "value": 0
+              }
+            }
+          }
+        },
+        "scope": null
+      }
+    ],
+    "worlds": [
+      {
+        "imports": {},
+        "exports": {
+          "foo:bar/i": {
+            "kind": {
+              "instance": 0
+            }
+          }
+        },
+        "scope": null
+      },
+      {
+        "imports": {
+          "foo:bar/i": {
+            "kind": {
+              "instance": 0
+            }
+          },
+          "x": {
+            "use": {
+              "interface": 0,
+              "exportIndex": 0,
+              "ty": 0
+            }
+          }
+        },
+        "exports": {
+          "foo:bar/i": {
+            "kind": {
+              "instance": 0
+            }
+          }
+        },
+        "scope": null
+      },
+      {
+        "imports": {},
+        "exports": {
+          "foo:bar/baz": {
+            "kind": {
+              "component": 1
+            }
+          }
+        },
+        "scope": null
+      },
+      {
+        "imports": {},
+        "exports": {
+          "i": {
+            "kind": {
+              "type": {
+                "world": 0
+              }
+            }
+          },
+          "baz": {
+            "kind": {
+              "type": {
+                "world": 2
+              }
+            }
+          }
+        },
+        "scope": null
+      },
+      {
+        "imports": {
+          "foo:bar/i": {
+            "kind": {
+              "instance": 0
+            }
+          },
+          "x": {
+            "use": {
+              "interface": 0,
+              "exportIndex": 0,
+              "ty": 0
+            }
+          }
+        },
+        "exports": {
+          "foo:bar/i": {
+            "kind": {
+              "instance": 0
+            }
+          }
+        },
+        "scope": 1
+      }
+    ],
+    "modules": []
+  },
+  "scopes": [
+    {
+      "parent": null,
+      "names": {
+        "w": {
+          "start": 6,
+          "end": 7,
+          "kind": {
+            "type": {
+              "world": 4
+            }
+          }
+        }
+      }
+    },
+    {
+      "parent": 0,
+      "names": {}
+    }
+  ],
+  "rootScope": 0
+}

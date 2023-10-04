@@ -1,0 +1,13 @@
+package foo:bar;
+
+interface baz {
+    type a = u8;
+    type b = s64;
+    type c = string;
+}
+
+interface qux {
+    resource x;
+    type y = borrow<x>;
+    use baz.{c as z};
+}

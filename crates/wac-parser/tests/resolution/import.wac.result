@@ -1,91 +1,83 @@
 {
   "package": "test:test",
-  "types": [],
-  "funcs": [
-    {
-      "params": {},
-      "results": null
-    },
-    {
-      "params": {},
-      "results": null
-    },
-    {
-      "params": {
-        "name": "string"
+  "definitions": {
+    "types": [],
+    "resources": [],
+    "funcs": [
+      {
+        "params": {},
+        "results": null
       },
-      "results": null
-    },
-    {
-      "params": {},
-      "results": null
-    }
-  ],
-  "interfaces": [
-    {
-      "kind": "inline",
-      "types": {},
-      "exports": {
-        "x": 3
+      {
+        "params": {},
+        "results": null
+      },
+      {
+        "params": {
+          "name": "string"
+        },
+        "results": null
+      },
+      {
+        "params": {},
+        "results": null
       }
-    }
-  ],
-  "worlds": [],
+    ],
+    "interfaces": [
+      {
+        "id": null,
+        "exports": {
+          "x": {
+            "kind": {
+              "func": 3
+            }
+          }
+        },
+        "scope": 1
+      }
+    ],
+    "worlds": [],
+    "modules": []
+  },
   "scopes": [
     {
       "parent": null,
       "names": {
         "a": {
-          "span": {
-            "str": "a",
-            "start": 31,
-            "end": 32
-          },
+          "start": 31,
+          "end": 32,
           "kind": {
             "func": 0
           }
         },
         "x": {
-          "span": {
-            "str": "x",
-            "start": 68,
-            "end": 69
-          },
+          "start": 68,
+          "end": 69,
           "kind": {
-            "funcType": 1
+            "type": {
+              "func": 1
+            }
           }
         },
         "b": {
-          "span": {
-            "str": "b",
-            "start": 87,
-            "end": 88
-          },
+          "start": 87,
+          "end": 88,
           "kind": {
             "func": 1
           }
         },
         "d": {
-          "span": {
-            "str": "d",
-            "start": 200,
-            "end": 201
-          },
+          "start": 200,
+          "end": 201,
           "kind": {
             "func": 2
           }
         },
         "e": {
-          "span": {
-            "str": "e",
-            "start": 281,
-            "end": 282
-          },
+          "start": 281,
+          "end": 282,
           "kind": {
-            "instance": {
-              "id": 0,
-              "scope": 1
-            }
+            "instance": 0
           }
         }
       }
@@ -94,5 +86,6 @@
       "parent": 0,
       "names": {}
     }
-  ]
+  ],
+  "rootScope": 0
 }

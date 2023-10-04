@@ -1,4 +1,4 @@
-`x` is not an interface
+value type `x` is not an interface
 
 Caused by:
      --> tests/resolution/fail/invalid-use.wac:4:9
@@ -6,4 +6,4 @@ Caused by:
     4 |     use x.{a};
       |         ^
       |
-      = `x` is not an interface
+      = value type `x` is not an interface

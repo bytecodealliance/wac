@@ -109,25 +109,40 @@ display!(WithClause);
 pub struct PackagePath<'a> {
     /// The name of the package.
     pub name: PackageName<'a>,
-    /// The path into the package.
-    pub path: Vec<(Slash<'a>, Ident<'a>)>,
-    /// The version of the package.
+    /// The path segments.
+    pub segments: Vec<(Slash<'a>, Ident<'a>)>,
+    /// The optional version of the package.
     pub version: Option<(At<'a>, PackageVersion<'a>)>,
 }
 
 impl PackagePath<'_> {
     /// Calculates the span of the package path.
     pub fn span(&self) -> Span {
-        let span = self.name.parts.first().unwrap().0;
+        let span = self.name.span();
         let end = if let Some((_, version)) = &self.version {
             version.0.end()
-        } else if let Some((_, path)) = self.path.last() {
-            path.0.end()
         } else {
-            span.end()
+            self.segments.last().unwrap().1 .0.end()
         };
 
         Span::new(span.get_input(), span.start(), end).unwrap()
+    }
+
+    /// Returns the string representation of the package path.
+    pub fn as_str(&self) -> &str {
+        self.span().as_str()
+    }
+
+    /// Gets the span of just the path segments.
+    pub fn segments_span(&self) -> Span {
+        let (_, first) = self.segments.first().unwrap();
+        let (_, last) = self.segments.last().unwrap();
+        Span::new(first.0.get_input(), first.0.start(), last.0.end()).unwrap()
+    }
+
+    /// Gets the path segments as a string.
+    pub fn segments(&self) -> &str {
+        self.segments_span().as_str()
     }
 }
 
@@ -135,9 +150,9 @@ impl AstDisplay for PackagePath<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, indenter: &mut Indenter) -> fmt::Result {
         self.name.fmt(f, indenter)?;
 
-        for (slash, part) in &self.path {
+        for (slash, segment) in &self.segments {
             write!(f, "{slash}")?;
-            part.fmt(f, indenter)?;
+            segment.fmt(f, indenter)?;
         }
 
         if let Some((at, version)) = &self.version {
@@ -158,6 +173,20 @@ display!(PackagePath);
 pub struct PackageName<'a> {
     /// The parts of the package name.
     pub parts: Vec<Ident<'a>>,
+}
+
+impl PackageName<'_> {
+    /// Gets the span of the package name.
+    pub fn span(&self) -> Span {
+        let span = self.parts.first().unwrap().0;
+        let end = self.parts.last().map(|i| i.0.end()).unwrap();
+        Span::new(span.get_input(), span.start(), end).unwrap()
+    }
+
+    /// Gets the package name as a string.
+    pub fn as_str(&self) -> &str {
+        self.span().as_str()
+    }
 }
 
 impl AstDisplay for PackageName<'_> {
