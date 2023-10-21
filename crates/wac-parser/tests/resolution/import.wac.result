@@ -34,9 +34,39 @@
           }
         },
         "scope": 1
+      },
+      {
+        "id": "foo:bar/baz",
+        "exports": {},
+        "scope": null
       }
     ],
-    "worlds": [],
+    "worlds": [
+      {
+        "imports": {},
+        "exports": {
+          "foo:bar/baz": {
+            "kind": {
+              "instance": 1
+            }
+          }
+        },
+        "scope": null
+      },
+      {
+        "imports": {},
+        "exports": {
+          "baz": {
+            "kind": {
+              "type": {
+                "world": 0
+              }
+            }
+          }
+        },
+        "scope": null
+      }
+    ],
     "modules": []
   },
   "scopes": [
@@ -67,17 +97,24 @@
           }
         },
         "d": {
-          "start": 200,
-          "end": 201,
+          "start": 195,
+          "end": 196,
           "kind": {
             "func": 2
           }
         },
         "e": {
-          "start": 281,
-          "end": 282,
+          "start": 276,
+          "end": 277,
           "kind": {
             "instance": 0
+          }
+        },
+        "f": {
+          "start": 357,
+          "end": 358,
+          "kind": {
+            "instance": 1
           }
         }
       }

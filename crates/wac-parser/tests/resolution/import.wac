@@ -5,7 +5,7 @@ import a: func();
 type x = func();
 import b: x;
 
-// TODO: Import by package path
+/// Import by package path
 //import c: foo:bar/baz;
 
 /// Import by func type with kebab name 
@@ -16,5 +16,5 @@ import e: interface {
     x: func();
 };
 
-// TODO: Import by package path with version
-//import f: foo:bar/baz@1.0.0;
+/// Import by package path with version
+import f: foo:bar/baz@1.0.0;

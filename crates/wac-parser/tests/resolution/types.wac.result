@@ -13,12 +13,15 @@
         "resource": 0
       },
       {
+        "resource": 1
+      },
+      {
         "alias": "u32"
       },
       {
         "variant": {
           "cases": {
-            "a": 2,
+            "a": 3,
             "b": "string",
             "c": "u32",
             "d": null
@@ -30,7 +33,7 @@
           "fields": {
             "x": "u32",
             "y": "string",
-            "z": 3
+            "z": 4
           }
         }
       },
@@ -49,13 +52,14 @@
         ]
       },
       {
-        "alias": 6
+        "alias": 7
       },
       {
         "alias": "string"
       }
     ],
     "resources": [
+      {},
       {
         "methods": [
           {
@@ -92,7 +96,7 @@
       {
         "params": {
           "a": "u32",
-          "b": 4
+          "b": 5
         },
         "results": {
           "scalar": "u32"
@@ -160,6 +164,19 @@
         "scope": 2
       },
       {
+        "id": "foo:bar/i",
+        "exports": {
+          "r": {
+            "kind": {
+              "type": {
+                "value": 1
+              }
+            }
+          }
+        },
+        "scope": null
+      },
+      {
         "id": null,
         "exports": {
           "x": {
@@ -173,7 +190,66 @@
     ],
     "worlds": [
       {
+        "imports": {},
+        "exports": {
+          "foo:bar/i": {
+            "kind": {
+              "instance": 2
+            }
+          }
+        },
+        "scope": null
+      },
+      {
+        "imports": {},
+        "exports": {},
+        "scope": null
+      },
+      {
+        "imports": {},
+        "exports": {
+          "foo:bar/baz": {
+            "kind": {
+              "component": 1
+            }
+          }
+        },
+        "scope": null
+      },
+      {
+        "imports": {},
+        "exports": {
+          "i": {
+            "kind": {
+              "type": {
+                "world": 0
+              }
+            }
+          },
+          "baz": {
+            "kind": {
+              "type": {
+                "world": 2
+              }
+            }
+          }
+        },
+        "scope": null
+      },
+      {
         "imports": {
+          "foo:bar/i": {
+            "kind": {
+              "instance": 2
+            }
+          },
+          "r": {
+            "use": {
+              "interface": 2,
+              "exportIndex": 0,
+              "ty": 1
+            }
+          },
           "a": {
             "kind": {
               "func": 3
@@ -194,7 +270,7 @@
           "d": {
             "kind": {
               "type": {
-                "interface": 2
+                "interface": 3
               }
             }
           },
@@ -213,6 +289,18 @@
       },
       {
         "imports": {
+          "foo:bar/i": {
+            "kind": {
+              "instance": 2
+            }
+          },
+          "r": {
+            "use": {
+              "interface": 2,
+              "exportIndex": 0,
+              "ty": 1
+            }
+          },
           "a": {
             "kind": {
               "func": 3
@@ -233,7 +321,7 @@
           "d": {
             "kind": {
               "type": {
-                "interface": 2
+                "interface": 3
               }
             }
           },
@@ -298,94 +386,94 @@
           "end": 418,
           "kind": {
             "type": {
-              "world": 0
+              "world": 4
             }
           }
         },
         "w2": {
-          "start": 852,
-          "end": 854,
+          "start": 845,
+          "end": 847,
           "kind": {
             "type": {
-              "world": 1
+              "world": 5
             }
           }
         },
         "res": {
-          "start": 1006,
-          "end": 1009,
-          "kind": {
-            "type": {
-              "value": 1
-            }
-          }
-        },
-        "x": {
-          "start": 1039,
-          "end": 1040,
+          "start": 992,
+          "end": 995,
           "kind": {
             "type": {
               "value": 2
             }
           }
         },
-        "v": {
-          "start": 1080,
-          "end": 1081,
+        "x": {
+          "start": 1025,
+          "end": 1026,
           "kind": {
             "type": {
               "value": 3
             }
           }
         },
-        "r": {
-          "start": 1160,
-          "end": 1161,
+        "v": {
+          "start": 1066,
+          "end": 1067,
           "kind": {
             "type": {
               "value": 4
             }
           }
         },
-        "flags": {
-          "start": 1230,
-          "end": 1236,
+        "r": {
+          "start": 1146,
+          "end": 1147,
           "kind": {
             "type": {
               "value": 5
             }
           }
         },
-        "e": {
-          "start": 1289,
-          "end": 1290,
+        "flags": {
+          "start": 1216,
+          "end": 1222,
           "kind": {
             "type": {
               "value": 6
             }
           }
         },
-        "t": {
-          "start": 1339,
-          "end": 1340,
+        "e": {
+          "start": 1275,
+          "end": 1276,
           "kind": {
             "type": {
               "value": 7
             }
           }
         },
-        "t2": {
-          "start": 1351,
-          "end": 1353,
+        "t": {
+          "start": 1325,
+          "end": 1326,
           "kind": {
             "type": {
               "value": 8
             }
           }
         },
+        "t2": {
+          "start": 1337,
+          "end": 1339,
+          "kind": {
+            "type": {
+              "value": 9
+            }
+          }
+        },
         "t3": {
-          "start": 1369,
-          "end": 1371,
+          "start": 1355,
+          "end": 1357,
           "kind": {
             "type": {
               "func": 6
@@ -393,8 +481,8 @@
           }
         },
         "t4": {
-          "start": 1406,
-          "end": 1408,
+          "start": 1392,
+          "end": 1394,
           "kind": {
             "type": {
               "func": 7
@@ -451,7 +539,17 @@
     },
     {
       "parent": 0,
-      "names": {}
+      "names": {
+        "r": {
+          "start": 474,
+          "end": 475,
+          "kind": {
+            "type": {
+              "value": 1
+            }
+          }
+        }
+      }
     },
     {
       "parent": 3,

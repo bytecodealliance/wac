@@ -26,8 +26,8 @@ type f = c;
 
 /// Defining a world
 world w1 {
-    // TODO: Use type r from foo:bar/i
-    //use foo:bar/i.{r};
+    /// Use type r from foo:bar/i
+    use foo:bar/i.{r};
 
     /// Import a function
     import a: func();
@@ -51,8 +51,8 @@ world w2 {
     /// Include the first world
     include w1;
 
-    // TODO: Include a world by path
-    //include foo:bar/baz;
+    /// Include a world by path
+    include foo:bar/baz;
 }
 
 /// Defining a resource

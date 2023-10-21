@@ -1,0 +1,8 @@
+package foo:bar;
+
+interface i {
+    resource r;
+}
+
+world baz {
+}
