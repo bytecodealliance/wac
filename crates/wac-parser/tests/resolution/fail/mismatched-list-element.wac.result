@@ -1,0 +1,14 @@
+tests/resolution/fail/mismatched-list-element.wac:5:23: mismatched instantiation argument `x`
+
+ --> tests/resolution/fail/mismatched-list-element.wac:5:23
+  |
+5 | let i = new foo:bar { x };
+  |                       ^
+  |
+  = mismatched instantiation argument `x`
+
+Caused by:
+    0: mismatched type for export `f`
+    1: mismatched type for function parameter `l`
+    2: mismatched type for list element
+    3: expected u8, found string

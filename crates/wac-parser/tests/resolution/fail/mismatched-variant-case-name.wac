@@ -1,0 +1,9 @@
+import x: interface {
+    variant v {
+        a,
+        c(u16),
+        b(tuple<string, u16>),
+    }
+};
+
+let i = new foo:bar { x };

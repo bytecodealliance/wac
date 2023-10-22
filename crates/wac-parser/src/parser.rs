@@ -101,6 +101,7 @@ mod pest {
                 Self::NewExprBody => "new expression body",
                 Self::InstantiationArgument => "instantiation argument",
                 Self::NamedInstantiationArgument => "named instantiation argument",
+                Self::InstantiationArgumentName => "instantiation argument name",
                 Self::NestedExpr => "nested expression",
                 Self::PostfixExpr => "postfix expression",
                 Self::AccessExpr => "access expression",

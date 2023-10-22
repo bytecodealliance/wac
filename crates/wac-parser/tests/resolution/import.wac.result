@@ -69,60 +69,81 @@
     ],
     "modules": []
   },
-  "scopes": [
+  "items": [
     {
-      "parent": null,
-      "names": {
-        "a": {
-          "start": 31,
-          "end": 32,
-          "kind": {
-            "func": 0
-          }
-        },
-        "x": {
-          "start": 68,
-          "end": 69,
-          "kind": {
-            "type": {
-              "func": 1
-            }
-          }
-        },
-        "b": {
-          "start": 87,
-          "end": 88,
-          "kind": {
-            "func": 1
-          }
-        },
-        "d": {
-          "start": 195,
-          "end": 196,
-          "kind": {
-            "func": 2
-          }
-        },
-        "e": {
-          "start": 276,
-          "end": 277,
-          "kind": {
-            "instance": 0
-          }
-        },
-        "f": {
-          "start": 357,
-          "end": 358,
-          "kind": {
-            "instance": 1
-          }
+      "kind": {
+        "func": 0
+      },
+      "source": {
+        "import": {
+          "with": null
         }
       }
     },
     {
-      "parent": 0,
-      "names": {}
+      "kind": {
+        "type": {
+          "func": 1
+        }
+      },
+      "source": "definition"
+    },
+    {
+      "kind": {
+        "func": 1
+      },
+      "source": {
+        "import": {
+          "with": null
+        }
+      }
+    },
+    {
+      "kind": {
+        "func": 2
+      },
+      "source": {
+        "import": {
+          "with": "hello-world"
+        }
+      }
+    },
+    {
+      "kind": {
+        "instance": 0
+      },
+      "source": {
+        "import": {
+          "with": null
+        }
+      }
+    },
+    {
+      "kind": {
+        "instance": 1
+      },
+      "source": {
+        "import": {
+          "with": null
+        }
+      }
     }
   ],
-  "rootScope": 0
+  "scopes": [
+    {
+      "parent": null,
+      "items": {
+        "a": 0,
+        "x": 1,
+        "b": 2,
+        "d": 3,
+        "e": 4,
+        "f": 5
+      }
+    },
+    {
+      "parent": 0,
+      "items": {}
+    }
+  ]
 }

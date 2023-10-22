@@ -103,8 +103,8 @@ mod test {
 
         roundtrip::<ExportStatement>(
             Rule::ExportStatement,
-            "export new foo:bar { foo, bar: (new baz:qux {...}), baz: foo[\"baz\"].qux };",
-            "export new foo:bar {\n  foo,\n  bar: (new baz:qux { ... }),\n  baz: foo[\"baz\"].qux,\n};",
+            "export new foo:bar { foo, \"bar\": (new baz:qux {...}), \"baz\": foo[\"baz\"].qux };",
+            "export new foo:bar {\n  foo,\n  \"bar\": (new baz:qux { ... }),\n  \"baz\": foo[\"baz\"].qux,\n};",
         )
         .unwrap();
     }

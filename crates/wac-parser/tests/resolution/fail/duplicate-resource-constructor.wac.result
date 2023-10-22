@@ -1,9 +1,8 @@
-duplicate constructor for resource `x`
+tests/resolution/fail/duplicate-resource-constructor.wac:3:5: duplicate constructor for resource `x`
 
-Caused by:
-     --> tests/resolution/fail/duplicate-resource-constructor.wac:3:5
-      |
-    3 |     constructor(x: u32);
-      |     ^---------^
-      |
-      = duplicate constructor for resource `x`
+ --> tests/resolution/fail/duplicate-resource-constructor.wac:3:5
+  |
+3 |     constructor(x: u32);
+  |     ^---------^
+  |
+  = duplicate constructor for resource `x`

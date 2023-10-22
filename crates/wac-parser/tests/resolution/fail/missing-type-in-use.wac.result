@@ -1,9 +1,8 @@
-type `x` is not defined in interface `a`
+tests/resolution/fail/missing-type-in-use.wac:6:12: type `x` is not defined in interface `a`
 
-Caused by:
-     --> tests/resolution/fail/missing-type-in-use.wac:6:12
-      |
-    6 |     use a.{x};
-      |            ^
-      |
-      = type `x` is not defined in interface `a`
+ --> tests/resolution/fail/missing-type-in-use.wac:6:12
+  |
+6 |     use a.{x};
+  |            ^
+  |
+  = type `x` is not defined in interface `a`

@@ -8,23 +8,20 @@
     ],
     "resources": [
       {
-        "methods": [
-          {
-            "constructor": 0
+        "methods": {
+          "": {
+            "kind": "constructor",
+            "ty": 0
           },
-          {
-            "instance": {
-              "name": "a",
-              "ty": 1
-            }
+          "a": {
+            "kind": "method",
+            "ty": 1
           },
-          {
-            "static": {
-              "name": "b",
-              "ty": 2
-            }
+          "b": {
+            "kind": "static",
+            "ty": 2
           }
-        ]
+        }
       }
     ],
     "funcs": [
@@ -150,25 +147,26 @@
     ],
     "modules": []
   },
+  "items": [
+    {
+      "kind": {
+        "type": {
+          "world": 4
+        }
+      },
+      "source": "definition"
+    }
+  ],
   "scopes": [
     {
       "parent": null,
-      "names": {
-        "w": {
-          "start": 6,
-          "end": 7,
-          "kind": {
-            "type": {
-              "world": 4
-            }
-          }
-        }
+      "items": {
+        "w": 0
       }
     },
     {
       "parent": 0,
-      "names": {}
+      "items": {}
     }
-  ],
-  "rootScope": 0
+  ]
 }

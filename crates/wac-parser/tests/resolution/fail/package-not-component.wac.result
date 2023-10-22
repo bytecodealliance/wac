@@ -1,9 +1,11 @@
-failed to parse package `foo:bar`: input is not a WebAssembly component
+tests/resolution/fail/package-not-component.wac:1:13: failed to parse package `foo:bar`
+
+ --> tests/resolution/fail/package-not-component.wac:1:13
+  |
+1 | import foo: foo:bar/qux;
+  |             ^-----^
+  |
+  = failed to parse package `foo:bar`
 
 Caused by:
-     --> tests/resolution/fail/package-not-component.wac:1:13
-      |
-    1 | import foo: foo:bar/qux;
-      |             ^-----^
-      |
-      = failed to parse package `foo:bar`: input is not a WebAssembly component
+    input is not a WebAssembly component

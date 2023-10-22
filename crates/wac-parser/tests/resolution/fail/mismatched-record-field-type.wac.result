@@ -1,0 +1,13 @@
+tests/resolution/fail/mismatched-record-field-type.wac:9:23: mismatched instantiation argument `x`
+
+ --> tests/resolution/fail/mismatched-record-field-type.wac:9:23
+  |
+9 | let i = new foo:bar { x };
+  |                       ^
+  |
+  = mismatched instantiation argument `x`
+
+Caused by:
+    0: mismatched type for export `r`
+    1: mismatched type for record field `b`
+    2: expected u16, found string

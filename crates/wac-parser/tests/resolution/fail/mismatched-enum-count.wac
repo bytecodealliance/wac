@@ -1,0 +1,10 @@
+import x: interface {
+    enum e {
+        a,
+        b,
+        c,
+        d,
+    }
+};
+
+let i = new foo:bar { x };

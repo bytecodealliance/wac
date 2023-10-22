@@ -1,9 +1,11 @@
-failed to parse package `foo:bar`: unknown type 0: type index out of bounds (at offset 0xb)
+tests/resolution/fail/package-invalid-wasm.wac:1:13: failed to parse package `foo:bar`
+
+ --> tests/resolution/fail/package-invalid-wasm.wac:1:13
+  |
+1 | import foo: foo:bar/qux;
+  |             ^-----^
+  |
+  = failed to parse package `foo:bar`
 
 Caused by:
-     --> tests/resolution/fail/package-invalid-wasm.wac:1:13
-      |
-    1 | import foo: foo:bar/qux;
-      |             ^-----^
-      |
-      = failed to parse package `foo:bar`: unknown type 0: type index out of bounds (at offset 0xb)
+    unknown type 0: type index out of bounds (at offset 0xb)

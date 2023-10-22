@@ -1,9 +1,8 @@
-export `a` from world `w1` conflicts with export of the same name in world `w2` (consider using a `with` clause to use a different name)
+tests/resolution/fail/world-include-conflict.wac:6:13: export `a` from world `w1` conflicts with export of the same name in world `w2` (consider using a `with` clause to use a different name)
 
-Caused by:
-     --> tests/resolution/fail/world-include-conflict.wac:6:13
-      |
-    6 |     include w1;
-      |             ^^
-      |
-      = export `a` from world `w1` conflicts with export of the same name in world `w2` (consider using a `with` clause to use a different name)
+ --> tests/resolution/fail/world-include-conflict.wac:6:13
+  |
+6 |     include w1;
+  |             ^^
+  |
+  = export `a` from world `w1` conflicts with export of the same name in world `w2` (consider using a `with` clause to use a different name)

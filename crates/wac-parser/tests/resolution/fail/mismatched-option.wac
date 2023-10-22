@@ -1,0 +1,5 @@
+import x: interface {
+    f: func(o: option<u8>);
+};
+
+let i = new foo:bar { x };

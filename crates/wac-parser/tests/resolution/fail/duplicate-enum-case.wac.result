@@ -1,9 +1,8 @@
-duplicate case `b` for enum type `e`
+tests/resolution/fail/duplicate-enum-case.wac:5:5: duplicate case `b` for enum type `e`
 
-Caused by:
-     --> tests/resolution/fail/duplicate-enum-case.wac:5:5
-      |
-    5 |     b,
-      |     ^
-      |
-      = duplicate case `b` for enum type `e`
+ --> tests/resolution/fail/duplicate-enum-case.wac:5:5
+  |
+5 |     b,
+  |     ^
+  |
+  = duplicate case `b` for enum type `e`

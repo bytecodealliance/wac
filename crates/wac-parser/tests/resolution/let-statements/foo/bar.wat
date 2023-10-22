@@ -1,0 +1,30 @@
+(component
+  (type
+    (instance
+      (export (;0;) "output-stream" (type (sub resource)))
+      (type (;2;) (own 0))
+      (type (;3;) (enum "last-operation-failed" "closed"))
+      (export (;4;) "write-error" (type (eq 2)))
+      (export (;5;) "input-stream" (type (sub resource)))
+      (type (;6;) (borrow 0))
+      (type (;7;) (result u64 (error 3)))
+      (type (;8;) (func (param "self" 5) (result 6)))
+      (export (;0;) "[method]output-stream.check-write" (func (type 7)))
+      (type (;9;) (list u8))
+      (type (;10;) (result (error 3)))
+      (type (;11;) (func (param "self" 5) (param "contents" 8) (result 9)))
+      (export (;1;) "[method]output-stream.write" (func (type 10)))
+      (export (;2;) "[method]output-stream.blocking-write-and-flush" (func (type 10)))
+      (type (;12;) (func (param "self" 5) (result 9)))
+      (export (;3;) "[method]output-stream.blocking-flush" (func (type 11)))
+    )
+  )
+  (import (interface "wasi:io/streams@0.2.0-rc-2023-10-18") (instance (type 0)))
+  (type
+    (instance
+      (export "f" (func))
+    )
+  )
+  (import (interface "foo:bar/baz@0.1.0") (instance (type 1)))
+  (export (interface "foo:bar/baz@0.1.0") (instance 1))
+)

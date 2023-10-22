@@ -1,0 +1,5 @@
+import x: interface {
+    type x = u32;
+};
+
+let i = new foo:bar { x };

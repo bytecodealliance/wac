@@ -35,25 +35,26 @@
     ],
     "modules": []
   },
+  "items": [
+    {
+      "kind": {
+        "type": {
+          "world": 0
+        }
+      },
+      "source": "definition"
+    }
+  ],
   "scopes": [
     {
       "parent": null,
-      "names": {
-        "w": {
-          "start": 6,
-          "end": 7,
-          "kind": {
-            "type": {
-              "world": 0
-            }
-          }
-        }
+      "items": {
+        "w": 0
       }
     },
     {
       "parent": 0,
-      "names": {}
+      "items": {}
     }
-  ],
-  "rootScope": 0
+  ]
 }
