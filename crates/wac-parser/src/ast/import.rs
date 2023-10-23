@@ -122,7 +122,7 @@ impl PackagePath<'_> {
         let end = if let Some((_, version)) = &self.version {
             version.0.end()
         } else {
-            self.segments.last().unwrap().1 .0.end()
+            self.segments_span().end()
         };
 
         Span::new(span.get_input(), span.start(), end).unwrap()
