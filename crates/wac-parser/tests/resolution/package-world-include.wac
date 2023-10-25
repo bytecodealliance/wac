@@ -1,0 +1,3 @@
+world w {
+    include foo:bar/baz;
+}

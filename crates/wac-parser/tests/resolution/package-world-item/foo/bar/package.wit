@@ -1,0 +1,9 @@
+package foo:bar;
+
+interface baz {
+    resource z {
+        constructor();
+    }
+    
+    x: func();
+}

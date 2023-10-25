@@ -1,0 +1,154 @@
+{
+  "package": "test:test",
+  "definitions": {
+    "types": [
+      {
+        "resource": 0
+      },
+      {
+        "primitive": "string"
+      }
+    ],
+    "resources": [
+      {
+        "methods": [
+          {
+            "constructor": 0
+          }
+        ]
+      }
+    ],
+    "funcs": [
+      {
+        "params": {},
+        "results": null
+      },
+      {
+        "params": {},
+        "results": null
+      }
+    ],
+    "interfaces": [
+      {
+        "id": "foo:bar/baz",
+        "exports": {
+          "z": {
+            "kind": {
+              "type": {
+                "value": 0
+              }
+            }
+          },
+          "x": {
+            "kind": {
+              "func": 1
+            }
+          }
+        },
+        "scope": null
+      },
+      {
+        "id": "bar:baz/qux",
+        "exports": {
+          "x": {
+            "kind": {
+              "type": {
+                "value": 1
+              }
+            }
+          }
+        },
+        "scope": null
+      }
+    ],
+    "worlds": [
+      {
+        "imports": {},
+        "exports": {
+          "foo:bar/baz": {
+            "kind": {
+              "instance": 0
+            }
+          }
+        },
+        "scope": null
+      },
+      {
+        "imports": {},
+        "exports": {
+          "baz": {
+            "kind": {
+              "type": {
+                "world": 0
+              }
+            }
+          }
+        },
+        "scope": null
+      },
+      {
+        "imports": {},
+        "exports": {
+          "bar:baz/qux": {
+            "kind": {
+              "instance": 1
+            }
+          }
+        },
+        "scope": null
+      },
+      {
+        "imports": {},
+        "exports": {
+          "qux": {
+            "kind": {
+              "type": {
+                "world": 2
+              }
+            }
+          }
+        },
+        "scope": null
+      },
+      {
+        "imports": {
+          "foo:bar/baz": {
+            "kind": {
+              "instance": 0
+            }
+          }
+        },
+        "exports": {
+          "bar:baz/qux": {
+            "kind": {
+              "instance": 1
+            }
+          }
+        },
+        "scope": 1
+      }
+    ],
+    "modules": []
+  },
+  "scopes": [
+    {
+      "parent": null,
+      "names": {
+        "w": {
+          "start": 6,
+          "end": 7,
+          "kind": {
+            "type": {
+              "world": 4
+            }
+          }
+        }
+      }
+    },
+    {
+      "parent": 0,
+      "names": {}
+    }
+  ],
+  "rootScope": 0
+}

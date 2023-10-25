@@ -14,7 +14,7 @@ use crate::parser::Rule;
 use pest::Span;
 use pest_ast::FromPest;
 use serde::Serialize;
-use std::{borrow::Cow, fmt};
+use std::fmt;
 
 /// Represents a type statement in the AST.
 #[derive(Debug, Clone, Serialize, FromPest)]
@@ -1142,7 +1142,7 @@ pub struct UseItems<'a> {
     /// The opening brace of the statement.
     pub open: OpenBrace<'a>,
     /// The items being used.
-    pub list: Vec<Ident<'a>>,
+    pub list: Vec<UseItem<'a>>,
     /// The closing brace of the use items.
     pub close: CloseBrace<'a>,
 }
@@ -1165,6 +1165,51 @@ impl AstDisplay for UseItems<'_> {
 }
 
 display!(UseItems);
+
+/// Represents an item being used in a use statement in the AST.
+#[derive(Debug, Clone, Serialize, FromPest)]
+#[pest_ast(rule(Rule::UseItem))]
+#[serde(rename_all = "camelCase")]
+pub struct UseItem<'a> {
+    /// The identifier of the item.
+    pub id: Ident<'a>,
+    /// The optional as clause of the item.
+    pub as_clause: std::option::Option<UseAsClause<'a>>,
+}
+
+impl AstDisplay for UseItem<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, indenter: &mut Indenter) -> fmt::Result {
+        self.id.fmt(f, indenter)?;
+
+        if let Some(as_clause) = &self.as_clause {
+            write!(f, " {as_clause}")?;
+        }
+
+        Ok(())
+    }
+}
+
+display!(UseItem);
+
+/// Represents an as clause in a use statement in the AST.
+#[derive(Debug, Clone, Serialize, FromPest)]
+#[pest_ast(rule(Rule::UseAsClause))]
+#[serde(rename_all = "camelCase")]
+pub struct UseAsClause<'a> {
+    /// The `as` keyword.
+    pub keyword: As<'a>,
+    /// The identifier of the as clause.
+    pub id: Ident<'a>,
+}
+
+impl AstDisplay for UseAsClause<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, indenter: &mut Indenter) -> fmt::Result {
+        write!(f, "{keyword} ", keyword = self.keyword)?;
+        self.id.fmt(f, indenter)
+    }
+}
+
+display!(UseAsClause);
 
 /// Represents a use path in the AST.
 #[derive(Debug, Clone, Serialize, FromPest)]
@@ -1524,11 +1569,11 @@ pub enum WorldRef<'a> {
 }
 
 impl<'a> WorldRef<'a> {
-    /// Gets the full name of the world ref.
-    pub fn name(&self) -> Cow<'a, str> {
+    /// Gets the name of the world being referred to.
+    pub fn name(&self) -> &str {
         match self {
-            Self::Ident(id) => Cow::Borrowed(id.as_str()),
-            Self::Path(path) => Cow::Owned(path.to_string()),
+            Self::Ident(id) => id.as_str(),
+            Self::Path(path) => path.as_str(),
         }
     }
 

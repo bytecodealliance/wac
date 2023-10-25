@@ -7,7 +7,10 @@ use std::{
     process::exit,
     sync::atomic::{AtomicUsize, Ordering},
 };
-use wac_parser::{ast::Document, resolution::ResolvedDocument};
+use wac_parser::{
+    ast::Document,
+    resolution::{FileSystemPackageResolver, ResolvedDocument},
+};
 
 fn find_tests() -> Vec<PathBuf> {
     let mut tests = Vec::new();
@@ -75,7 +78,13 @@ fn run_test(test: &Path, ntests: &AtomicUsize) -> Result<()> {
     let should_fail = test.parent().map(|p| p.ends_with("fail")).unwrap_or(false);
     let source = std::fs::read_to_string(test)?.replace("\r\n", "\n");
     let document = Document::parse(&source, test)?;
-    let result = match ResolvedDocument::new(&document, "test:test", None) {
+    let result = match ResolvedDocument::new(
+        &document,
+        "test:test",
+        Some(Box::new(FileSystemPackageResolver::new(
+            test.parent().unwrap().join(test.file_stem().unwrap()),
+        ))),
+    ) {
         Ok(doc) => {
             if should_fail {
                 bail!("the resolution was successful but it was expected to fail");
@@ -85,7 +94,7 @@ fn run_test(test: &Path, ntests: &AtomicUsize) -> Result<()> {
         }
         Err(e) => {
             if !should_fail {
-                bail!("the resolution failed but it was expected to succeed {e:?}");
+                bail!("the resolution failed but it was expected to succeed: {e:?}");
             }
 
             format!("{e:?}")

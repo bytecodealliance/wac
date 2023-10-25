@@ -1,0 +1,59 @@
+{
+  "package": "test:test",
+  "definitions": {
+    "types": [],
+    "resources": [],
+    "funcs": [
+      {
+        "params": {},
+        "results": null
+      },
+      {
+        "params": {},
+        "results": null
+      }
+    ],
+    "interfaces": [],
+    "worlds": [
+      {
+        "imports": {
+          "x": {
+            "kind": {
+              "func": 0
+            }
+          }
+        },
+        "exports": {
+          "x": {
+            "kind": {
+              "func": 1
+            }
+          }
+        },
+        "scope": 1
+      }
+    ],
+    "modules": []
+  },
+  "scopes": [
+    {
+      "parent": null,
+      "names": {
+        "w": {
+          "start": 6,
+          "end": 7,
+          "kind": {
+            "type": {
+              "world": 0
+            }
+          }
+        }
+      }
+    },
+    {
+      "parent": 0,
+      "names": {}
+    }
+  ],
+  "rootScope": 0
+}

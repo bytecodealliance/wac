@@ -1,9 +1,0 @@
-value type `x` is not an interface or function type
-
-Caused by:
-     --> tests/resolution/fail/invalid-import-type.wac:2:11
-      |
-    2 | import x: x;
-      |           ^
-      |
-      = value type `x` is not an interface or function type

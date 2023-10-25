@@ -1,0 +1,15 @@
+package foo:bar;
+
+interface i {
+    resource x {
+        constructor();
+        a: func();
+        b: static func();
+    }
+}
+
+world baz {
+    use i.{x};
+    import i;
+    export i;
+}

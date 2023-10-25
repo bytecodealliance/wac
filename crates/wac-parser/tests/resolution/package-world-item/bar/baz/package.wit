@@ -1,0 +1,5 @@
+package bar:baz;
+
+interface qux {
+    type x = string;
+}
