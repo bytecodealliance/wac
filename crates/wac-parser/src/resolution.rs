@@ -1,14 +1,16 @@
 //! Module for resolving WAC documents.
 
 use self::package::Package;
-use crate::ast::{self, new_error_with_span};
-use anyhow::{bail, Context, Result};
+use crate::{
+    ast::{self, InterfaceItem, WorldItem},
+    lexer::Span,
+    line_column, Spanned,
+};
+use anyhow::Context;
 use id_arena::{Arena, Id};
 use indexmap::{IndexMap, IndexSet};
-use pest::{Position, Span};
 use serde::{Serialize, Serializer};
 use std::{
-    borrow::Cow,
     collections::{hash_map, HashMap},
     fmt, fs,
     path::{Path, PathBuf},
@@ -75,6 +77,464 @@ where
     }
 }
 
+/// Represents a kind of item in a world.
+#[derive(Debug, Clone, Copy, Hash, Eq, PartialEq)]
+pub enum WorldItemKind {
+    /// The item is an import.
+    Import,
+    /// The item is an export.
+    Export,
+}
+
+impl fmt::Display for WorldItemKind {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            WorldItemKind::Import => write!(f, "import"),
+            WorldItemKind::Export => write!(f, "export"),
+        }
+    }
+}
+
+struct InterfaceNameDisplay<'a>(Option<&'a str>);
+
+impl fmt::Display for InterfaceNameDisplay<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self.0 {
+            Some(name) => write!(f, " for interface `{name}`"),
+            None => Ok(()),
+        }
+    }
+}
+
+struct ParentPathDisplay<'a>(Option<&'static str>, &'a str);
+
+impl fmt::Display for ParentPathDisplay<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self.0 {
+            Some(name) => {
+                write!(f, "{name} `{path}` in ", path = self.1)
+            }
+            None => Ok(()),
+        }
+    }
+}
+
+/// Represents a resolution error.
+#[derive(thiserror::Error, Debug)]
+pub enum Error<'a> {
+    /// An undefined name was encountered.
+    #[error("undefined name `{name}`")]
+    UndefinedName {
+        /// The name that was undefined.
+        name: &'a str,
+        /// The span where the error occurred.
+        span: Span<'a>,
+    },
+    /// A duplicate name was encountered.
+    #[error("`{name}` was previously defined at {path}:{line}:{column}", path = .path.display())]
+    DuplicateName {
+        /// The duplicate name.
+        name: &'a str,
+        /// The path to the source file.
+        path: &'a Path,
+        /// The line where the identifier was previously defined.
+        line: usize,
+        /// The column where the identifier was previously defined.
+        column: usize,
+        /// The span where the error occurred.
+        span: Span<'a>,
+    },
+    /// Duplicate interface export.
+    #[error("duplicate interface export `{name}`{iface}", iface = InterfaceNameDisplay(*.interface_name))]
+    DuplicateInterfaceExport {
+        /// The name of the duplicate export.
+        name: &'a str,
+        /// The name of the interface.
+        interface_name: Option<&'a str>,
+        /// The span where the error occurred.
+        span: Span<'a>,
+    },
+    /// Duplicate world item.
+    #[error("{kind} `{name}` conflicts with existing {kind} of the same name in world `{world}`")]
+    DuplicateWorldItem {
+        /// The kind of the item.
+        kind: WorldItemKind,
+        /// The name of the item.
+        name: String,
+        /// The name of the world.
+        world: &'a str,
+        /// The span where the error occurred.
+        span: Span<'a>,
+    },
+    /// The name is not a function type or interface.
+    #[error("`{name}` ({kind}) is not a function type or interface")]
+    NotFuncOrInterface {
+        /// The name that is not a function type or interface.
+        name: &'a str,
+        /// The kind of the item.
+        kind: &'static str,
+        /// The span where the error occurred.
+        span: Span<'a>,
+    },
+    /// The name is not an interface.
+    #[error("`{name}` ({kind}) is not an interface")]
+    NotInterface {
+        /// The name that is not an interface.
+        name: &'a str,
+        /// The kind of the item.
+        kind: &'static str,
+        /// The span where the error occurred.
+        span: Span<'a>,
+    },
+    /// Duplicate name in a world include.
+    #[error("duplicate `{name}` in world include `with` clause")]
+    DuplicateWorldIncludeName {
+        /// The name of the duplicate include.
+        name: &'a str,
+        /// The span where the error occurred.
+        span: Span<'a>,
+    },
+    /// The name is not a world.
+    #[error("`{name}` ({kind}) is not a world")]
+    NotWorld {
+        /// The name that is not a world.
+        name: &'a str,
+        /// The kind of the item.
+        kind: &'static str,
+        /// The span where the error occurred.
+        span: Span<'a>,
+    },
+    /// Missing source item for `with` clause in world include.
+    #[error("world `{world}` does not have an import or export named `{name}`")]
+    MissingWorldInclude {
+        /// The name of the world.
+        world: &'a str,
+        /// The name of the missing item.
+        name: &'a str,
+        /// The span where the error occurred.
+        span: Span<'a>,
+    },
+    /// A conflict was encountered in a world include.
+    #[error("{kind} `{name}` from world `{from}` conflicts with {kind} of the same name in world `{to}`{hint}")]
+    WorldIncludeConflict {
+        /// The kind of the item.
+        kind: WorldItemKind,
+        /// The name of the item.
+        name: String,
+        /// The name of the source world.
+        from: &'a str,
+        /// The name of the target world.
+        to: &'a str,
+        /// The span where the error occurred.
+        span: Span<'a>,
+        /// The hint for the error.
+        hint: &'static str,
+    },
+    /// A name is not a type defined in an interface.
+    #[error("type `{name}` is not defined in interface `{interface_name}`")]
+    UndefinedInterfaceType {
+        /// The name of the type.
+        name: &'a str,
+        /// The name of the interface.
+        interface_name: &'a str,
+        /// The span where the error occurred.
+        span: Span<'a>,
+    },
+    /// A name is not a value type defined in an interface.
+    #[error("`{name}` ({kind}) is not a value type in interface `{interface_name}`")]
+    NotInterfaceValueType {
+        /// The name that is not a value type.
+        name: &'a str,
+        /// The kind of the item.
+        kind: &'static str,
+        /// The name of the interface.
+        interface_name: &'a str,
+        /// The span where the error occurred.
+        span: Span<'a>,
+    },
+    /// A duplicate resource constructor was encountered.
+    #[error("duplicate constructor for resource `{resource}`")]
+    DuplicateResourceConstructor {
+        /// The name of the resource.
+        resource: &'a str,
+        /// The span where the error occurred.
+        span: Span<'a>,
+    },
+    /// A duplicate resource method was encountered.
+    #[error("duplicate method `{name}` for resource `{resource}`")]
+    DuplicateResourceMethod {
+        /// The name of the method.
+        name: &'a str,
+        /// The name of the resource.
+        resource: &'a str,
+        /// The span where the error occurred.
+        span: Span<'a>,
+    },
+    /// A duplicate variant case was encountered.
+    #[error("duplicate case `{case}` for variant type `{name}`")]
+    DuplicateVariantCase {
+        /// The name of the case.
+        case: &'a str,
+        /// The name of the variant type.
+        name: &'a str,
+        /// The span where the error occurred.
+        span: Span<'a>,
+    },
+    /// A duplicate record field was encountered.
+    #[error("duplicate field `{field}` for record type `{name}`")]
+    DuplicateRecordField {
+        /// The name of the field.
+        field: &'a str,
+        /// The name of the record type.
+        name: &'a str,
+        /// The span where the error occurred.
+        span: Span<'a>,
+    },
+    /// A duplicate enum case was encountered.
+    #[error("duplicate case `{case}` for enum type `{name}`")]
+    DuplicateEnumCase {
+        /// The name of the case.
+        case: &'a str,
+        /// The name of the enum type.
+        name: &'a str,
+        /// The span where the error occurred.
+        span: Span<'a>,
+    },
+    /// A duplicate flag was encountered.
+    #[error("duplicate flag `{flag}` for flags type `{name}`")]
+    DuplicateFlag {
+        /// The name of the flag.
+        flag: &'a str,
+        /// The name of the flags type.
+        name: &'a str,
+        /// The span where the error occurred.
+        span: Span<'a>,
+    },
+    /// The name cannot be used as an alias type.
+    #[error("`{name}` ({kind}) cannot be used in a type alias")]
+    InvalidAliasType {
+        /// The name that cannot be used as an alias type.
+        name: &'a str,
+        /// The kind of the item.
+        kind: &'static str,
+        /// The span where the error occurred.
+        span: Span<'a>,
+    },
+    /// The name is not a function type.
+    #[error("`{name}` ({kind}) is not a function type")]
+    NotFuncType {
+        /// The name that is not a function type.
+        name: &'a str,
+        /// The kind of the item.
+        kind: &'static str,
+        /// The span where the error occurred.
+        span: Span<'a>,
+    },
+    /// The name is not a resource type.
+    #[error("`{name}` ({kind}) is not a resource type")]
+    NotResourceType {
+        /// The name that is not a resource type.
+        name: &'a str,
+        /// The kind of the item.
+        kind: &'static str,
+        /// The span where the error occurred.
+        span: Span<'a>,
+    },
+    /// The name is not a value type.
+    #[error("`{name}` ({kind}) cannot be used as a value type")]
+    NotValueType {
+        /// The name that is not a value type.
+        name: &'a str,
+        /// The kind of the item.
+        kind: &'static str,
+        /// The span where the error occurred.
+        span: Span<'a>,
+    },
+    /// A duplicate function parameter was encountered.
+    #[error("duplicate {kind} parameter `{name}`")]
+    DuplicateParameter {
+        /// The name of the parameter.
+        name: &'a str,
+        /// The kind of the function.
+        kind: FuncKind,
+        /// The span where the error occurred.
+        span: Span<'a>,
+    },
+    /// A duplicate result was encountered.
+    #[error("duplicate {kind} result `{name}`")]
+    DuplicateResult {
+        /// The name of the result.
+        name: &'a str,
+        /// The kind of the function.
+        kind: FuncKind,
+        /// The span where the error occurred.
+        span: Span<'a>,
+    },
+    /// A package failed to resolve.
+    #[error("failed to resolve package `{name}`")]
+    PackageResolutionFailure {
+        /// The name of the package.
+        name: &'a str,
+        /// The span where the error occurred.
+        span: Span<'a>,
+        /// The underlying error.
+        #[source]
+        source: anyhow::Error,
+    },
+    /// A package failed to parse.
+    #[error("failed to parse package `{name}`")]
+    PackageParseFailure {
+        /// The name of the package.
+        name: &'a str,
+        /// The span where the error occurred.
+        span: Span<'a>,
+        /// The underlying error.
+        #[source]
+        source: anyhow::Error,
+    },
+    /// An unknown package was encountered.
+    #[error("unknown package `{name}`")]
+    UnknownPackage {
+        /// The name of the package.
+        name: &'a str,
+        /// The span where the error occurred.
+        span: Span<'a>,
+    },
+    /// A package is missing an export.
+    #[error("{prev}package `{name}` has no export named `{export}`", prev = ParentPathDisplay(*.kind, .path))]
+    PackageMissingExport {
+        /// The name of the package.
+        name: &'a str,
+        /// The name of the export.
+        export: &'a str,
+        /// The kind of the item being accessed.
+        kind: Option<&'static str>,
+        /// The path to the current item.
+        path: String,
+        /// The span where the error occurred.
+        span: Span<'a>,
+    },
+    /// A missing export in a package path was encountered.
+    #[error("`{name}` ({kind}) has no export named `{export}`")]
+    PackagePathMissingExport {
+        /// The name that has no matching export.
+        name: &'a str,
+        /// The kind of the item.
+        kind: &'static str,
+        /// The name of the export.
+        export: &'a str,
+        /// The span where the error occurred.
+        span: Span<'a>,
+    },
+    /// A missing import on a component was encountered.
+    #[error("component `{package}` has no import named `{import}`")]
+    MissingComponentImport {
+        /// The name of the package.
+        package: &'a str,
+        /// The name of the import.
+        import: String,
+        /// The span where the error occurred.
+        span: Span<'a>,
+    },
+    /// A mismatched instantiation argument was encountered.
+    #[error("mismatched instantiation argument `{name}`")]
+    MismatchedInstantiationArg {
+        /// The name of the argument.
+        name: String,
+        /// The span where the error occurred.
+        span: Span<'a>,
+        /// The source of the error.
+        #[source]
+        source: anyhow::Error,
+    },
+    /// A duplicate instantiation argument was encountered.
+    #[error("duplicate instantiation argument `{name}`")]
+    DuplicateInstantiationArg {
+        /// The name of the argument.
+        name: String,
+        /// The span where the error occurred.
+        span: Span<'a>,
+    },
+    /// A missing instantiation argument was encountered.
+    #[error("missing instantiation argument `{name}` for package `{package}`")]
+    MissingInstantiationArg {
+        /// The name of the argument.
+        name: String,
+        /// The name of the package.
+        package: &'a str,
+        /// The span where the error occurred.
+        span: Span<'a>,
+    },
+    /// An access expression on an inaccessible value was encountered.
+    #[error("a {kind} cannot be accessed")]
+    Inaccessible {
+        /// The kind of the item.
+        kind: &'static str,
+        /// The span where the error occurred.
+        span: Span<'a>,
+    },
+    /// An access on an interface was encountered.
+    #[error("an interface cannot be accessed")]
+    InaccessibleInterface {
+        /// The span where the error occurred.
+        span: Span<'a>,
+    },
+    /// An instance is missing an export.
+    #[error("the instance has no export named `{name}`")]
+    MissingInstanceExport {
+        /// The name of the export.
+        name: String,
+        /// The span where the error occurred.
+        span: Span<'a>,
+    },
+}
+
+impl Spanned for Error<'_> {
+    fn span(&self) -> Span {
+        match self {
+            Error::UndefinedName { span, .. }
+            | Error::DuplicateName { span, .. }
+            | Error::DuplicateInterfaceExport { span, .. }
+            | Error::DuplicateWorldItem { span, .. }
+            | Error::NotFuncOrInterface { span, .. }
+            | Error::NotInterface { span, .. }
+            | Error::DuplicateWorldIncludeName { span, .. }
+            | Error::NotWorld { span, .. }
+            | Error::MissingWorldInclude { span, .. }
+            | Error::WorldIncludeConflict { span, .. }
+            | Error::UndefinedInterfaceType { span, .. }
+            | Error::NotInterfaceValueType { span, .. }
+            | Error::DuplicateResourceConstructor { span, .. }
+            | Error::DuplicateResourceMethod { span, .. }
+            | Error::DuplicateVariantCase { span, .. }
+            | Error::DuplicateRecordField { span, .. }
+            | Error::DuplicateEnumCase { span, .. }
+            | Error::DuplicateFlag { span, .. }
+            | Error::InvalidAliasType { span, .. }
+            | Error::NotFuncType { span, .. }
+            | Error::NotResourceType { span, .. }
+            | Error::NotValueType { span, .. }
+            | Error::DuplicateParameter { span, .. }
+            | Error::DuplicateResult { span, .. }
+            | Error::PackageResolutionFailure { span, .. }
+            | Error::PackageParseFailure { span, .. }
+            | Error::UnknownPackage { span, .. }
+            | Error::PackageMissingExport { span, .. }
+            | Error::PackagePathMissingExport { span, .. }
+            | Error::MissingComponentImport { span, .. }
+            | Error::MismatchedInstantiationArg { span, .. }
+            | Error::DuplicateInstantiationArg { span, .. }
+            | Error::MissingInstantiationArg { span, .. }
+            | Error::Inaccessible { span, .. }
+            | Error::InaccessibleInterface { span, .. }
+            | Error::MissingInstanceExport { span, .. } => *span,
+        }
+    }
+}
+
+/// Represents a resolution result.
+pub type ResolutionResult<'a, T> = std::result::Result<T, Error<'a>>;
+
 /// A trait implemented by package resolvers.
 ///
 /// This is used when resolving a document to resolve any referenced packages.
@@ -82,7 +542,7 @@ pub trait PackageResolver {
     /// Resolves a package name to the package bytes.
     ///
     /// Returns `Ok(None)` if the package could not be found.
-    fn resolve(&self, name: &ast::PackageName) -> Result<Option<Vec<u8>>>;
+    fn resolve(&self, name: &str) -> anyhow::Result<Option<Vec<u8>>>;
 }
 
 /// Used to resolve packages from the file system.
@@ -108,21 +568,21 @@ impl Default for FileSystemPackageResolver {
 }
 
 impl PackageResolver for FileSystemPackageResolver {
-    fn resolve(&self, name: &ast::PackageName) -> Result<Option<Vec<u8>>> {
-        let path = if let Some(path) = self.overrides.get(name.as_str()) {
+    fn resolve(&self, name: &str) -> anyhow::Result<Option<Vec<u8>>> {
+        let path = if let Some(path) = self.overrides.get(name) {
             if !path.exists() {
-                bail!(
+                anyhow::bail!(
                     "local path `{path}` for package `{name}` does not exist",
                     path = path.display(),
-                    name = name.as_str()
+                    name = name
                 )
             }
 
             path.clone()
         } else {
             let mut path = self.root.clone();
-            for part in &name.parts {
-                path.push(part.as_str());
+            for segment in name.split(':') {
+                path.push(segment);
             }
 
             // If the path is not a directory, use a `.wasm` or `.wat` extension
@@ -178,7 +638,7 @@ impl PackageResolver for FileSystemPackageResolver {
                 Ok(std::borrow::Cow::Owned(wat)) => wat,
                 Err(mut e) => {
                     e.set_path(path);
-                    bail!(e);
+                    anyhow::bail!(e);
                 }
             };
 
@@ -210,28 +670,14 @@ pub enum ItemKind {
 }
 
 impl ItemKind {
-    pub(crate) fn display<'a>(&'a self, definitions: &'a Definitions) -> impl fmt::Display + 'a {
-        ItemKindDisplay {
-            kind: *self,
-            definitions,
-        }
-    }
-}
-
-struct ItemKindDisplay<'a> {
-    kind: ItemKind,
-    definitions: &'a Definitions,
-}
-
-impl fmt::Display for ItemKindDisplay<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self.kind {
-            ItemKind::Func(_) => write!(f, "function"),
-            ItemKind::Type(ty) => ty.display(self.definitions).fmt(f),
-            ItemKind::Instance(_) | ItemKind::Instantiation(_) => write!(f, "instance"),
-            ItemKind::Component(_) => write!(f, "component"),
-            ItemKind::Module(_) => write!(f, "module"),
-            ItemKind::Value(_) => write!(f, "value"),
+    fn as_str(&self, definitions: &Definitions) -> &'static str {
+        match self {
+            ItemKind::Func(_) => "function",
+            ItemKind::Type(ty) => ty.as_str(definitions),
+            ItemKind::Instance(_) | ItemKind::Instantiation(_) => "instance",
+            ItemKind::Component(_) => "component",
+            ItemKind::Module(_) => "module",
+            ItemKind::Value(_) => "value",
         }
     }
 }
@@ -357,11 +803,11 @@ pub struct ResolvedDocument {
 
 impl ResolvedDocument {
     /// Creates a new resolved document from the given document.
-    pub fn new(
-        document: &ast::Document,
+    pub fn new<'a>(
+        document: &'a ast::Document<'a>,
         package: impl Into<String>,
         resolver: Option<Box<dyn PackageResolver>>,
-    ) -> Result<Self> {
+    ) -> ResolutionResult<'a, Self> {
         let mut scopes = Arena::new();
         let root_scope = scopes.alloc(Scope {
             parent: None,
@@ -386,7 +832,7 @@ impl ResolvedDocument {
         };
 
         for stmt in &document.statements {
-            match &stmt.stmt {
+            match stmt {
                 ast::Statement::Import(i) => resolution.import(&mut state, i)?,
                 ast::Statement::Type(t) => resolution.type_statement(&mut state, t)?,
                 ast::Statement::Let(l) => resolution.let_statement(&mut state, l)?,
@@ -398,14 +844,14 @@ impl ResolvedDocument {
     }
 
     /// Encode the resolved document as a WebAssembly component.
-    pub fn encode(&self) -> Result<Vec<u8>> {
+    pub fn encode(&self) -> ResolutionResult<Vec<u8>> {
         todo!("implement encoding")
     }
 
     fn get(&self, state: &ResolutionState, id: &ast::Ident) -> Option<ItemId> {
         let mut current = &self.scopes[state.current_scope];
         loop {
-            if let Some(item) = current.get(id.as_str()) {
+            if let Some(item) = current.get(id.string) {
                 return Some(item);
             }
 
@@ -413,13 +859,14 @@ impl ResolvedDocument {
         }
     }
 
-    fn require(&self, state: &ResolutionState, id: &ast::Ident) -> Result<ItemId> {
-        self.get(state, id).ok_or_else(|| {
-            new_error_with_span(
-                state.document.path,
-                id.0,
-                format!("undefined name `{id}`", id = id.as_str()),
-            )
+    fn require<'a>(
+        &self,
+        state: &ResolutionState,
+        id: &ast::Ident<'a>,
+    ) -> ResolutionResult<'a, ItemId> {
+        self.get(state, id).ok_or(Error::UndefinedName {
+            name: id.string,
+            span: id.span,
         })
     }
 
@@ -438,43 +885,42 @@ impl ResolvedDocument {
         id
     }
 
-    fn register_name(
+    fn register_name<'a>(
         &mut self,
-        state: &mut ResolutionState,
-        id: ast::Ident,
+        state: &mut ResolutionState<'a>,
+        id: ast::Ident<'a>,
         item: ItemId,
-    ) -> Result<()> {
+    ) -> ResolutionResult<'a, ()> {
         if let Some(prev) = self.scopes[state.current_scope]
             .items
-            .insert(id.as_str().to_owned(), item)
+            .insert(id.string.to_owned(), item)
         {
             let offset = state.offsets[&prev];
-            let (line, column) = Position::new(id.0.get_input(), offset).unwrap().line_col();
-            return Err(new_error_with_span(
-                state.document.path,
-                id.0,
-                format!(
-                    "`{id}` was previously defined at {path}:{line}:{column}",
-                    id = id.as_str(),
-                    path = state.document.path.display(),
-                ),
-            ));
+            let (line, column) = line_column(id.span.source(), offset);
+            return Err(Error::DuplicateName {
+                name: id.string,
+                path: state.document.path,
+                line,
+                column,
+                span: id.span,
+            });
         }
 
-        state.offsets.insert(item, id.0.start());
+        state.offsets.insert(item, id.span.start);
 
         Ok(())
     }
 
-    fn import(&mut self, state: &mut ResolutionState, stmt: &ast::ImportStatement) -> Result<()> {
+    fn import<'a>(
+        &mut self,
+        state: &mut ResolutionState<'a>,
+        stmt: &'a ast::ImportStatement<'a>,
+    ) -> ResolutionResult<'a, ()> {
         let kind = match &stmt.ty {
             ast::ImportType::Package(p) => self.resolve_package_export(state, p)?,
-            ast::ImportType::Func(ty) => ItemKind::Func(self.func_type(
-                state,
-                &ty.params,
-                ty.results.as_ref(),
-                FuncKind::Free,
-            )?),
+            ast::ImportType::Func(ty) => {
+                ItemKind::Func(self.func_type(state, &ty.params, &ty.results, FuncKind::Free)?)
+            }
             ast::ImportType::Interface(i) => self.inline_interface(state, i)?,
             ast::ImportType::Ident(id) => self.items[self.require(state, id)?].kind,
         };
@@ -490,18 +936,18 @@ impl ResolvedDocument {
         let id = self.items.alloc(Item {
             kind,
             source: ItemSource::Import {
-                with: stmt.with.as_ref().map(|w| w.name.as_str().to_owned()),
+                with: stmt.with.as_ref().map(|s| s.value.to_owned()),
             },
         });
 
         self.register_name(state, stmt.id, id)
     }
 
-    fn type_statement(
+    fn type_statement<'a>(
         &mut self,
-        state: &mut ResolutionState,
-        stmt: &ast::TypeStatement,
-    ) -> Result<()> {
+        state: &mut ResolutionState<'a>,
+        stmt: &'a ast::TypeStatement<'a>,
+    ) -> ResolutionResult<'a, ()> {
         match stmt {
             ast::TypeStatement::Interface(i) => self.interface_decl(state, i),
             ast::TypeStatement::World(w) => self.world_decl(state, w),
@@ -512,17 +958,17 @@ impl ResolvedDocument {
     fn let_statement<'a>(
         &mut self,
         state: &mut ResolutionState<'a>,
-        stmt: &'a ast::LetStatement,
-    ) -> Result<()> {
+        stmt: &'a ast::LetStatement<'a>,
+    ) -> ResolutionResult<'a, ()> {
         let item = self.expr(state, &stmt.expr)?;
         self.register_name(state, stmt.id, item)
     }
 
-    fn inline_interface(
+    fn inline_interface<'a>(
         &mut self,
-        state: &mut ResolutionState,
-        iface: &ast::InlineInterface,
-    ) -> Result<ItemKind> {
+        state: &mut ResolutionState<'a>,
+        iface: &'a ast::InlineInterface<'a>,
+    ) -> ResolutionResult<'a, ItemKind> {
         self.push_scope(state);
 
         let mut ty = Interface {
@@ -531,7 +977,7 @@ impl ResolvedDocument {
             scope: Some(state.current_scope),
         };
 
-        self.interface_body(state, None, &iface.body, &mut ty)?;
+        self.interface_items(state, None, &iface.items, &mut ty)?;
 
         self.pop_scope(state);
 
@@ -540,24 +986,24 @@ impl ResolvedDocument {
         )))
     }
 
-    fn interface_decl(
+    fn interface_decl<'a>(
         &mut self,
-        state: &mut ResolutionState,
-        decl: &ast::InterfaceDecl,
-    ) -> Result<()> {
+        state: &mut ResolutionState<'a>,
+        decl: &'a ast::InterfaceDecl<'a>,
+    ) -> ResolutionResult<'a, ()> {
         self.push_scope(state);
 
         let mut ty = Interface {
             id: Some(format!(
                 "{pkg}/{iface}",
                 pkg = self.package,
-                iface = decl.id
+                iface = decl.id.string,
             )),
             exports: Default::default(),
             scope: Some(state.current_scope),
         };
 
-        self.interface_body(state, Some(decl.id.as_str()), &decl.body, &mut ty)?;
+        self.interface_items(state, Some(decl.id.string), &decl.items, &mut ty)?;
 
         self.pop_scope(state);
 
@@ -571,7 +1017,11 @@ impl ResolvedDocument {
         self.register_name(state, decl.id, id)
     }
 
-    fn world_decl(&mut self, state: &mut ResolutionState, decl: &ast::WorldDecl) -> Result<()> {
+    fn world_decl<'a>(
+        &mut self,
+        state: &mut ResolutionState<'a>,
+        decl: &'a ast::WorldDecl<'a>,
+    ) -> ResolutionResult<'a, ()> {
         self.push_scope(state);
 
         let mut ty = World {
@@ -580,7 +1030,7 @@ impl ResolvedDocument {
             scope: Some(state.current_scope),
         };
 
-        self.world_body(state, decl.id.as_str(), &decl.body, &mut ty)?;
+        self.world_body(state, decl.id.string, &decl.items, &mut ty)?;
 
         self.pop_scope(state);
 
@@ -594,45 +1044,35 @@ impl ResolvedDocument {
         self.register_name(state, decl.id, id)
     }
 
-    fn interface_body(
+    fn interface_items<'a>(
         &mut self,
-        state: &mut ResolutionState,
-        name: Option<&str>,
-        body: &ast::InterfaceBody,
+        state: &mut ResolutionState<'a>,
+        name: Option<&'a str>,
+        items: &'a [InterfaceItem<'a>],
         ty: &mut Interface,
-    ) -> Result<()> {
-        for item in &body.items {
-            match &item.stmt {
-                ast::InterfaceItemStatement::Use(u) => {
-                    self.use_type(state, u, &mut ty.exports, false)?
-                }
-                ast::InterfaceItemStatement::Type(decl) => {
-                    let kind = self.type_decl(state, decl)?;
+    ) -> ResolutionResult<'a, ()> {
+        for item in items {
+            match item {
+                ast::InterfaceItem::Use(u) => self.use_type(state, u, &mut ty.exports, false)?,
+                ast::InterfaceItem::Type(decl) => {
+                    let kind = self.item_type_decl(state, decl)?;
                     let prev = ty
                         .exports
-                        .insert(decl.id().as_str().into(), Extern::Kind(kind));
+                        .insert(decl.id().string.into(), Extern::Kind(kind));
                     assert!(prev.is_none(), "duplicate type in scope");
                 }
-                ast::InterfaceItemStatement::Export(e) => {
+                ast::InterfaceItem::Export(e) => {
                     let kind = ItemKind::Func(self.func_type_ref(state, &e.ty, FuncKind::Free)?);
                     if ty
                         .exports
-                        .insert(e.id.as_str().into(), Extern::Kind(kind))
+                        .insert(e.id.string.into(), Extern::Kind(kind))
                         .is_some()
                     {
-                        return Err(new_error_with_span(
-                            state.document.path,
-                            e.id.0,
-                            match name {
-                                Some(name) => format!(
-                                    "duplicate interface export `{id}` for interface `{name}`",
-                                    id = e.id.as_str()
-                                ),
-                                None => {
-                                    format!("duplicate interface export `{id}`", id = e.id.as_str())
-                                }
-                            },
-                        ));
+                        return Err(Error::DuplicateInterfaceExport {
+                            name: e.id.string,
+                            interface_name: name,
+                            span: e.id.span,
+                        });
                     }
                 }
             }
@@ -641,33 +1081,31 @@ impl ResolvedDocument {
         Ok(())
     }
 
-    fn world_body(
+    fn world_body<'a>(
         &mut self,
-        state: &mut ResolutionState,
-        world: &str,
-        body: &ast::WorldBody,
+        state: &mut ResolutionState<'a>,
+        world: &'a str,
+        items: &'a [WorldItem<'a>],
         ty: &mut World,
-    ) -> Result<()> {
+    ) -> ResolutionResult<'a, ()> {
         let mut includes = Vec::new();
-        for item in &body.items {
-            match &item.stmt {
-                ast::WorldItemStatement::Use(u) => {
-                    self.use_type(state, u, &mut ty.imports, true)?
-                }
-                ast::WorldItemStatement::Type(decl) => {
-                    let kind = self.type_decl(state, decl)?;
+        for item in items {
+            match item {
+                ast::WorldItem::Use(u) => self.use_type(state, u, &mut ty.imports, true)?,
+                ast::WorldItem::Type(decl) => {
+                    let kind = self.item_type_decl(state, decl)?;
                     let prev = ty
                         .exports
-                        .insert(decl.id().as_str().into(), Extern::Kind(kind));
+                        .insert(decl.id().string.into(), Extern::Kind(kind));
                     assert!(prev.is_none(), "duplicate type in scope");
                 }
-                ast::WorldItemStatement::Import(i) => {
-                    self.world_item_decl(state, &i.decl, true, world, ty)?
+                ast::WorldItem::Import(i) => {
+                    self.world_item_path(state, &i.path, WorldItemKind::Import, world, ty)?
                 }
-                ast::WorldItemStatement::Export(e) => {
-                    self.world_item_decl(state, &e.decl, false, world, ty)?
+                ast::WorldItem::Export(e) => {
+                    self.world_item_path(state, &e.path, WorldItemKind::Export, world, ty)?
                 }
-                ast::WorldItemStatement::Include(i) => {
+                ast::WorldItem::Include(i) => {
                     // We delay processing includes until after all other items have been processed
                     includes.push(i);
                 }
@@ -683,40 +1121,20 @@ impl ResolvedDocument {
         Ok(())
     }
 
-    fn world_item_decl(
+    fn world_item_path<'a>(
         &mut self,
-        state: &mut ResolutionState,
-        decl: &ast::WorldItemDecl,
-        import: bool,
-        world: &str,
+        state: &mut ResolutionState<'a>,
+        path: &'a ast::WorldItemPath<'a>,
+        kind: WorldItemKind,
+        world: &'a str,
         ty: &mut World,
-    ) -> Result<()> {
-        let check_name = |name: &str, span: Span, ty: &World| {
-            let exists: bool = if import {
-                ty.imports.contains_key(name)
-            } else {
-                ty.exports.contains_key(name)
-            };
-            if exists {
-                return Err(new_error_with_span(
-                    state.document.path,
-                    span,
-                    format!(
-                        "{dir} `{name}` conflicts with existing {dir} of the same name in world `{world}`",
-                        dir = if import { "import" } else { "export" },
-                    ),
-                ));
-            }
-
-            Ok(())
-        };
-
-        let (name, kind) = match decl {
-            ast::WorldItemDecl::Named(named) => {
-                check_name(named.id.as_str(), named.id.0, ty)?;
+    ) -> ResolutionResult<'a, ()> {
+        let (k, v) = match path {
+            ast::WorldItemPath::Named(named) => {
+                check_name(named.id.string, named.id.span, ty, world, kind)?;
 
                 (
-                    named.id.as_str().into(),
+                    named.id.string.into(),
                     match &named.ty {
                         ast::ExternType::Ident(id) => {
                             let item = &self.items[self.require(state, id)?];
@@ -728,144 +1146,139 @@ impl ResolvedDocument {
                                     ItemKind::Func(id)
                                 }
                                 _ => {
-                                    return Err(new_error_with_span(
-                                        state.document.path,
-                                        id.0,
-                                        format!(
-                                            "`{id}` ({kind}) is not a function type or interface",
-                                            kind = item.kind.display(&self.definitions),
-                                            id = id.as_str(),
-                                        ),
-                                    ))
+                                    return Err(Error::NotFuncOrInterface {
+                                        name: id.string,
+                                        kind: item.kind.as_str(&self.definitions),
+                                        span: id.span,
+                                    });
                                 }
                             }
                         }
                         ast::ExternType::Func(f) => ItemKind::Func(self.func_type(
                             state,
                             &f.params,
-                            f.results.as_ref(),
+                            &f.results,
                             FuncKind::Free,
                         )?),
                         ast::ExternType::Interface(i) => self.inline_interface(state, i)?,
                     },
                 )
             }
-            ast::WorldItemDecl::Interface(i) => match i {
-                ast::InterfaceRef::Ident(id) => {
-                    let item = &self.items[self.require(state, id)?];
-                    match item.kind {
-                        ItemKind::Type(Type::Interface(iface_ty_id))
-                        | ItemKind::Instance(iface_ty_id) => {
-                            let iface_id = self.definitions.interfaces[iface_ty_id]
-                                .id
-                                .as_ref()
-                                .expect("expected an interface id");
-                            check_name(iface_id, id.0, ty)?;
-                            (iface_id.clone(), ItemKind::Instance(iface_ty_id))
-                        }
-                        _ => {
-                            return Err(new_error_with_span(
-                                state.document.path,
-                                id.0,
-                                format!(
-                                    "`{id}` ({kind}) is not an interface",
-                                    kind = item.kind.display(&self.definitions),
-                                    id = id.as_str()
-                                ),
-                            ))
-                        }
-                    }
-                }
-                ast::InterfaceRef::Path(p) => match self.resolve_package_export(state, p)? {
-                    ItemKind::Type(Type::Interface(id)) | ItemKind::Instance(id) => {
-                        let name = self.definitions.interfaces[id]
+            ast::WorldItemPath::Ident(id) => {
+                let item = &self.items[self.require(state, id)?];
+                match item.kind {
+                    ItemKind::Type(Type::Interface(iface_ty_id))
+                    | ItemKind::Instance(iface_ty_id) => {
+                        let iface_id = self.definitions.interfaces[iface_ty_id]
                             .id
                             .as_ref()
                             .expect("expected an interface id");
-                        check_name(name, p.span(), ty)?;
-                        (name.clone(), ItemKind::Instance(id))
+                        check_name(iface_id, id.span, ty, world, kind)?;
+                        (iface_id.clone(), ItemKind::Instance(iface_ty_id))
                     }
-                    kind => {
-                        return Err(new_error_with_span(
-                            state.document.path,
-                            p.span(),
-                            format!(
-                                "`{path}` ({kind}) is not an interface",
-                                path = p.as_str(),
-                                kind = kind.display(&self.definitions)
-                            ),
-                        ))
+                    _ => {
+                        return Err(Error::NotInterface {
+                            name: id.string,
+                            kind: item.kind.as_str(&self.definitions),
+                            span: id.span,
+                        });
                     }
-                },
+                }
+            }
+
+            ast::WorldItemPath::Package(p) => match self.resolve_package_export(state, p)? {
+                ItemKind::Type(Type::Interface(id)) | ItemKind::Instance(id) => {
+                    let name = self.definitions.interfaces[id]
+                        .id
+                        .as_ref()
+                        .expect("expected an interface id");
+                    check_name(name, p.span, ty, world, kind)?;
+                    (name.clone(), ItemKind::Instance(id))
+                }
+                kind => {
+                    return Err(Error::NotInterface {
+                        name: p.span.as_str(),
+                        kind: kind.as_str(&self.definitions),
+                        span: p.span,
+                    });
+                }
             },
         };
 
-        if import {
-            ty.imports.insert(name, Extern::Kind(kind));
+        if kind == WorldItemKind::Import {
+            ty.imports.insert(k, Extern::Kind(v));
         } else {
-            ty.exports.insert(name, Extern::Kind(kind));
+            ty.exports.insert(k, Extern::Kind(v));
         }
 
-        Ok(())
+        return Ok(());
+
+        fn check_name<'a>(
+            name: &str,
+            span: Span<'a>,
+            ty: &World,
+            world: &'a str,
+            kind: WorldItemKind,
+        ) -> ResolutionResult<'a, ()> {
+            let exists: bool = if kind == WorldItemKind::Import {
+                ty.imports.contains_key(name)
+            } else {
+                ty.exports.contains_key(name)
+            };
+
+            if exists {
+                return Err(Error::DuplicateWorldItem {
+                    kind,
+                    name: name.to_owned(),
+                    world,
+                    span,
+                });
+            }
+
+            Ok(())
+        }
     }
 
-    fn world_include(
+    fn world_include<'a>(
         &mut self,
-        state: &mut ResolutionState,
-        stmt: &ast::WorldIncludeStatement,
-        world: &str,
+        state: &mut ResolutionState<'a>,
+        include: &ast::WorldInclude<'a>,
+        world: &'a str,
         ty: &mut World,
-    ) -> Result<()> {
+    ) -> ResolutionResult<'a, ()> {
         let mut replacements = HashMap::new();
-        for item in stmt
-            .with
-            .as_ref()
-            .map(|w| w.names.as_slice())
-            .unwrap_or(&[])
-        {
-            let prev = replacements.insert(item.name.as_str(), item);
+        for item in &include.with {
+            let prev = replacements.insert(item.from.string, item);
             if prev.is_some() {
-                return Err(new_error_with_span(
-                    state.document.path,
-                    item.name.0,
-                    format!(
-                        "duplicate `{name}` in world include `with` clause",
-                        name = item.name,
-                    ),
-                ));
+                return Err(Error::DuplicateWorldIncludeName {
+                    name: item.from.string,
+                    span: item.from.span,
+                });
             }
         }
 
-        let id = match &stmt.world {
+        let id = match &include.world {
             ast::WorldRef::Ident(id) => {
                 let item = &self.items[self.require(state, id)?];
                 match item.kind {
                     ItemKind::Type(Type::World(id)) | ItemKind::Component(id) => id,
                     kind => {
-                        return Err(new_error_with_span(
-                            state.document.path,
-                            id.0,
-                            format!(
-                                "`{id}` ({kind}) is not a world",
-                                id = id.as_str(),
-                                kind = kind.display(&self.definitions)
-                            ),
-                        ))
+                        return Err(Error::NotWorld {
+                            name: id.string,
+                            kind: kind.as_str(&self.definitions),
+                            span: id.span,
+                        });
                     }
                 }
             }
-            ast::WorldRef::Path(path) => match self.resolve_package_export(state, path)? {
+            ast::WorldRef::Package(path) => match self.resolve_package_export(state, path)? {
                 ItemKind::Type(Type::World(id)) | ItemKind::Component(id) => id,
                 kind => {
-                    return Err(new_error_with_span(
-                        state.document.path,
-                        path.span(),
-                        format!(
-                            "`{path}` ({kind}) is not a world",
-                            path = path.as_str(),
-                            kind = kind.display(&self.definitions)
-                        ),
-                    ))
+                    return Err(Error::NotWorld {
+                        name: path.span.as_str(),
+                        kind: kind.as_str(&self.definitions),
+                        span: path.span,
+                    });
                 }
             },
         };
@@ -873,53 +1286,46 @@ impl ResolvedDocument {
         let other = &self.definitions.worlds[id];
         for (name, item) in &other.imports {
             let name = replace_name(
-                stmt,
+                include,
                 world,
                 ty,
                 name,
-                true,
+                WorldItemKind::Import,
                 &mut replacements,
-                state.document.path,
             )?;
             ty.imports.entry(name).or_insert(*item);
         }
 
         for (name, item) in &other.exports {
             let name = replace_name(
-                stmt,
+                include,
                 world,
                 ty,
                 name,
-                false,
+                WorldItemKind::Export,
                 &mut replacements,
-                state.document.path,
             )?;
             ty.exports.entry(name).or_insert(*item);
         }
 
         if let Some(missing) = replacements.values().next() {
-            return Err(new_error_with_span(
-                state.document.path,
-                missing.name.0,
-                format!(
-                    "world `{other}` does not have an import or export with kebab-name `{name}`",
-                    other = stmt.world.name(),
-                    name = missing.name.as_str(),
-                ),
-            ));
+            return Err(Error::MissingWorldInclude {
+                world: include.world.name(),
+                name: missing.from.string,
+                span: missing.from.span,
+            });
         }
 
         return Ok(());
 
-        fn replace_name(
-            stmt: &ast::WorldIncludeStatement,
-            world: &str,
+        fn replace_name<'a>(
+            include: &ast::WorldInclude<'a>,
+            world: &'a str,
             ty: &mut World,
             name: &str,
-            import: bool,
-            replacements: &mut HashMap<&str, &ast::WorldIncludeItem>,
-            path: &Path,
-        ) -> Result<String> {
+            kind: WorldItemKind,
+            replacements: &mut HashMap<&str, &ast::WorldIncludeItem<'a>>,
+        ) -> ResolutionResult<'a, String> {
             // Check for a id, which doesn't get replaced.
             if name.contains(':') {
                 return Ok(name.to_owned());
@@ -927,90 +1333,79 @@ impl ResolvedDocument {
 
             let (name, span) = replacements
                 .remove(name)
-                .map(|r| (r.other.as_str(), r.other.0))
-                .unwrap_or_else(|| (name, stmt.world.span()));
+                .map(|i| (i.to.string, i.to.span))
+                .unwrap_or_else(|| (name, include.world.span()));
 
-            let exists = if import {
+            let exists = if kind == WorldItemKind::Import {
                 ty.imports.contains_key(name)
             } else {
                 ty.exports.contains_key(name)
             };
 
             if exists {
-                return Err(new_error_with_span(
-                    path,
+                return Err(Error::WorldIncludeConflict {
+                    kind,
+                    name: name.to_owned(),
+                    from: include.world.name(),
+                    to: world,
                     span,
-                    format!(
-                        "{dir} `{name}` from world `{other}` conflicts with {dir} of the same name in world `{world}`{hint}",
-                        dir = if import { "import" } else { "export" },
-                        other = stmt.world.name(),
-                        hint = if stmt.with.is_some() { "" } else {
-                            " (consider using a `with` clause to use a different name)"
-                        }
-                    ),
-                ));
+                    hint: if !include.with.is_empty() {
+                        ""
+                    } else {
+                        " (consider using a `with` clause to use a different name)"
+                    },
+                });
             }
 
             Ok(name.to_owned())
         }
     }
 
-    fn use_type(
+    fn use_type<'a>(
         &mut self,
-        state: &mut ResolutionState,
-        stmt: &ast::UseStatement,
+        state: &mut ResolutionState<'a>,
+        use_type: &ast::Use<'a>,
         externs: &mut ExternMap,
         in_world: bool,
-    ) -> Result<()> {
-        let (interface, name) = match &stmt.items.path {
+    ) -> ResolutionResult<'a, ()> {
+        let (interface, name) = match &use_type.path {
             ast::UsePath::Package(path) => match self.resolve_package_export(state, path)? {
-                ItemKind::Type(Type::Interface(id)) | ItemKind::Instance(id) => (id, path.as_str()),
+                ItemKind::Type(Type::Interface(id)) | ItemKind::Instance(id) => {
+                    (id, path.span.as_str())
+                }
                 kind => {
-                    return Err(new_error_with_span(
-                        state.document.path,
-                        path.span(),
-                        format!(
-                            "`{path}` ({kind}) is not an interface",
-                            path = path.as_str(),
-                            kind = kind.display(&self.definitions)
-                        ),
-                    ))
+                    return Err(Error::NotInterface {
+                        name: path.span.as_str(),
+                        kind: kind.as_str(&self.definitions),
+                        span: path.span,
+                    });
                 }
             },
             ast::UsePath::Ident(id) => {
                 let item = &self.items[self.require(state, id)?];
                 match item.kind {
                     ItemKind::Type(Type::Interface(iface_ty_id))
-                    | ItemKind::Instance(iface_ty_id) => (iface_ty_id, id.as_str()),
+                    | ItemKind::Instance(iface_ty_id) => (iface_ty_id, id.string),
                     kind => {
-                        return Err(new_error_with_span(
-                            state.document.path,
-                            id.0,
-                            format!(
-                                "`{id}` ({kind}) is not an interface",
-                                id = id.as_str(),
-                                kind = kind.display(&self.definitions)
-                            ),
-                        ))
+                        return Err(Error::NotInterface {
+                            name: id.string,
+                            kind: kind.as_str(&self.definitions),
+                            span: id.span,
+                        });
                     }
                 }
             }
         };
 
-        for item in &stmt.items.list {
-            let ident = item.as_clause.as_ref().map(|c| c.id).unwrap_or(item.id);
+        for item in &use_type.items {
+            let ident = item.as_id.unwrap_or(item.id);
             let (index, _, ext) = self.definitions.interfaces[interface]
                 .exports
-                .get_full(item.id.as_str())
-                .ok_or_else(|| {
-                    new_error_with_span(
-                        state.document.path,
-                        item.id.0,
-                        format!(
-                            "type `{item}` is not defined in interface `{name}`",
-                            item = item.id.as_str()
-                        ),
-                    )
+                .get_full(item.id.string)
+                .ok_or(Error::UndefinedInterfaceType {
+                    name: item.id.string,
+                    interface_name: name,
+                    span: item.id.span,
                 })?;
 
             let kind = ext.kind();
@@ -1047,7 +1442,7 @@ impl ResolvedDocument {
                         }
                     }
 
-                    externs.insert(ident.as_str().into(), new_extern);
+                    externs.insert(ident.string.into(), new_extern);
 
                     let id = self.items.alloc(Item {
                         kind,
@@ -1056,15 +1451,12 @@ impl ResolvedDocument {
                     self.register_name(state, ident, id)?;
                 }
                 _ => {
-                    return Err(new_error_with_span(
-                        state.document.path,
-                        item.id.0,
-                        format!(
-                            "`{item}` ({kind}) is not a value type in interface `{name}`",
-                            kind = kind.display(&self.definitions),
-                            item = item.id.as_str()
-                        ),
-                    ));
+                    return Err(Error::NotInterfaceValueType {
+                        name: item.id.string,
+                        kind: kind.as_str(&self.definitions),
+                        interface_name: name,
+                        span: item.id.span,
+                    });
                 }
             }
         }
@@ -1072,9 +1464,12 @@ impl ResolvedDocument {
         Ok(())
     }
 
-    fn type_decl(&mut self, state: &mut ResolutionState, decl: &ast::TypeDecl) -> Result<ItemKind> {
+    fn type_decl<'a>(
+        &mut self,
+        state: &mut ResolutionState<'a>,
+        decl: &'a ast::TypeDecl,
+    ) -> ResolutionResult<'a, ItemKind> {
         match decl {
-            ast::TypeDecl::Resource(r) => self.resource_decl(state, r),
             ast::TypeDecl::Variant(v) => self.variant_decl(state, v),
             ast::TypeDecl::Record(r) => self.record_decl(state, r),
             ast::TypeDecl::Flags(f) => self.flags_decl(state, f),
@@ -1083,11 +1478,26 @@ impl ResolvedDocument {
         }
     }
 
-    fn resource_decl(
+    fn item_type_decl<'a>(
         &mut self,
-        state: &mut ResolutionState,
-        decl: &ast::ResourceDecl,
-    ) -> Result<ItemKind> {
+        state: &mut ResolutionState<'a>,
+        decl: &'a ast::ItemTypeDecl,
+    ) -> ResolutionResult<'a, ItemKind> {
+        match decl {
+            ast::ItemTypeDecl::Resource(r) => self.resource_decl(state, r),
+            ast::ItemTypeDecl::Variant(v) => self.variant_decl(state, v),
+            ast::ItemTypeDecl::Record(r) => self.record_decl(state, r),
+            ast::ItemTypeDecl::Flags(f) => self.flags_decl(state, f),
+            ast::ItemTypeDecl::Enum(e) => self.enum_decl(state, e),
+            ast::ItemTypeDecl::Alias(a) => self.type_alias(state, a),
+        }
+    }
+
+    fn resource_decl<'a>(
+        &mut self,
+        state: &mut ResolutionState<'a>,
+        decl: &ast::ResourceDecl<'a>,
+    ) -> ResolutionResult<'a, ItemKind> {
         // Resources are allowed to be self-referential, so we need to allocate the resource
         // before we resolve the methods.
         let id = self.definitions.resources.alloc(Resource {
@@ -1103,89 +1513,79 @@ impl ResolvedDocument {
 
         self.register_name(state, decl.id, item_id)?;
 
-        self.definitions.resources[id].methods = match &decl.body {
-            ast::ResourceBody::Empty(_) => Default::default(),
-            ast::ResourceBody::Methods { methods, .. } => {
-                let mut resource_methods = IndexMap::new();
-                for (method, _) in methods.iter() {
-                    let (name, method, span) = match method {
-                        ast::ResourceMethod::Constructor(ast::Constructor { keyword, params }) => (
-                            String::new(),
-                            ResourceMethod {
-                                kind: FuncKind::Constructor,
-                                ty: self.func_type(state, params, None, FuncKind::Constructor)?,
-                            },
-                            keyword.0,
-                        ),
-                        ast::ResourceMethod::Method(ast::Method {
-                            id, func, keyword, ..
-                        }) => (
-                            id.as_str().into(),
-                            ResourceMethod {
-                                kind: if keyword.is_some() {
-                                    FuncKind::Static
-                                } else {
-                                    FuncKind::Method
-                                },
-                                ty: self.func_type_ref(state, func, FuncKind::Method)?,
-                            },
-                            id.0,
-                        ),
-                    };
+        let mut methods: IndexMap<String, ResourceMethod> = Default::default();
+        for method in &decl.methods {
+            let (name, method, span) = match method {
+                ast::ResourceMethod::Constructor(ast::Constructor { span, params, .. }) => (
+                    "",
+                    ResourceMethod {
+                        kind: FuncKind::Constructor,
+                        ty: self.func_type(
+                            state,
+                            params,
+                            &ast::ResultList::Empty,
+                            FuncKind::Constructor,
+                        )?,
+                    },
+                    *span,
+                ),
+                ast::ResourceMethod::Method(ast::Method {
+                    id, is_static, ty, ..
+                }) => (
+                    id.string,
+                    ResourceMethod {
+                        kind: if *is_static {
+                            FuncKind::Static
+                        } else {
+                            FuncKind::Method
+                        },
+                        ty: self.func_type_ref(state, ty, FuncKind::Method)?,
+                    },
+                    id.span,
+                ),
+            };
 
-                    let prev = resource_methods.insert(name.clone(), method);
-                    if prev.is_some() {
-                        return Err(new_error_with_span(
-                            state.document.path,
-                            span,
-                            if name.is_empty() {
-                                format!(
-                                    "duplicate constructor for resource `{res}`",
-                                    res = decl.id.as_str()
-                                )
-                            } else {
-                                format!(
-                                    "duplicate method `{name}` for resource `{res}`",
-                                    res = decl.id.as_str()
-                                )
-                            },
-                        ));
+            let prev = methods.insert(name.to_owned(), method);
+            if prev.is_some() {
+                return Err(if !name.is_empty() {
+                    Error::DuplicateResourceMethod {
+                        name,
+                        resource: decl.id.string,
+                        span,
                     }
-                }
-
-                resource_methods
+                } else {
+                    Error::DuplicateResourceConstructor {
+                        resource: decl.id.string,
+                        span,
+                    }
+                });
             }
-        };
+        }
+
+        self.definitions.resources[id].methods = methods;
 
         Ok(kind)
     }
 
-    fn variant_decl(
+    fn variant_decl<'a>(
         &mut self,
-        state: &mut ResolutionState,
-        decl: &ast::VariantDecl,
-    ) -> Result<ItemKind> {
+        state: &mut ResolutionState<'a>,
+        decl: &ast::VariantDecl<'a>,
+    ) -> ResolutionResult<'a, ItemKind> {
         let mut cases = IndexMap::new();
-        for case in &decl.body.cases {
+        for case in &decl.cases {
             if cases
                 .insert(
-                    case.id.as_str().into(),
-                    case.ty
-                        .as_ref()
-                        .map(|t| self.ty(state, &t.ty))
-                        .transpose()?,
+                    case.id.string.into(),
+                    case.ty.as_ref().map(|ty| self.ty(state, ty)).transpose()?,
                 )
                 .is_some()
             {
-                return Err(new_error_with_span(
-                    state.document.path,
-                    case.id.0,
-                    format!(
-                        "duplicate case `{case}` for variant type `{ty}`",
-                        case = case.id,
-                        ty = decl.id
-                    ),
-                ));
+                return Err(Error::DuplicateVariantCase {
+                    case: case.id.string,
+                    name: decl.id.string,
+                    span: case.id.span,
+                });
             }
         }
 
@@ -1202,26 +1602,22 @@ impl ResolvedDocument {
         Ok(kind)
     }
 
-    fn record_decl(
+    fn record_decl<'a>(
         &mut self,
-        state: &mut ResolutionState,
-        decl: &ast::RecordDecl,
-    ) -> Result<ItemKind> {
+        state: &mut ResolutionState<'a>,
+        decl: &ast::RecordDecl<'a>,
+    ) -> ResolutionResult<'a, ItemKind> {
         let mut fields = IndexMap::new();
-        for field in &decl.body.fields {
+        for field in &decl.fields {
             if fields
-                .insert(field.id.as_str().into(), self.ty(state, &field.ty)?)
+                .insert(field.id.string.into(), self.ty(state, &field.ty)?)
                 .is_some()
             {
-                return Err(new_error_with_span(
-                    state.document.path,
-                    field.id.0,
-                    format!(
-                        "duplicate field `{field}` for record type `{ty}`",
-                        field = field.id,
-                        ty = decl.id
-                    ),
-                ));
+                return Err(Error::DuplicateRecordField {
+                    field: field.id.string,
+                    name: decl.id.string,
+                    span: field.id.span,
+                });
             }
         }
 
@@ -1238,22 +1634,19 @@ impl ResolvedDocument {
         Ok(kind)
     }
 
-    fn flags_decl(
+    fn flags_decl<'a>(
         &mut self,
-        state: &mut ResolutionState,
-        decl: &ast::FlagsDecl,
-    ) -> Result<ItemKind> {
+        state: &mut ResolutionState<'a>,
+        decl: &ast::FlagsDecl<'a>,
+    ) -> ResolutionResult<'a, ItemKind> {
         let mut flags = IndexSet::new();
-        for flag in &decl.body.flags {
-            if !flags.insert(flag.as_str().into()) {
-                return Err(new_error_with_span(
-                    state.document.path,
-                    flag.0,
-                    format!(
-                        "duplicate flag `{flag}` for flags type `{ty}`",
-                        ty = decl.id
-                    ),
-                ));
+        for flag in &decl.flags {
+            if !flags.insert(flag.id.string.into()) {
+                return Err(Error::DuplicateFlag {
+                    flag: flag.id.string,
+                    name: decl.id.string,
+                    span: flag.id.span,
+                });
             }
         }
 
@@ -1270,15 +1663,19 @@ impl ResolvedDocument {
         Ok(kind)
     }
 
-    fn enum_decl(&mut self, state: &mut ResolutionState, decl: &ast::EnumDecl) -> Result<ItemKind> {
+    fn enum_decl<'a>(
+        &mut self,
+        state: &mut ResolutionState<'a>,
+        decl: &ast::EnumDecl<'a>,
+    ) -> ResolutionResult<'a, ItemKind> {
         let mut cases = IndexSet::new();
-        for case in &decl.body.cases {
-            if !cases.insert(case.as_str().into()) {
-                return Err(new_error_with_span(
-                    state.document.path,
-                    case.0,
-                    format!("duplicate case `{case}` for enum type `{ty}`", ty = decl.id),
-                ));
+        for case in &decl.cases {
+            if !cases.insert(case.id.string.to_owned()) {
+                return Err(Error::DuplicateEnumCase {
+                    case: case.id.string,
+                    name: decl.id.string,
+                    span: case.id.span,
+                });
             }
         }
 
@@ -1289,20 +1686,21 @@ impl ResolvedDocument {
             kind,
             source: ItemSource::Definition,
         });
+
         self.register_name(state, decl.id, id)?;
         Ok(kind)
     }
 
-    fn type_alias(
+    fn type_alias<'a>(
         &mut self,
-        state: &mut ResolutionState,
-        alias: &ast::TypeAlias,
-    ) -> Result<ItemKind> {
+        state: &mut ResolutionState<'a>,
+        alias: &ast::TypeAlias<'a>,
+    ) -> ResolutionResult<'a, ItemKind> {
         let kind = match &alias.kind {
             ast::TypeAliasKind::Func(f) => ItemKind::Type(Type::Func(self.func_type(
                 state,
                 &f.params,
-                f.results.as_ref(),
+                &f.results,
                 FuncKind::Free,
             )?)),
             ast::TypeAliasKind::Type(ty) => match ty {
@@ -1318,15 +1716,11 @@ impl ResolvedDocument {
                             ItemKind::Type(Type::Func(id))
                         }
                         _ => {
-                            return Err(new_error_with_span(
-                                state.document.path,
-                                id.0,
-                                format!(
-                                    "`{id}` ({kind}) cannot be used in a type alias",
-                                    kind = item.kind.display(&self.definitions),
-                                    id = id.as_str(),
-                                ),
-                            ))
+                            return Err(Error::InvalidAliasType {
+                                name: id.string,
+                                kind: item.kind.as_str(&self.definitions),
+                                span: id.span,
+                            });
                         }
                     }
                 }
@@ -1348,94 +1742,80 @@ impl ResolvedDocument {
         Ok(kind)
     }
 
-    fn func_type_ref(
+    fn func_type_ref<'a>(
         &mut self,
-        state: &ResolutionState,
-        r: &ast::FuncTypeRef,
+        state: &ResolutionState<'a>,
+        r: &ast::FuncTypeRef<'a>,
         kind: FuncKind,
-    ) -> Result<FuncId> {
+    ) -> ResolutionResult<'a, FuncId> {
         match r {
-            ast::FuncTypeRef::Func(ty) => {
-                self.func_type(state, &ty.params, ty.results.as_ref(), kind)
-            }
+            ast::FuncTypeRef::Func(ty) => self.func_type(state, &ty.params, &ty.results, kind),
             ast::FuncTypeRef::Ident(id) => {
                 let item = &self.items[self.require(state, id)?];
                 match item.kind {
                     ItemKind::Type(Type::Func(id)) | ItemKind::Func(id) => Ok(id),
-                    _ => Err(new_error_with_span(
-                        state.document.path,
-                        id.0,
-                        format!(
-                            "`{id}` ({kind}) is not a function type",
-                            kind = item.kind.display(&self.definitions),
-                            id = id.as_str()
-                        ),
-                    )),
+                    _ => Err(Error::NotFuncType {
+                        name: id.string,
+                        kind: item.kind.as_str(&self.definitions),
+                        span: id.span,
+                    }),
                 }
             }
         }
     }
 
-    fn ty(&mut self, state: &ResolutionState, ty: &ast::Type) -> Result<ValueType> {
+    fn ty<'a>(
+        &mut self,
+        state: &ResolutionState<'a>,
+        ty: &ast::Type<'a>,
+    ) -> ResolutionResult<'a, ValueType> {
         match ty {
-            ast::Type::U8(_) => Ok(ValueType::Primitive(PrimitiveType::U8)),
-            ast::Type::S8(_) => Ok(ValueType::Primitive(PrimitiveType::S8)),
-            ast::Type::U16(_) => Ok(ValueType::Primitive(PrimitiveType::U16)),
-            ast::Type::S16(_) => Ok(ValueType::Primitive(PrimitiveType::S16)),
-            ast::Type::U32(_) => Ok(ValueType::Primitive(PrimitiveType::U32)),
-            ast::Type::S32(_) => Ok(ValueType::Primitive(PrimitiveType::S32)),
-            ast::Type::U64(_) => Ok(ValueType::Primitive(PrimitiveType::U64)),
-            ast::Type::S64(_) => Ok(ValueType::Primitive(PrimitiveType::S64)),
-            ast::Type::Float32(_) => Ok(ValueType::Primitive(PrimitiveType::Float32)),
-            ast::Type::Float64(_) => Ok(ValueType::Primitive(PrimitiveType::Float64)),
-            ast::Type::Char(_) => Ok(ValueType::Primitive(PrimitiveType::Char)),
-            ast::Type::Bool(_) => Ok(ValueType::Primitive(PrimitiveType::Bool)),
-            ast::Type::String(_) => Ok(ValueType::Primitive(PrimitiveType::String)),
+            ast::Type::U8 => Ok(ValueType::Primitive(PrimitiveType::U8)),
+            ast::Type::S8 => Ok(ValueType::Primitive(PrimitiveType::S8)),
+            ast::Type::U16 => Ok(ValueType::Primitive(PrimitiveType::U16)),
+            ast::Type::S16 => Ok(ValueType::Primitive(PrimitiveType::S16)),
+            ast::Type::U32 => Ok(ValueType::Primitive(PrimitiveType::U32)),
+            ast::Type::S32 => Ok(ValueType::Primitive(PrimitiveType::S32)),
+            ast::Type::U64 => Ok(ValueType::Primitive(PrimitiveType::U64)),
+            ast::Type::S64 => Ok(ValueType::Primitive(PrimitiveType::S64)),
+            ast::Type::Float32 => Ok(ValueType::Primitive(PrimitiveType::Float32)),
+            ast::Type::Float64 => Ok(ValueType::Primitive(PrimitiveType::Float64)),
+            ast::Type::Char => Ok(ValueType::Primitive(PrimitiveType::Char)),
+            ast::Type::Bool => Ok(ValueType::Primitive(PrimitiveType::Bool)),
+            ast::Type::String => Ok(ValueType::Primitive(PrimitiveType::String)),
             ast::Type::Tuple(v) => {
                 let types = v
-                    .types
                     .iter()
                     .map(|ty| self.ty(state, ty))
-                    .collect::<Result<_>>()?;
+                    .collect::<ResolutionResult<_>>()?;
 
                 Ok(ValueType::Defined(
                     self.definitions.types.alloc(DefinedType::Tuple(types)),
                 ))
             }
-            ast::Type::List(l) => {
-                let ty = self.ty(state, &l.ty)?;
+            ast::Type::List(ty) => {
+                let ty = self.ty(state, ty)?;
                 Ok(ValueType::Defined(
                     self.definitions.types.alloc(DefinedType::List(ty)),
                 ))
             }
-            ast::Type::Option(o) => {
-                let ty = self.ty(state, &o.ty)?;
+            ast::Type::Option(ty) => {
+                let ty = self.ty(state, ty)?;
                 Ok(ValueType::Defined(
                     self.definitions.types.alloc(DefinedType::Option(ty)),
                 ))
             }
-            ast::Type::Result(r) => {
-                let (ok, err) = match &r.specified {
-                    Some(s) => {
-                        let ok = match &s.ok {
-                            ast::OmitType::Omitted(_) => None,
-                            ast::OmitType::Type(t) => Some(self.ty(state, t)?),
-                        };
-
-                        let err = s.err.as_ref().map(|t| self.ty(state, t)).transpose()?;
-                        (ok, err)
-                    }
-                    None => (None, None),
-                };
-
+            ast::Type::Result { ok, err } => {
+                let ok = ok.as_ref().map(|t| self.ty(state, t)).transpose()?;
+                let err = err.as_ref().map(|t| self.ty(state, t)).transpose()?;
                 Ok(ValueType::Defined(
                     self.definitions
                         .types
                         .alloc(DefinedType::Result { ok, err }),
                 ))
             }
-            ast::Type::Borrow(b) => {
-                let item = &self.items[self.require(state, &b.id)?];
+            ast::Type::Borrow(id) => {
+                let item = &self.items[self.require(state, id)?];
                 if let ItemKind::Type(Type::Value(id)) = item.kind {
                     if let DefinedType::Resource(id) = &self.definitions.types[id] {
                         return Ok(ValueType::Defined(
@@ -1444,87 +1824,78 @@ impl ResolvedDocument {
                     }
                 }
 
-                Err(new_error_with_span(
-                    state.document.path,
-                    b.id.0,
-                    format!(
-                        "`{id}` ({kind}) is not a resource type",
-                        kind = item.kind.display(&self.definitions),
-                        id = b.id.as_str()
-                    ),
-                ))
+                Err(Error::NotResourceType {
+                    name: id.string,
+                    kind: item.kind.as_str(&self.definitions),
+                    span: id.span,
+                })
             }
             ast::Type::Ident(id) => {
                 let item = &self.items[self.require(state, id)?];
                 match item.kind {
                     ItemKind::Type(Type::Value(id)) => Ok(ValueType::Defined(id)),
-                    _ => Err(new_error_with_span(
-                        state.document.path,
-                        id.0,
-                        format!(
-                            "`{id}` ({kind}) cannot be used as a value type",
-                            kind = item.kind.display(&self.definitions),
-                            id = id.as_str(),
-                        ),
-                    )),
+                    _ => Err(Error::NotValueType {
+                        name: id.string,
+                        kind: item.kind.as_str(&self.definitions),
+                        span: id.span,
+                    }),
                 }
             }
         }
     }
 
-    fn func_type(
+    fn func_type<'a>(
         &mut self,
-        state: &ResolutionState,
-        func_params: &ast::ParamList,
-        func_results: Option<&ast::ResultList>,
+        state: &ResolutionState<'a>,
+        func_params: &[ast::NamedType<'a>],
+        func_results: &ast::ResultList<'a>,
         kind: FuncKind,
-    ) -> Result<FuncId> {
+    ) -> ResolutionResult<'a, FuncId> {
         let mut params = IndexMap::new();
-        for param in &func_params.list {
+        for param in func_params {
             if params
-                .insert(param.id.as_str().into(), self.ty(state, &param.ty)?)
+                .insert(param.id.string.into(), self.ty(state, &param.ty)?)
                 .is_some()
             {
-                return Err(new_error_with_span(
-                    state.document.path,
-                    param.id.0,
-                    format!("duplicate {kind} parameter `{id}`", id = param.id.as_str()),
-                ));
+                return Err(Error::DuplicateParameter {
+                    name: param.id.string,
+                    kind,
+                    span: param.id.span,
+                });
             }
         }
 
-        let results = func_results
-            .as_ref()
-            .map(|r| match r {
-                ast::ResultList::Named { results: r, .. } => {
-                    let mut results = IndexMap::new();
-                    for result in &r.list {
-                        if results
-                            .insert(result.id.as_str().into(), self.ty(state, &result.ty)?)
-                            .is_some()
-                        {
-                            return Err(new_error_with_span(
-                                state.document.path,
-                                result.id.0,
-                                format!("duplicate {kind} result `{id}`", id = result.id.as_str()),
-                            ));
-                        }
+        let results = match func_results {
+            ast::ResultList::Empty => None,
+            ast::ResultList::Named(results) => {
+                let mut list = IndexMap::new();
+                for result in results {
+                    if list
+                        .insert(result.id.string.to_owned(), self.ty(state, &result.ty)?)
+                        .is_some()
+                    {
+                        return Err(Error::DuplicateResult {
+                            name: result.id.string,
+                            kind,
+                            span: result.id.span,
+                        });
                     }
-                    Ok(FuncResult::List(results))
                 }
-                ast::ResultList::Single { ty, .. } => Ok(FuncResult::Scalar(self.ty(state, ty)?)),
-            })
-            .transpose()?;
+                Some(FuncResult::List(list))
+            }
+            ast::ResultList::Scalar(ty) => Some(FuncResult::Scalar(self.ty(state, ty)?)),
+        };
 
         Ok(self.definitions.funcs.alloc(Func { params, results }))
     }
 
-    fn resolve_package<'b>(
+    fn resolve_package<'a, 'b>(
         &mut self,
-        state: &'b mut ResolutionState,
-        name: &ast::PackageName,
-    ) -> Result<&'b Package> {
-        match state.packages.entry(name.as_str().to_owned()) {
+        state: &'b mut ResolutionState<'a>,
+        name: &'a str,
+        span: Span<'a>,
+    ) -> ResolutionResult<'a, &'b Package> {
+        match state.packages.entry(name.to_owned()) {
             hash_map::Entry::Occupied(e) => Ok(e.into_mut()),
             hash_map::Entry::Vacant(e) => {
                 log::debug!("resolving package `{name}`");
@@ -1533,46 +1904,42 @@ impl ResolvedDocument {
                     .as_deref()
                     .and_then(|r| r.resolve(name).transpose())
                     .transpose()
-                    .map_err(|e| {
-                        let msg =
-                            format!("failed to resolve package `{name}`", name = name.as_str());
-                        e.context(new_error_with_span(state.document.path, name.span(), msg))
+                    .map_err(|e| Error::PackageResolutionFailure {
+                        name,
+                        span,
+                        source: e,
                     })? {
                     Some(bytes) => Ok(e.insert(
                         Package::parse(&mut self.definitions, bytes).map_err(|e| {
-                            let msg =
-                                format!("failed to parse package `{name}`", name = name.as_str());
-                            e.context(new_error_with_span(state.document.path, name.span(), msg))
+                            Error::PackageParseFailure {
+                                name,
+                                span,
+                                source: e,
+                            }
                         })?,
                     )),
-                    None => {
-                        return Err(new_error_with_span(
-                            state.document.path,
-                            name.span(),
-                            format!("unknown package `{name}`", name = name.as_str()),
-                        ));
-                    }
+                    None => Err(Error::UnknownPackage { name, span }),
                 }
             }
         }
     }
 
-    fn resolve_package_export(
+    fn resolve_package_export<'a>(
         &mut self,
-        state: &mut ResolutionState,
-        path: &ast::PackagePath,
-    ) -> Result<ItemKind> {
+        state: &mut ResolutionState<'a>,
+        path: &ast::PackagePath<'a>,
+    ) -> ResolutionResult<'a, ItemKind> {
         // Check for reference to local item
-        if path.name.as_str() == self.package {
+        if path.name == self.package {
             return self.resolve_local_export(state, path);
         }
 
-        let pkg = self.resolve_package(state, &path.name)?;
+        let pkg = self.resolve_package(state, path.name, path.package_name_span())?;
 
         let mut current = 0;
         let mut parent_ty = None;
         let mut found = None;
-        for (i, segment) in path.segments.iter().map(|(_, s)| s.as_str()).enumerate() {
+        for (i, (segment, _)) in path.segment_spans().enumerate() {
             current = i;
 
             // Look up the first segment in the package definitions
@@ -1582,32 +1949,25 @@ impl ResolvedDocument {
             }
 
             // Otherwise, project into the parent based on the current segment
-            let (ty, export) = match found.unwrap() {
+            let export = match found.unwrap() {
                 // The parent is an interface or instance
-                ItemKind::Type(Type::Interface(id)) | ItemKind::Instance(id) => (
-                    "interface",
+                ItemKind::Type(Type::Interface(id)) | ItemKind::Instance(id) => {
                     self.definitions.interfaces[id]
                         .exports
                         .get(segment)
-                        .map(Extern::kind),
-                ),
+                        .map(Extern::kind)
+                }
                 // The parent is a world or component or component instantiation
                 ItemKind::Type(Type::World(id))
                 | ItemKind::Component(id)
-                | ItemKind::Instantiation(id) => (
-                    "world",
-                    self.definitions.worlds[id]
-                        .exports
-                        .get(segment)
-                        .map(Extern::kind),
-                ),
-                ItemKind::Func(_) => ("func", None),
-                ItemKind::Type(_) => ("type", None),
-                ItemKind::Module(_) => ("module", None),
-                ItemKind::Value(_) => ("value", None),
+                | ItemKind::Instantiation(id) => self.definitions.worlds[id]
+                    .exports
+                    .get(segment)
+                    .map(Extern::kind),
+                _ => None,
             };
 
-            parent_ty = Some(ty);
+            parent_ty = found.map(|kind| kind.as_str(&self.definitions));
             found = export;
             if found.is_none() {
                 break;
@@ -1615,60 +1975,49 @@ impl ResolvedDocument {
         }
 
         found.ok_or_else(|| {
-            let segment = path.segments[current].1;
-            new_error_with_span(
-                state.document.path,
-                segment.0,
-                format!(
-                    "{prev}package `{name}` has no export named `{segment}`",
-                    prev = match parent_ty {
-                        Some(parent) => {
-                            format!(
-                                "{parent} `{path}` in ",
-                                path = path.segments[..current].iter().fold(
-                                    String::new(),
-                                    |mut path, (_, s)| {
-                                        if !path.is_empty() {
-                                            path.push('/');
-                                        }
-                                        path.push_str(s.as_str());
-                                        path
-                                    }
-                                )
-                            )
-                        }
-                        None => String::new(),
-                    },
-                    name = path.name.as_str(),
-                    segment = segment.as_str(),
-                ),
-            )
+            let segments = path.segment_spans().enumerate();
+            let mut prev_path = String::new();
+            for (i, (segment, span)) in segments {
+                if i == current {
+                    return Error::PackageMissingExport {
+                        name: path.span.as_str(),
+                        export: segment,
+                        kind: parent_ty,
+                        path: prev_path,
+                        span,
+                    };
+                }
+
+                if !prev_path.is_empty() {
+                    prev_path.push('/');
+                }
+
+                prev_path.push_str(segment);
+            }
+
+            unreachable!("path segments should never be empty")
         })
     }
 
-    fn resolve_local_export(
+    fn resolve_local_export<'a>(
         &self,
         state: &ResolutionState,
-        path: &ast::PackagePath,
-    ) -> Result<ItemKind> {
-        log::debug!("resolving local path `{path}`");
+        path: &ast::PackagePath<'a>,
+    ) -> ResolutionResult<'a, ItemKind> {
+        log::debug!("resolving local path `{path}`", path = path.span.as_str());
 
-        let mut segments = path.segments.iter().map(|(_, s)| s);
-        let id = segments.next().unwrap();
-        let item =
-            &self.items[self.scopes[state.root_scope]
-                .get(id.as_str())
-                .ok_or_else(|| {
-                    new_error_with_span(
-                        state.document.path,
-                        id.0,
-                        format!("undefined name `{id}`", id = id.as_str()),
-                    )
-                })?];
+        let mut segments = path.segment_spans();
+        let (segment, span) = segments.next().unwrap();
+        let item = &self.items[self.scopes[state.root_scope].get(segment).ok_or({
+            Error::UndefinedName {
+                name: segment,
+                span,
+            }
+        })?];
 
-        let mut current = id;
+        let mut current = segment;
         let mut kind = item.kind;
-        for segment in segments {
+        for (segment, span) in segments {
             let exports = match kind {
                 ItemKind::Type(Type::Interface(id)) | ItemKind::Instance(id) => {
                     &self.definitions.interfaces[id].exports
@@ -1677,40 +2026,35 @@ impl ResolvedDocument {
                     &self.definitions.worlds[id].exports
                 }
                 _ => {
-                    return Err(new_error_with_span(
-                        state.document.path,
-                        current.0,
-                        format!(
-                            "`{id}` ({kind}) has no exports",
-                            kind = item.kind.display(&self.definitions),
-                            id = current.as_str()
-                        ),
-                    ))
+                    return Err(Error::PackagePathMissingExport {
+                        name: current,
+                        kind: kind.as_str(&self.definitions),
+                        export: segment,
+                        span,
+                    });
                 }
             };
 
-            kind = exports
-                .get(segment.as_str())
-                .map(Extern::kind)
-                .ok_or_else(|| {
-                    new_error_with_span(
-                        state.document.path,
-                        current.0,
-                        format!(
-                            "`{id}` ({kind}) has no export named `{segment}`",
-                            kind = item.kind.display(&self.definitions),
-                            id = current.as_str(),
-                            segment = segment.as_str(),
-                        ),
-                    )
-                })?;
+            kind = exports.get(segment).map(Extern::kind).ok_or_else(|| {
+                Error::PackagePathMissingExport {
+                    name: current,
+                    kind: kind.as_str(&self.definitions),
+                    export: segment,
+                    span,
+                }
+            })?;
+
             current = segment;
         }
 
         Ok(kind)
     }
 
-    fn expr<'a>(&mut self, state: &mut ResolutionState<'a>, expr: &'a ast::Expr) -> Result<ItemId> {
+    fn expr<'a>(
+        &mut self,
+        state: &mut ResolutionState<'a>,
+        expr: &'a ast::Expr,
+    ) -> ResolutionResult<'a, ItemId> {
         let mut item = self.primary_expr(state, &expr.primary)?;
 
         for expr in &expr.postfix {
@@ -1724,10 +2068,10 @@ impl ResolvedDocument {
         &mut self,
         state: &mut ResolutionState<'a>,
         expr: &'a ast::PrimaryExpr<'a>,
-    ) -> Result<ItemId> {
+    ) -> ResolutionResult<'a, ItemId> {
         match expr {
-            ast::PrimaryExpr::New(n) => self.new_expr(state, n),
-            ast::PrimaryExpr::Nested(n) => self.expr(state, &n.expr),
+            ast::PrimaryExpr::New(e) => self.new_expr(state, e),
+            ast::PrimaryExpr::Nested(e) => self.expr(state, &e.0),
             ast::PrimaryExpr::Ident(i) => Ok(self.require(state, i)?),
         }
     }
@@ -1736,13 +2080,13 @@ impl ResolvedDocument {
         &mut self,
         state: &mut ResolutionState<'a>,
         expr: &'a ast::NewExpr<'a>,
-    ) -> Result<ItemId> {
-        let pkg = self.resolve_package(state, &expr.package_name)?;
+    ) -> ResolutionResult<'a, ItemId> {
+        let pkg = self.resolve_package(state, expr.package.name, expr.package.span)?;
         let ty = pkg.ty;
-        let require_all = expr.body.ellipsis.is_none();
+        let require_all = !expr.ellipsis;
 
         let mut arguments: IndexMap<String, ItemId> = Default::default();
-        for arg in &expr.body.arguments {
+        for arg in &expr.arguments {
             let (name, item, span) = match arg {
                 ast::InstantiationArgument::Named(arg) => {
                     self.named_instantiation_arg(state, arg, ty)?
@@ -1753,34 +2097,27 @@ impl ResolvedDocument {
             };
 
             let world = &self.definitions.worlds[ty];
-            let expected = world.imports.get(&name).ok_or_else(|| {
-                new_error_with_span(
-                    state.document.path,
-                    span,
-                    format!(
-                        "component `{pkg}` has no import named `{name}`",
-                        pkg = expr.package_name.as_str(),
-                    ),
-                )
-            })?;
+            let expected =
+                world
+                    .imports
+                    .get(&name)
+                    .ok_or_else(|| Error::MissingComponentImport {
+                        package: expr.package.span.as_str(),
+                        import: name.clone(),
+                        span,
+                    })?;
 
             SubtypeChecker::new(&self.definitions)
                 .is_subtype(expected.kind(), self.items[item].kind)
-                .map_err(|e| {
-                    e.context(new_error_with_span(
-                        state.document.path,
-                        span,
-                        format!("mismatched instantiation argument `{name}`"),
-                    ))
+                .map_err(|e| Error::MismatchedInstantiationArg {
+                    name: name.clone(),
+                    span,
+                    source: e,
                 })?;
 
             let prev = arguments.insert(name.clone(), item);
             if prev.is_some() {
-                return Err(new_error_with_span(
-                    state.document.path,
-                    span,
-                    format!("duplicate instantiation argument `{name}`"),
-                ));
+                return Err(Error::DuplicateInstantiationArg { name, span });
             }
         }
 
@@ -1791,14 +2128,11 @@ impl ResolvedDocument {
                 .iter()
                 .find(|(n, _)| !arguments.contains_key(*n))
             {
-                return Err(new_error_with_span(
-                    state.document.path,
-                    expr.package_name.span(),
-                    format!(
-                        "missing instantiation argument `{missing}` for package `{pkg}`",
-                        pkg = expr.package_name.as_str(),
-                    ),
-                ));
+                return Err(Error::MissingInstantiationArg {
+                    name: missing.clone(),
+                    package: expr.package.span.as_str(),
+                    span: expr.package.span,
+                });
             }
         }
 
@@ -1813,16 +2147,16 @@ impl ResolvedDocument {
         state: &mut ResolutionState<'a>,
         arg: &'a ast::NamedInstantiationArgument<'a>,
         world: WorldId,
-    ) -> Result<(String, ItemId, Span<'a>)> {
+    ) -> ResolutionResult<'a, (String, ItemId, Span<'a>)> {
         let item = self.expr(state, &arg.expr)?;
 
         let name = match &arg.name {
             ast::InstantiationArgumentName::Ident(ident) => Self::find_matching_interface_name(
-                ident.as_str(),
+                ident.string,
                 &self.definitions.worlds[world].imports,
             )
-            .unwrap_or_else(|| ident.as_str()),
-            ast::InstantiationArgumentName::String(name) => name.as_str(),
+            .unwrap_or(ident.string),
+            ast::InstantiationArgumentName::String(name) => name.value,
         };
 
         Ok((name.to_owned(), item, arg.name.span()))
@@ -1833,7 +2167,7 @@ impl ResolvedDocument {
         state: &mut ResolutionState<'a>,
         ident: &ast::Ident<'a>,
         world: WorldId,
-    ) -> Result<(String, ItemId, Span<'a>)> {
+    ) -> ResolutionResult<'a, (String, ItemId, Span<'a>)> {
         let item_id = self.require(state, ident)?;
         let item = &self.items[item_id];
         let world = &self.definitions.worlds[world];
@@ -1842,7 +2176,7 @@ impl ResolvedDocument {
         if let ItemKind::Instance(id) = item.kind {
             if let Some(id) = &self.definitions.interfaces[id].id {
                 if world.imports.contains_key(id.as_str()) {
-                    return Ok((id.clone(), item_id, ident.0));
+                    return Ok((id.clone(), item_id, ident.span));
                 }
             }
         }
@@ -1851,7 +2185,7 @@ impl ResolvedDocument {
         match &item.source {
             ItemSource::Import { with: Some(name) } | ItemSource::Alias { export: name, .. } => {
                 if world.imports.contains_key(name) {
-                    return Ok((name.clone(), item_id, ident.0));
+                    return Ok((name.clone(), item_id, ident.span));
                 }
             }
             _ => {}
@@ -1859,12 +2193,12 @@ impl ResolvedDocument {
 
         // Fall back to searching for a matching interface name, provided it is not ambiguous
         // For example, match `foo:bar/baz` if `baz` is the identifier and the only match
-        if let Some(name) = Self::find_matching_interface_name(ident.as_str(), &world.imports) {
-            return Ok((name.to_owned(), item_id, ident.0));
+        if let Some(name) = Self::find_matching_interface_name(ident.string, &world.imports) {
+            return Ok((name.to_owned(), item_id, ident.span));
         }
 
         // Finally default to the id itself
-        Ok((ident.as_str().to_owned(), item_id, ident.0))
+        Ok((ident.string.to_owned(), item_id, ident.span))
     }
 
     fn find_matching_interface_name<'a>(name: &str, externs: &'a ExternMap) -> Option<&'a str> {
@@ -1899,93 +2233,61 @@ impl ResolvedDocument {
         &mut self,
         state: &mut ResolutionState<'a>,
         item: ItemId,
-        expr: &'a ast::PostfixExpr<'a>,
-    ) -> Result<ItemId> {
+        expr: &ast::PostfixExpr<'a>,
+    ) -> ResolutionResult<'a, ItemId> {
         match expr {
             ast::PostfixExpr::Access(expr) => {
-                let exports = self.instance_exports(item, state, expr.id.0)?;
-                let name: Cow<'a, str> =
-                    Self::find_matching_interface_name(expr.id.as_str(), exports)
-                        .map(|s| s.to_string().into())
-                        .unwrap_or_else(|| expr.id.as_str().into());
-                self.access_expr(state, item, name.as_ref(), expr.id.0)
+                let exports = self.instance_exports(item, expr.id.span)?;
+                let name = Self::find_matching_interface_name(expr.id.string, exports)
+                    .unwrap_or(expr.id.string)
+                    .to_owned();
+                self.access_expr(state, item, name, expr.id.span)
             }
             ast::PostfixExpr::NamedAccess(expr) => {
-                self.access_expr(state, item, expr.string.as_str(), expr.string.0)
+                self.access_expr(state, item, expr.string.value.to_owned(), expr.string.span)
             }
         }
     }
 
-    fn instance_exports(
+    fn instance_exports<'a>(
         &self,
         item: ItemId,
-        state: &ResolutionState,
-        span: Span,
-    ) -> Result<&ExternMap> {
+        span: Span<'a>,
+    ) -> ResolutionResult<'a, &ExternMap> {
         match self.items[item].kind {
             ItemKind::Instance(id) => Ok(&self.definitions.interfaces[id].exports),
             ItemKind::Instantiation(id) => Ok(&self.definitions.worlds[id].exports),
-            ItemKind::Type(Type::Interface(_)) => Err(new_error_with_span(
-                state.document.path,
+            ItemKind::Type(Type::Interface(_)) => Err(Error::InaccessibleInterface { span }),
+            kind => Err(Error::Inaccessible {
+                kind: kind.as_str(&self.definitions),
                 span,
-                "an interface cannot be accessed",
-            )),
-            ItemKind::Type(ty) => Err(new_error_with_span(
-                state.document.path,
-                span,
-                format!(
-                    "a {ty} cannot be accessed",
-                    ty = ty.display(&self.definitions)
-                ),
-            )),
-            ItemKind::Func(_) => Err(new_error_with_span(
-                state.document.path,
-                span,
-                "a function cannot be accessed",
-            )),
-            ItemKind::Component(_) => Err(new_error_with_span(
-                state.document.path,
-                span,
-                "a component cannot be accessed",
-            )),
-            ItemKind::Module(_) => Err(new_error_with_span(
-                state.document.path,
-                span,
-                "a module cannot be accessed",
-            )),
-            ItemKind::Value(_) => Err(new_error_with_span(
-                state.document.path,
-                span,
-                "a value cannot be accessed",
-            )),
+            }),
         }
     }
 
-    fn access_expr(
+    fn access_expr<'a>(
         &mut self,
-        state: &mut ResolutionState,
+        state: &mut ResolutionState<'a>,
         item: ItemId,
-        name: &str,
-        span: Span,
-    ) -> Result<ItemId> {
-        let exports = self.instance_exports(item, state, span)?;
-        let kind = exports.get(name).map(Extern::kind).ok_or_else(|| {
-            new_error_with_span(
-                state.document.path,
-                span,
-                format!("the instance has no export named `{name}`"),
-            )
-        })?;
+        name: String,
+        span: Span<'a>,
+    ) -> ResolutionResult<'a, ItemId> {
+        let exports = self.instance_exports(item, span)?;
+        let kind =
+            exports
+                .get(&name)
+                .map(Extern::kind)
+                .ok_or_else(|| Error::MissingInstanceExport {
+                    name: name.clone(),
+                    span,
+                })?;
 
-        match state.aliases.entry((item, name.to_owned())) {
+        match state.aliases.entry((item, name.clone())) {
             hash_map::Entry::Occupied(e) => Ok(*e.get()),
             hash_map::Entry::Vacant(e) => {
                 let id = self.items.alloc(Item {
                     kind,
-                    source: ItemSource::Alias {
-                        item,
-                        export: name.to_owned(),
-                    },
+                    source: ItemSource::Alias { item, export: name },
                 });
                 Ok(*e.insert(id))
             }

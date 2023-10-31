@@ -1,8 +1,5 @@
-tests/resolution/fail/duplicate-interface-export.wac:3:5: duplicate interface export `x` for interface `x`
-
- --> tests/resolution/fail/duplicate-interface-export.wac:3:5
-  |
-3 |     x: func();
-  |     ^
-  |
-  = duplicate interface export `x` for interface `x`
+duplicate interface export `x` for interface `x`
+    --> tests/resolution/fail/duplicate-interface-export.wac:3:5
+     |
+   3 |     x: func();
+     |     ^

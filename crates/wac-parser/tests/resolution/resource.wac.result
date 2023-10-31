@@ -20,7 +20,33 @@
         "results": null
       }
     ],
-    "interfaces": [],
+    "interfaces": [
+      {
+        "id": "test:test/foo",
+        "exports": {
+          "x": {
+            "kind": {
+              "type": {
+                "value": 0
+              }
+            }
+          },
+          "f": {
+            "kind": {
+              "type": {
+                "func": 0
+              }
+            }
+          },
+          "f2": {
+            "kind": {
+              "func": 0
+            }
+          }
+        },
+        "scope": 1
+      }
+    ],
     "worlds": [],
     "modules": []
   },
@@ -40,11 +66,25 @@
         }
       },
       "source": "definition"
+    },
+    {
+      "kind": {
+        "type": {
+          "interface": 0
+        }
+      },
+      "source": "definition"
     }
   ],
   "scopes": [
     {
       "parent": null,
+      "items": {
+        "foo": 2
+      }
+    },
+    {
+      "parent": 0,
       "items": {
         "x": 0,
         "f": 1

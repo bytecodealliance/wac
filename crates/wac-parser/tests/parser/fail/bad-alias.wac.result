@@ -1,9 +1,5 @@
-expected identifier
-
-Caused by:
-     --> tests/parser/fail/bad-alias.wac:1:6
-      |
-    1 | type u32 = x;
-      |      ^---
-      |
-      = expected identifier
+expected identifier, found `u32` keyword
+    --> tests/parser/fail/bad-alias.wac:1:6
+     |
+   1 | type u32 = x;
+     |      ^-^

@@ -1,11 +1,8 @@
-tests/resolution/fail/package-not-wasm.wac:1:13: failed to parse package `foo:bar`
-
- --> tests/resolution/fail/package-not-wasm.wac:1:13
-  |
-1 | import foo: foo:bar/qux;
-  |             ^-----^
-  |
-  = failed to parse package `foo:bar`
+failed to parse package `foo:bar`
+    --> tests/resolution/fail/package-not-wasm.wac:1:13
+     |
+   1 | import foo: foo:bar/qux;
+     |             ^-----^
 
 Caused by:
     magic header not detected: bad magic number (at offset 0x0)

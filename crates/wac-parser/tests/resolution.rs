@@ -1,4 +1,5 @@
-use anyhow::{bail, Context, Result};
+use anyhow::{anyhow, bail, Context, Result};
+use owo_colors::OwoColorize;
 use pretty_assertions::StrComparison;
 use rayon::prelude::*;
 use std::{
@@ -12,6 +13,7 @@ use std::{
 use wac_parser::{
     ast::Document,
     resolution::{FileSystemPackageResolver, ResolvedDocument},
+    ErrorFormatter,
 };
 
 #[cfg(not(feature = "wat"))]
@@ -82,7 +84,8 @@ fn compare_result(test: &Path, result: &str, should_fail: bool) -> Result<()> {
 fn run_test(test: &Path, ntests: &AtomicUsize) -> Result<()> {
     let should_fail = test.parent().map(|p| p.ends_with("fail")).unwrap_or(false);
     let source = std::fs::read_to_string(test)?.replace("\r\n", "\n");
-    let document = Document::parse(&source, test)?;
+    let document = Document::parse(&source, test)
+        .map_err(|e| anyhow!("{e}", e = ErrorFormatter::new(test, e, false)))?;
     let result = match ResolvedDocument::new(
         &document,
         "test:test",
@@ -100,10 +103,13 @@ fn run_test(test: &Path, ntests: &AtomicUsize) -> Result<()> {
         }
         Err(e) => {
             if !should_fail {
-                bail!("the resolution failed but it was expected to succeed: {e:?}");
+                bail!(
+                    "the resolution failed but it was expected to succeed: {e}",
+                    e = ErrorFormatter::new(test, e, false)
+                );
             }
 
-            format!("{e:?}")
+            format!("{e}", e = ErrorFormatter::new(test, e, false))
         }
     };
 
@@ -129,11 +135,11 @@ fn main() {
                 .err()
             {
                 Some(e) => {
-                    println!("test {test_name} ... failed: {e}");
+                    println!("test {test_name} ... {failed}", failed = "failed".red());
                     Some((test_name, e))
                 }
                 None => {
-                    println!("test {test_name} ... ok");
+                    println!("test {test_name} ... {ok}", ok = "ok".green());
                     None
                 }
             }
@@ -141,10 +147,14 @@ fn main() {
         .collect::<Vec<_>>();
 
     if !errors.is_empty() {
-        eprintln!("\n{} test(s) failed:", errors.len());
+        eprintln!(
+            "\n{count} test(s) {failed}:",
+            count = errors.len(),
+            failed = "failed".red()
+        );
 
         for (name, msg) in errors.iter() {
-            eprintln!("{name}: {msg:?}");
+            eprintln!("{name}: {msg:?}", msg = msg.red());
         }
 
         exit(1);

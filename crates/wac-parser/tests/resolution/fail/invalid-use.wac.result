@@ -1,8 +1,5 @@
-tests/resolution/fail/invalid-use.wac:4:9: `x` (u32) is not an interface
-
- --> tests/resolution/fail/invalid-use.wac:4:9
-  |
-4 |     use x.{a};
-  |         ^
-  |
-  = `x` (u32) is not an interface
+`x` (u32) is not an interface
+    --> tests/resolution/fail/invalid-use.wac:4:9
+     |
+   4 |     use x.{a};
+     |         ^

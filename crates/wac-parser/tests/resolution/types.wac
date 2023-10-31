@@ -53,11 +53,12 @@ world w2 {
 
     /// Include a world by path
     include foo:bar/baz;
-}
 
-/// Defining a resource
-resource res {
-    constructor();
+    /// Defining a resource
+
+    resource res {
+        constructor();
+    }
 }
 
 type x = u32;

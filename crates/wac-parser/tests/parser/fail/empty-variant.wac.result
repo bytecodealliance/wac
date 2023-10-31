@@ -1,9 +1,5 @@
-expected identifier
-
-Caused by:
-     --> tests/parser/fail/empty-variant.wac:1:12
-      |
-    1 | variant v {}
-      |            ^---
-      |
-      = expected identifier
+variant must contain at least one case
+    --> tests/parser/fail/empty-variant.wac:1:12
+     |
+   1 | variant v {}
+     |            ^

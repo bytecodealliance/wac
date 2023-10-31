@@ -11,11 +11,8 @@ repository = { workspace = true }
 
 [dependencies]
 anyhow = { workspace = true }
-clap = { workspace = true }
-pest = { workspace = true }
-pest_derive = { workspace = true }
-pest-ast = { workspace = true }
-from-pest = { workspace = true }
+logos = { workspace = true }
+thiserror = { workspace = true }
 semver = { workspace = true }
 log = { workspace = true }
 indexmap = { workspace = true }
@@ -24,7 +21,9 @@ serde = { workspace = true }
 wasmparser = { workspace = true }
 wit-parser = { workspace = true }
 wit-component = { workspace = true }
+smallvec = { workspace = true }
 wat = { workspace = true, optional = true }
+owo-colors = { workspace = true }
 
 [features]
 default = ["wat"]

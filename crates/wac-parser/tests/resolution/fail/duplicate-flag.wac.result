@@ -1,8 +1,5 @@
-tests/resolution/fail/duplicate-flag.wac:6:5: duplicate flag `a` for flags type `f`
-
- --> tests/resolution/fail/duplicate-flag.wac:6:5
-  |
-6 |     a,
-  |     ^
-  |
-  = duplicate flag `a` for flags type `f`
+duplicate flag `a` for flags type `f`
+    --> tests/resolution/fail/duplicate-flag.wac:6:5
+     |
+   6 |     a,
+     |     ^

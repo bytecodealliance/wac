@@ -67,27 +67,13 @@ pub enum Type {
 }
 
 impl Type {
-    pub(crate) fn display<'a>(&'a self, definitions: &'a Definitions) -> impl fmt::Display + 'a {
-        TypeDisplay {
-            ty: self,
-            definitions,
-        }
-    }
-}
-
-struct TypeDisplay<'a> {
-    ty: &'a Type,
-    definitions: &'a Definitions,
-}
-
-impl fmt::Display for TypeDisplay<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self.ty {
-            Type::Func(_) => write!(f, "function type"),
-            Type::Value(ty) => self.definitions.types[*ty].display(self.definitions).fmt(f),
-            Type::Interface(_) => write!(f, "interface"),
-            Type::World(_) => write!(f, "world"),
-            Type::Module(_) => write!(f, "module type"),
+    pub(crate) fn as_str(&self, definitions: &Definitions) -> &'static str {
+        match self {
+            Type::Func(_) => "function type",
+            Type::Value(ty) => definitions.types[*ty].as_str(definitions),
+            Type::Interface(_) => "interface",
+            Type::World(_) => "world",
+            Type::Module(_) => "module type",
         }
     }
 }
@@ -124,22 +110,22 @@ pub enum PrimitiveType {
     String,
 }
 
-impl fmt::Display for PrimitiveType {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+impl PrimitiveType {
+    fn as_str(&self) -> &'static str {
         match self {
-            Self::U8 => write!(f, "u8"),
-            Self::S8 => write!(f, "s8"),
-            Self::U16 => write!(f, "u16"),
-            Self::S16 => write!(f, "s16"),
-            Self::U32 => write!(f, "u32"),
-            Self::S32 => write!(f, "s32"),
-            Self::U64 => write!(f, "u64"),
-            Self::S64 => write!(f, "s64"),
-            Self::Float32 => write!(f, "float32"),
-            Self::Float64 => write!(f, "float64"),
-            Self::Char => write!(f, "char"),
-            Self::Bool => write!(f, "bool"),
-            Self::String => write!(f, "string"),
+            Self::U8 => "u8",
+            Self::S8 => "s8",
+            Self::U16 => "u16",
+            Self::S16 => "s16",
+            Self::U32 => "u32",
+            Self::S32 => "s32",
+            Self::U64 => "u64",
+            Self::S64 => "s64",
+            Self::Float32 => "float32",
+            Self::Float64 => "float64",
+            Self::Char => "char",
+            Self::Bool => "bool",
+            Self::String => "string",
         }
     }
 }
@@ -218,36 +204,22 @@ pub enum DefinedType {
 }
 
 impl DefinedType {
-    pub(crate) fn display<'a>(&'a self, definitions: &'a Definitions) -> impl fmt::Display + 'a {
-        DefinedTypeDisplay {
-            ty: self,
-            definitions,
-        }
-    }
-}
-
-struct DefinedTypeDisplay<'a> {
-    ty: &'a DefinedType,
-    definitions: &'a Definitions,
-}
-
-impl fmt::Display for DefinedTypeDisplay<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self.ty {
-            DefinedType::Primitive(ty) => write!(f, "{ty}"),
-            DefinedType::Tuple(_) => write!(f, "tuple"),
-            DefinedType::List(_) => write!(f, "list"),
-            DefinedType::Option(_) => write!(f, "option"),
-            DefinedType::Result { .. } => write!(f, "result"),
-            DefinedType::Borrow(_) => write!(f, "borrow"),
-            DefinedType::Resource(_) => write!(f, "resource"),
-            DefinedType::Variant(_) => write!(f, "variant"),
-            DefinedType::Record(_) => write!(f, "record"),
-            DefinedType::Flags(_) => write!(f, "flags"),
-            DefinedType::Enum(_) => write!(f, "enum"),
-            DefinedType::Alias(ValueType::Primitive(ty)) => write!(f, "{ty}"),
+    fn as_str(&self, definitions: &Definitions) -> &'static str {
+        match self {
+            DefinedType::Primitive(ty) => ty.as_str(),
+            DefinedType::Tuple(_) => "tuple",
+            DefinedType::List(_) => "list",
+            DefinedType::Option(_) => "option",
+            DefinedType::Result { .. } => "result",
+            DefinedType::Borrow(_) => "borrow",
+            DefinedType::Resource(_) => "resource",
+            DefinedType::Variant(_) => "variant",
+            DefinedType::Record(_) => "record",
+            DefinedType::Flags(_) => "flags",
+            DefinedType::Enum(_) => "enum",
+            DefinedType::Alias(ValueType::Primitive(ty)) => ty.as_str(),
             DefinedType::Alias(ValueType::Defined(id)) => {
-                self.definitions.types[*id].display(self.definitions).fmt(f)
+                definitions.types[*id].as_str(definitions)
             }
         }
     }
@@ -778,8 +750,8 @@ impl<'a> SubtypeChecker<'a> {
             (ItemKind::Value(a), ItemKind::Value(b)) => self.value_type(a, b),
             _ => bail!(
                 "expected {a}, found {b}",
-                a = a.display(self.definitions),
-                b = b.display(self.definitions)
+                a = a.as_str(self.definitions),
+                b = b.as_str(self.definitions)
             ),
         };
 
@@ -803,8 +775,8 @@ impl<'a> SubtypeChecker<'a> {
 
         bail!(
             "expected {a}, found {b}",
-            a = a.display(self.definitions),
-            b = b.display(self.definitions)
+            a = a.as_str(self.definitions),
+            b = b.as_str(self.definitions)
         )
     }
 
@@ -1147,7 +1119,11 @@ impl<'a> SubtypeChecker<'a> {
                 if let DefinedType::Primitive(b) = b {
                     Self::primitive(a, *b)
                 } else {
-                    bail!("expected {a}, found {b}", b = b.display(self.definitions));
+                    bail!(
+                        "expected {a}, found {b}",
+                        a = a.as_str(),
+                        b = b.as_str(self.definitions)
+                    );
                 }
             }
             (ValueType::Defined(a), ValueType::Primitive(b)) => {
@@ -1155,7 +1131,11 @@ impl<'a> SubtypeChecker<'a> {
                 if let DefinedType::Primitive(a) = a {
                     Self::primitive(*a, b)
                 } else {
-                    bail!("expected {a}, found {b}", a = a.display(self.definitions));
+                    bail!(
+                        "expected {a}, found {b}",
+                        a = a.as_str(self.definitions),
+                        b = b.as_str()
+                    );
                 }
             }
             (ValueType::Defined(a), ValueType::Defined(b)) => self.defined_type(a, b),
@@ -1215,8 +1195,8 @@ impl<'a> SubtypeChecker<'a> {
             _ => {
                 bail!(
                     "expected {a}, found {b}",
-                    a = a.display(self.definitions),
-                    b = b.display(self.definitions)
+                    a = a.as_str(self.definitions),
+                    b = b.as_str(self.definitions)
                 )
             }
         }
@@ -1349,7 +1329,7 @@ impl<'a> SubtypeChecker<'a> {
         // rather than actual subtyping; the reason for this is that implementing
         // runtimes don't yet support more complex subtyping rules.
         if a != b {
-            bail!("expected {a}, found {b}");
+            bail!("expected {a}, found {b}", a = a.as_str(), b = b.as_str());
         }
 
         Ok(())

@@ -1,8 +1,5 @@
-tests/resolution/fail/invalid-func-type-ref.wac:4:8: `x` (u32) is not a function type
-
- --> tests/resolution/fail/invalid-func-type-ref.wac:4:8
-  |
-4 |     x: x;
-  |        ^
-  |
-  = `x` (u32) is not a function type
+`x` (u32) is not a function type
+    --> tests/resolution/fail/invalid-func-type-ref.wac:4:8
+     |
+   4 |     x: x;
+     |        ^

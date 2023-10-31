@@ -1,5 +1,10 @@
 /// Defining an interface
 interface i {
+    /// Defining a resource
+    resource res {
+        constructor();
+    }
+
     /// Type alias a
     type a = func();
     /// Record type
@@ -50,11 +55,6 @@ world w2 {
 
     /// Include a world by path
     include foo:bar/baz;
-}
-
-/// Defining a resource
-resource res {
-    constructor();
 }
 
 /// Defining a variant

@@ -1,8 +1,5 @@
-tests/resolution/fail/invalid-world-include.wac:4:13: `x` (function type) is not a world
-
- --> tests/resolution/fail/invalid-world-include.wac:4:13
-  |
-4 |     include x;
-  |             ^
-  |
-  = `x` (function type) is not a world
+`x` (function type) is not a world
+    --> tests/resolution/fail/invalid-world-include.wac:4:13
+     |
+   4 |     include x;
+     |             ^

@@ -1,21 +1,12 @@
 use super::{
-    display,
-    keywords::New,
-    symbols::{
-        CloseBrace, CloseBracket, CloseParen, Colon, Dot, Ellipsis, OpenBrace, OpenBracket,
-        OpenParen,
-    },
-    AstDisplay, Ident, Indenter, PackageName,
+    display, parse_delimited, parse_optional, parse_token, Ident, Lookahead, PackageName, Parse,
+    ParseResult, Peek,
 };
-use crate::parser::Rule;
-use pest::Span;
-use pest_ast::FromPest;
+use crate::lexer::{Lexer, Span, Token};
 use serde::Serialize;
-use std::fmt;
 
 /// Represents an expression in the AST.
-#[derive(Debug, Clone, Serialize, FromPest)]
-#[pest_ast(rule(Rule::Expr))]
+#[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Expr<'a> {
     /// The primary expression.
@@ -24,23 +15,31 @@ pub struct Expr<'a> {
     pub postfix: Vec<PostfixExpr<'a>>,
 }
 
-impl AstDisplay for Expr<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>, indenter: &mut Indenter) -> fmt::Result {
-        self.primary.fmt(f, indenter)?;
-
-        for postfix in &self.postfix {
-            postfix.fmt(f, indenter)?;
+impl<'a> Parse<'a> for Expr<'a> {
+    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<'a, Self> {
+        let primary = Parse::parse(lexer)?;
+        // Currently, only the access expressions are supported for postfix expressions.
+        // As they have the same precedence, we don't need to perform climbing.
+        let mut postfix = Vec::new();
+        while let Some((Ok(token), _)) = lexer.peek() {
+            match token {
+                Token::Dot => {
+                    postfix.push(PostfixExpr::Access(Parse::parse(lexer)?));
+                }
+                Token::OpenBracket => {
+                    postfix.push(PostfixExpr::NamedAccess(Parse::parse(lexer)?));
+                }
+                _ => break,
+            }
         }
-
-        Ok(())
+        Ok(Self { primary, postfix })
     }
 }
 
-display!(Expr);
+display!(Expr, expr);
 
 /// Represents a primary expression in the AST.
-#[derive(Debug, Clone, Serialize, FromPest)]
-#[pest_ast(rule(Rule::PrimaryExpr))]
+#[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum PrimaryExpr<'a> {
     /// A new expression.
@@ -51,104 +50,57 @@ pub enum PrimaryExpr<'a> {
     Ident(Ident<'a>),
 }
 
-impl AstDisplay for PrimaryExpr<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>, indenter: &mut Indenter) -> fmt::Result {
-        match self {
-            PrimaryExpr::New(new) => new.fmt(f, indenter),
-            PrimaryExpr::Nested(nested) => nested.fmt(f, indenter),
-            PrimaryExpr::Ident(ident) => ident.fmt(f, indenter),
+impl<'a> Parse<'a> for PrimaryExpr<'a> {
+    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<'a, Self> {
+        let mut lookahead = Lookahead::new(lexer);
+        if NewExpr::peek(&mut lookahead) {
+            Ok(Self::New(Parse::parse(lexer)?))
+        } else if NestedExpr::peek(&mut lookahead) {
+            Ok(Self::Nested(Parse::parse(lexer)?))
+        } else if Ident::peek(&mut lookahead) {
+            Ok(Self::Ident(Parse::parse(lexer)?))
+        } else {
+            Err(lookahead.error())
         }
     }
 }
-
-display!(PrimaryExpr);
 
 /// Represents a new expression in the AST.
-#[derive(Debug, Clone, Serialize, FromPest)]
-#[pest_ast(rule(Rule::NewExpr))]
+#[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct NewExpr<'a> {
-    /// The new keyword in the expression.
-    pub keyword: New<'a>,
     /// The package name in the expression.
-    pub package_name: PackageName<'a>,
-    /// The new expression body.
-    pub body: NewExprBody<'a>,
-}
-
-impl AstDisplay for NewExpr<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>, indenter: &mut Indenter) -> fmt::Result {
-        write!(
-            f,
-            "{keyword} {package_name} ",
-            keyword = self.keyword,
-            package_name = self.package_name,
-        )?;
-
-        self.body.fmt(f, indenter)
-    }
-}
-
-display!(NewExpr);
-
-/// Represents a new expression body in the AST.
-#[derive(Debug, Clone, Serialize, FromPest)]
-#[pest_ast(rule(Rule::NewExprBody))]
-#[serde(rename_all = "camelCase")]
-pub struct NewExprBody<'a> {
-    /// The open brace in the expression.
-    pub open: OpenBrace<'a>,
+    pub package: PackageName<'a>,
     /// The instantiation arguments in the expression.
     pub arguments: Vec<InstantiationArgument<'a>>,
-    /// The optional trailing ellipsis in the expression.
-    pub ellipsis: Option<Ellipsis<'a>>,
-    /// The close brace in the expression.
-    pub close: CloseBrace<'a>,
+    /// Whether or not a trailing ellipsis was in the expression.
+    pub ellipsis: bool,
 }
 
-impl AstDisplay for NewExprBody<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>, indenter: &mut Indenter) -> fmt::Result {
-        if self.arguments.is_empty() {
-            match &self.ellipsis {
-                Some(ellipsis) => {
-                    write!(
-                        f,
-                        "{open} {ellipsis} {close}",
-                        open = self.open,
-                        ellipsis = ellipsis,
-                        close = self.close
-                    )?;
-                }
-                None => {
-                    write!(f, "{open}{close}", open = self.open, close = self.close)?;
-                }
-            }
-            return Ok(());
-        }
-
-        writeln!(f, "{open}", open = self.open)?;
-
-        indenter.indent();
-        for arg in &self.arguments {
-            write!(f, "{indenter}")?;
-            arg.fmt(f, indenter)?;
-            writeln!(f, ",")?;
-        }
-
-        if let Some(ellipsis) = &self.ellipsis {
-            write!(f, "{indenter}{ellipsis}")?;
-        }
-
-        indenter.dedent();
-        write!(f, "{close}", close = self.close)
+impl<'a> Parse<'a> for NewExpr<'a> {
+    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<'a, Self> {
+        parse_token(lexer, Token::NewKeyword)?;
+        let package = PackageName::parse(lexer)?;
+        parse_token(lexer, Token::OpenBrace)?;
+        let arguments = parse_delimited(lexer, &[Token::CloseBrace, Token::Ellipsis], true)?;
+        let ellipsis = parse_optional(lexer, Token::Ellipsis, |_| Ok(true))?.unwrap_or(false);
+        parse_token(lexer, Token::CloseBrace)?;
+        Ok(Self {
+            package,
+            arguments,
+            ellipsis,
+        })
     }
 }
 
-display!(NewExprBody);
+impl Peek for NewExpr<'_> {
+    fn peek(lookahead: &mut Lookahead) -> bool {
+        lookahead.peek(Token::NewKeyword)
+    }
+}
 
 /// Represents an instantiation argument in the AST.
-#[derive(Debug, Clone, Serialize, FromPest)]
-#[pest_ast(rule(Rule::InstantiationArgument))]
+#[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum InstantiationArgument<'a> {
     /// The argument is a named instantiation argument.
@@ -157,43 +109,55 @@ pub enum InstantiationArgument<'a> {
     Ident(Ident<'a>),
 }
 
-impl AstDisplay for InstantiationArgument<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>, indenter: &mut Indenter) -> fmt::Result {
-        match self {
-            InstantiationArgument::Named(named) => named.fmt(f, indenter),
-            InstantiationArgument::Ident(ident) => ident.fmt(f, indenter),
+impl<'a> Parse<'a> for InstantiationArgument<'a> {
+    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<'a, Self> {
+        let mut lookahead = Lookahead::new(lexer);
+        if NamedInstantiationArgument::peek(&mut lookahead) {
+            // Peek again to see if this is really a named instantiation argument.
+            if let Some((Ok(Token::Colon), _)) = lexer.peek2() {
+                Ok(Self::Named(Parse::parse(lexer)?))
+            } else {
+                Ok(Self::Ident(Parse::parse(lexer)?))
+            }
+        } else {
+            Err(lookahead.error())
         }
     }
 }
 
-display!(InstantiationArgument);
+impl Peek for InstantiationArgument<'_> {
+    fn peek(lookahead: &mut Lookahead) -> bool {
+        NamedInstantiationArgument::peek(lookahead)
+    }
+}
 
 /// Represents a named instantiation argument in the AST.
-#[derive(Debug, Clone, Serialize, FromPest)]
-#[pest_ast(rule(Rule::NamedInstantiationArgument))]
+#[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct NamedInstantiationArgument<'a> {
     /// The name of the argument.
     pub name: InstantiationArgumentName<'a>,
-    /// The colon in the argument.
-    pub colon: Colon<'a>,
     /// The expression in the argument.
     pub expr: Expr<'a>,
 }
 
-impl AstDisplay for NamedInstantiationArgument<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>, indenter: &mut Indenter) -> fmt::Result {
-        self.name.fmt(f, indenter)?;
-        write!(f, "{colon} ", colon = self.colon)?;
-        self.expr.fmt(f, indenter)
+impl<'a> Parse<'a> for NamedInstantiationArgument<'a> {
+    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<'a, Self> {
+        let name = Parse::parse(lexer)?;
+        parse_token(lexer, Token::Colon)?;
+        let expr = Parse::parse(lexer)?;
+        Ok(Self { name, expr })
     }
 }
 
-display!(NamedInstantiationArgument);
+impl Peek for NamedInstantiationArgument<'_> {
+    fn peek(lookahead: &mut Lookahead) -> bool {
+        InstantiationArgumentName::peek(lookahead)
+    }
+}
 
 /// Represents the argument name in an instantiation argument in the AST.
-#[derive(Debug, Clone, Serialize, FromPest)]
-#[pest_ast(rule(Rule::InstantiationArgumentName))]
+#[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum InstantiationArgumentName<'a> {
     /// The argument name is an identifier.
@@ -202,53 +166,57 @@ pub enum InstantiationArgumentName<'a> {
     String(super::String<'a>),
 }
 
+impl<'a> Parse<'a> for InstantiationArgumentName<'a> {
+    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<'a, Self> {
+        let mut lookahead = Lookahead::new(lexer);
+        if Ident::peek(&mut lookahead) {
+            Ok(Self::Ident(Parse::parse(lexer)?))
+        } else if super::String::peek(&mut lookahead) {
+            Ok(Self::String(Parse::parse(lexer)?))
+        } else {
+            Err(lookahead.error())
+        }
+    }
+}
+
+impl Peek for InstantiationArgumentName<'_> {
+    fn peek(lookahead: &mut Lookahead) -> bool {
+        Ident::peek(lookahead) || super::String::peek(lookahead)
+    }
+}
+
 impl<'a> InstantiationArgumentName<'a> {
     /// Gets the span of the instantiation argument name.
     pub fn span(&self) -> Span<'a> {
         match self {
-            InstantiationArgumentName::Ident(ident) => ident.0,
-            InstantiationArgumentName::String(string) => string.0,
+            Self::Ident(ident) => ident.span,
+            Self::String(string) => string.span,
         }
     }
 }
-
-impl AstDisplay for InstantiationArgumentName<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>, _indenter: &mut Indenter) -> fmt::Result {
-        match self {
-            InstantiationArgumentName::Ident(ident) => ident.fmt(f, _indenter),
-            InstantiationArgumentName::String(string) => string.fmt(f, _indenter),
-        }
-    }
-}
-
-display!(InstantiationArgumentName);
 
 /// Represents a nested expression in the AST.
-#[derive(Debug, Clone, Serialize, FromPest)]
-#[pest_ast(rule(Rule::NestedExpr))]
+#[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct NestedExpr<'a> {
-    /// The open paren in the expression.
-    pub open: OpenParen<'a>,
-    /// The nested expression.
-    pub expr: Box<Expr<'a>>,
-    /// The close paren in the expression.
-    pub close: CloseParen<'a>,
-}
+pub struct NestedExpr<'a>(pub Box<Expr<'a>>);
 
-impl AstDisplay for NestedExpr<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>, indenter: &mut Indenter) -> fmt::Result {
-        write!(f, "{open}", open = self.open)?;
-        self.expr.fmt(f, indenter)?;
-        write!(f, "{close}", close = self.close)
+impl<'a> Parse<'a> for NestedExpr<'a> {
+    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<'a, Self> {
+        parse_token(lexer, Token::OpenParen)?;
+        let expr = Box::new(Parse::parse(lexer)?);
+        parse_token(lexer, Token::CloseParen)?;
+        Ok(Self(expr))
     }
 }
 
-display!(NestedExpr);
+impl Peek for NestedExpr<'_> {
+    fn peek(lookahead: &mut Lookahead) -> bool {
+        lookahead.peek(Token::OpenParen)
+    }
+}
 
 /// Represents a postfix expression in the AST.
-#[derive(Debug, Clone, Serialize, FromPest)]
-#[pest_ast(rule(Rule::PostfixExpr))]
+#[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum PostfixExpr<'a> {
     /// The postfix expression is an access expression.
@@ -259,115 +227,81 @@ pub enum PostfixExpr<'a> {
 
 impl<'a> PostfixExpr<'a> {
     /// Gets the span of the postfix expression.
-    pub fn span(&self) -> pest::Span<'a> {
+    pub fn span(&self) -> Span<'a> {
         match self {
-            PostfixExpr::Access(access) => access.span(),
-            PostfixExpr::NamedAccess(access) => access.span(),
+            PostfixExpr::Access(access) => access.span,
+            PostfixExpr::NamedAccess(access) => access.span,
         }
     }
 }
-
-impl AstDisplay for PostfixExpr<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>, indenter: &mut Indenter) -> fmt::Result {
-        match self {
-            PostfixExpr::Access(access) => access.fmt(f, indenter),
-            PostfixExpr::NamedAccess(access) => access.fmt(f, indenter),
-        }
-    }
-}
-
-display!(PostfixExpr);
 
 /// Represents an access expression in the AST.
-#[derive(Debug, Clone, Serialize, FromPest)]
-#[pest_ast(rule(Rule::AccessExpr))]
+#[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AccessExpr<'a> {
-    /// The dot in the expression.
-    pub dot: Dot<'a>,
+    /// The span of the access expression.
+    pub span: Span<'a>,
     /// The identifier in the expression.
     pub id: Ident<'a>,
 }
 
-impl<'a> AccessExpr<'a> {
-    /// Gets the span of the access expression.
-    pub fn span(&self) -> Span<'a> {
-        Span::new(self.dot.0.get_input(), self.dot.0.start(), self.id.0.end()).unwrap()
+impl<'a> Parse<'a> for AccessExpr<'a> {
+    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<'a, Self> {
+        let mut span = parse_token(lexer, Token::Dot)?;
+        let id: Ident = Parse::parse(lexer)?;
+        span.end = id.span.end;
+        Ok(Self { span, id })
     }
 }
 
-impl AstDisplay for AccessExpr<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>, _indenter: &mut Indenter) -> fmt::Result {
-        write!(f, "{dot}{id}", dot = self.dot, id = self.id)
+impl Peek for AccessExpr<'_> {
+    fn peek(lookahead: &mut Lookahead) -> bool {
+        lookahead.peek(Token::Dot)
     }
 }
-
-display!(AccessExpr);
 
 /// Represents a named access expression in the AST.
-#[derive(Debug, Clone, Serialize, FromPest)]
-#[pest_ast(rule(Rule::NamedAccessExpr))]
+#[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct NamedAccessExpr<'a> {
-    /// The open bracket in the expression.
-    pub open: OpenBracket<'a>,
+    /// The span of the access expression.
+    pub span: Span<'a>,
     /// The name string in the expression.
     pub string: super::String<'a>,
-    /// The close bracket in the expression.
-    pub close: CloseBracket<'a>,
 }
 
-impl<'a> NamedAccessExpr<'a> {
-    /// Gets the span of the access expression.
-    pub fn span(&self) -> Span<'a> {
-        Span::new(
-            self.open.0.get_input(),
-            self.open.0.start(),
-            self.close.0.end(),
-        )
-        .unwrap()
+impl<'a> Parse<'a> for NamedAccessExpr<'a> {
+    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<'a, Self> {
+        let mut span = parse_token(lexer, Token::OpenBracket)?;
+        let string = Parse::parse(lexer)?;
+        let closing = parse_token(lexer, Token::CloseBracket)?;
+        span.end = closing.end;
+        Ok(Self { span, string })
     }
 }
 
-impl AstDisplay for NamedAccessExpr<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>, _indenter: &mut Indenter) -> fmt::Result {
-        write!(
-            f,
-            "{open}{string}{close}",
-            open = self.open,
-            string = self.string,
-            close = self.close
-        )
+impl Peek for NamedAccessExpr<'_> {
+    fn peek(lookahead: &mut Lookahead) -> bool {
+        lookahead.peek(Token::OpenBracket)
     }
 }
-
-display!(NamedAccessExpr);
 
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::{ast::test::roundtrip, parser::Rule};
+    use crate::ast::test::roundtrip;
 
     #[test]
     fn primary_expr_roundtrip() {
-        roundtrip::<Expr>(Rule::Expr, "x", "x").unwrap();
-        roundtrip::<Expr>(Rule::Expr, "y.x.z", "y.x.z").unwrap();
-        roundtrip::<Expr>(Rule::Expr, "y[\"x\"][\"z\"]", "y[\"x\"][\"z\"]").unwrap();
+        roundtrip::<Expr>("x", "x").unwrap();
+        roundtrip::<Expr>("y.x.z", "y.x.z").unwrap();
+        roundtrip::<Expr>("y[\"x\"][\"z\"]", "y[\"x\"][\"z\"]").unwrap();
+        roundtrip::<Expr>("foo[\"bar\"].baz[\"qux\"]", "foo[\"bar\"].baz[\"qux\"]").unwrap();
+        roundtrip::<Expr>("(foo-bar-baz)", "(foo-bar-baz)").unwrap();
+        roundtrip::<Expr>("new foo:bar {}", "new foo:bar {}").unwrap();
         roundtrip::<Expr>(
-            Rule::Expr,
-            "foo[\"bar\"].baz[\"qux\"]",
-            "foo[\"bar\"].baz[\"qux\"]",
-        )
-        .unwrap();
-
-        roundtrip::<Expr>(Rule::Expr, "(foo-bar-baz)", "(foo-bar-baz)").unwrap();
-
-        roundtrip::<Expr>(Rule::Expr, "new foo:bar {}", "new foo:bar {}").unwrap();
-
-        roundtrip::<Expr>(
-            Rule::Expr,
             "new foo:bar { foo, \"bar\": (new baz:qux {...}), \"baz\": foo[\"baz\"].qux }",
-            "new foo:bar {\n  foo,\n  \"bar\": (new baz:qux { ... }),\n  \"baz\": foo[\"baz\"].qux,\n}",
+            "new foo:bar {\n    foo,\n    \"bar\": (new baz:qux { ... }),\n    \"baz\": foo[\"baz\"].qux,\n}",
         )
         .unwrap();
     }
