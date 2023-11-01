@@ -1,0 +1,10 @@
+import x: interface {
+    record r {
+        a: u8,
+        b: u16,
+        c: u32,
+        d: u64,
+    }
+};
+
+let i = new foo:bar { x };

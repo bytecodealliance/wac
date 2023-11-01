@@ -61,11 +61,12 @@
     "resources": [
       {},
       {
-        "methods": [
-          {
-            "constructor": 5
+        "methods": {
+          "": {
+            "kind": "constructor",
+            "ty": 5
           }
-        ]
+        }
       }
     ],
     "funcs": [
@@ -341,224 +342,225 @@
     ],
     "modules": []
   },
+  "items": [
+    {
+      "kind": {
+        "type": {
+          "func": 0
+        }
+      },
+      "source": "definition"
+    },
+    {
+      "kind": {
+        "type": {
+          "value": 0
+        }
+      },
+      "source": "definition"
+    },
+    {
+      "kind": {
+        "type": {
+          "interface": 0
+        }
+      },
+      "source": "definition"
+    },
+    {
+      "kind": {
+        "type": {
+          "value": 0
+        }
+      },
+      "source": "use"
+    },
+    {
+      "kind": {
+        "type": {
+          "value": 0
+        }
+      },
+      "source": "use"
+    },
+    {
+      "kind": {
+        "type": {
+          "interface": 1
+        }
+      },
+      "source": "definition"
+    },
+    {
+      "kind": {
+        "type": {
+          "func": 2
+        }
+      },
+      "source": "definition"
+    },
+    {
+      "kind": {
+        "type": {
+          "func": 2
+        }
+      },
+      "source": "definition"
+    },
+    {
+      "kind": {
+        "type": {
+          "value": 1
+        }
+      },
+      "source": "use"
+    },
+    {
+      "kind": {
+        "type": {
+          "world": 4
+        }
+      },
+      "source": "definition"
+    },
+    {
+      "kind": {
+        "type": {
+          "world": 5
+        }
+      },
+      "source": "definition"
+    },
+    {
+      "kind": {
+        "type": {
+          "value": 2
+        }
+      },
+      "source": "definition"
+    },
+    {
+      "kind": {
+        "type": {
+          "value": 3
+        }
+      },
+      "source": "definition"
+    },
+    {
+      "kind": {
+        "type": {
+          "value": 4
+        }
+      },
+      "source": "definition"
+    },
+    {
+      "kind": {
+        "type": {
+          "value": 5
+        }
+      },
+      "source": "definition"
+    },
+    {
+      "kind": {
+        "type": {
+          "value": 6
+        }
+      },
+      "source": "definition"
+    },
+    {
+      "kind": {
+        "type": {
+          "value": 7
+        }
+      },
+      "source": "definition"
+    },
+    {
+      "kind": {
+        "type": {
+          "value": 8
+        }
+      },
+      "source": "definition"
+    },
+    {
+      "kind": {
+        "type": {
+          "value": 9
+        }
+      },
+      "source": "definition"
+    },
+    {
+      "kind": {
+        "type": {
+          "func": 6
+        }
+      },
+      "source": "definition"
+    },
+    {
+      "kind": {
+        "type": {
+          "func": 7
+        }
+      },
+      "source": "definition"
+    }
+  ],
   "scopes": [
     {
       "parent": null,
-      "names": {
-        "i": {
-          "start": 36,
-          "end": 37,
-          "kind": {
-            "type": {
-              "interface": 0
-            }
-          }
-        },
-        "i2": {
-          "start": 258,
-          "end": 260,
-          "kind": {
-            "type": {
-              "interface": 1
-            }
-          }
-        },
-        "c": {
-          "start": 364,
-          "end": 365,
-          "kind": {
-            "type": {
-              "func": 2
-            }
-          }
-        },
-        "f": {
-          "start": 381,
-          "end": 382,
-          "kind": {
-            "type": {
-              "func": 2
-            }
-          }
-        },
-        "w1": {
-          "start": 416,
-          "end": 418,
-          "kind": {
-            "type": {
-              "world": 4
-            }
-          }
-        },
-        "w2": {
-          "start": 845,
-          "end": 847,
-          "kind": {
-            "type": {
-              "world": 5
-            }
-          }
-        },
-        "res": {
-          "start": 992,
-          "end": 995,
-          "kind": {
-            "type": {
-              "value": 2
-            }
-          }
-        },
-        "x": {
-          "start": 1025,
-          "end": 1026,
-          "kind": {
-            "type": {
-              "value": 3
-            }
-          }
-        },
-        "v": {
-          "start": 1066,
-          "end": 1067,
-          "kind": {
-            "type": {
-              "value": 4
-            }
-          }
-        },
-        "r": {
-          "start": 1146,
-          "end": 1147,
-          "kind": {
-            "type": {
-              "value": 5
-            }
-          }
-        },
-        "flags": {
-          "start": 1216,
-          "end": 1222,
-          "kind": {
-            "type": {
-              "value": 6
-            }
-          }
-        },
-        "e": {
-          "start": 1275,
-          "end": 1276,
-          "kind": {
-            "type": {
-              "value": 7
-            }
-          }
-        },
-        "t": {
-          "start": 1325,
-          "end": 1326,
-          "kind": {
-            "type": {
-              "value": 8
-            }
-          }
-        },
-        "t2": {
-          "start": 1337,
-          "end": 1339,
-          "kind": {
-            "type": {
-              "value": 9
-            }
-          }
-        },
-        "t3": {
-          "start": 1355,
-          "end": 1357,
-          "kind": {
-            "type": {
-              "func": 6
-            }
-          }
-        },
-        "t4": {
-          "start": 1392,
-          "end": 1394,
-          "kind": {
-            "type": {
-              "func": 7
-            }
-          }
-        }
+      "items": {
+        "i": 2,
+        "i2": 5,
+        "c": 6,
+        "f": 7,
+        "w1": 9,
+        "w2": 10,
+        "res": 11,
+        "x": 12,
+        "v": 13,
+        "r": 14,
+        "flags": 15,
+        "e": 16,
+        "t": 17,
+        "t2": 18,
+        "t3": 19,
+        "t4": 20
       }
     },
     {
       "parent": 0,
-      "names": {
-        "a": {
-          "start": 70,
-          "end": 71,
-          "kind": {
-            "type": {
-              "func": 0
-            }
-          }
-        },
-        "r": {
-          "start": 113,
-          "end": 114,
-          "kind": {
-            "type": {
-              "value": 0
-            }
-          }
-        }
+      "items": {
+        "a": 0,
+        "r": 1
       }
     },
     {
       "parent": 0,
-      "names": {
-        "r": {
-          "start": 300,
-          "end": 301,
-          "kind": {
-            "type": {
-              "value": 0
-            }
-          }
-        },
-        "z": {
-          "start": 352,
-          "end": 353,
-          "kind": {
-            "type": {
-              "value": 0
-            }
-          }
-        }
+      "items": {
+        "r": 3,
+        "z": 4
       }
     },
     {
       "parent": 0,
-      "names": {
-        "r": {
-          "start": 474,
-          "end": 475,
-          "kind": {
-            "type": {
-              "value": 1
-            }
-          }
-        }
+      "items": {
+        "r": 8
       }
     },
     {
       "parent": 3,
-      "names": {}
+      "items": {}
     },
     {
       "parent": 0,
-      "names": {}
+      "items": {}
     }
-  ],
-  "rootScope": 0
+  ]
 }

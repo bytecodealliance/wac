@@ -2,7 +2,9 @@ use anyhow::{bail, Context, Result};
 use pretty_assertions::StrComparison;
 use rayon::prelude::*;
 use std::{
-    env, fs,
+    env,
+    ffi::OsStr,
+    fs,
     path::{Path, PathBuf},
     process::exit,
     sync::atomic::{AtomicUsize, Ordering},
@@ -107,24 +109,35 @@ fn main() {
     let errors = tests
         .par_iter()
         .filter_map(|test| {
-            run_test(test, &ntests)
+            let test_name = test.file_stem().and_then(OsStr::to_str).unwrap();
+            match run_test(test, &ntests)
                 .with_context(|| format!("failed to run test `{path}`", path = test.display()))
                 .err()
+            {
+                Some(e) => {
+                    println!("test {test_name} ... failed: {e}");
+                    Some((test_name, e))
+                }
+                None => {
+                    println!("test {test_name} ... ok");
+                    None
+                }
+            }
         })
         .collect::<Vec<_>>();
 
     if !errors.is_empty() {
-        eprintln!("{} test(s) failed", errors.len());
+        eprintln!("\n{} test(s) failed:", errors.len());
 
-        for msg in errors.iter() {
-            eprintln!("{:?}", msg);
+        for (name, msg) in errors.iter() {
+            eprintln!("{name}: {msg:?}");
         }
 
         exit(1);
     }
 
     println!(
-        "test result: ok. {} passed\n",
+        "\ntest result: ok. {} passed\n",
         ntests.load(Ordering::SeqCst)
     );
 }

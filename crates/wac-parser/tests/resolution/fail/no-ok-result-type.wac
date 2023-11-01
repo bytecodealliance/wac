@@ -1,0 +1,5 @@
+import x: interface {
+    f: func() -> result<string>;
+};
+
+let i = new foo:bar { x };

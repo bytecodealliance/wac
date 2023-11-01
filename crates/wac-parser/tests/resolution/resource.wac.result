@@ -24,30 +24,31 @@
     "worlds": [],
     "modules": []
   },
+  "items": [
+    {
+      "kind": {
+        "type": {
+          "value": 0
+        }
+      },
+      "source": "definition"
+    },
+    {
+      "kind": {
+        "type": {
+          "func": 0
+        }
+      },
+      "source": "definition"
+    }
+  ],
   "scopes": [
     {
       "parent": null,
-      "names": {
-        "x": {
-          "start": 9,
-          "end": 10,
-          "kind": {
-            "type": {
-              "value": 0
-            }
-          }
-        },
-        "f": {
-          "start": 18,
-          "end": 19,
-          "kind": {
-            "type": {
-              "func": 0
-            }
-          }
-        }
+      "items": {
+        "x": 0,
+        "f": 1
       }
     }
-  ],
-  "rootScope": 0
+  ]
 }

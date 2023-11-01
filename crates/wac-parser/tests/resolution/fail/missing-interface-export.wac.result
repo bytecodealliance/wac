@@ -1,0 +1,11 @@
+tests/resolution/fail/missing-interface-export.wac:4:23: mismatched instantiation argument `x`
+
+ --> tests/resolution/fail/missing-interface-export.wac:4:23
+  |
+4 | let i = new foo:bar { x };
+  |                       ^
+  |
+  = mismatched instantiation argument `x`
+
+Caused by:
+    missing expected export `f`

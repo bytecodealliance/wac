@@ -1,0 +1,37 @@
+{
+  "package": "test:test",
+  "definitions": {
+    "types": [],
+    "resources": [],
+    "funcs": [],
+    "interfaces": [],
+    "worlds": [
+      {
+        "imports": {},
+        "exports": {},
+        "scope": null
+      }
+    ],
+    "modules": []
+  },
+  "items": [
+    {
+      "kind": {
+        "instantiation": 0
+      },
+      "source": {
+        "instantiation": {
+          "arguments": {}
+        }
+      }
+    }
+  ],
+  "scopes": [
+    {
+      "parent": null,
+      "items": {
+        "i": 0
+      }
+    }
+  ]
+}

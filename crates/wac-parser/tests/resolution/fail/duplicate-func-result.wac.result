@@ -1,9 +1,8 @@
-duplicate function result `a`
+tests/resolution/fail/duplicate-func-result.wac:1:29: duplicate function result `a`
 
-Caused by:
-     --> tests/resolution/fail/duplicate-func-result.wac:1:29
-      |
-    1 | type f = func() -> (a: u32, a: s8);
-      |                             ^
-      |
-      = duplicate function result `a`
+ --> tests/resolution/fail/duplicate-func-result.wac:1:29
+  |
+1 | type f = func() -> (a: u32, a: s8);
+  |                             ^
+  |
+  = duplicate function result `a`

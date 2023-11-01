@@ -1,0 +1,476 @@
+{
+  "package": "test:test",
+  "definitions": {
+    "types": [
+      {
+        "resource": 0
+      },
+      {
+        "enum": [
+          "open",
+          "ended"
+        ]
+      },
+      {
+        "resource": 1
+      },
+      {
+        "enum": [
+          "last-operation-failed",
+          "closed"
+        ]
+      },
+      {
+        "resource": 2
+      },
+      {
+        "list": "u8"
+      },
+      {
+        "tuple": [
+          5,
+          1
+        ]
+      },
+      {
+        "result": {
+          "ok": 6,
+          "err": null
+        }
+      },
+      {
+        "tuple": [
+          "u64",
+          1
+        ]
+      },
+      {
+        "result": {
+          "ok": 8,
+          "err": null
+        }
+      },
+      {
+        "result": {
+          "ok": "u64",
+          "err": 3
+        }
+      },
+      {
+        "result": {
+          "ok": null,
+          "err": 3
+        }
+      },
+      {
+        "resource": 3
+      },
+      {
+        "enum": [
+          "last-operation-failed",
+          "closed"
+        ]
+      },
+      {
+        "resource": 4
+      },
+      {
+        "result": {
+          "ok": "u64",
+          "err": 13
+        }
+      },
+      {
+        "list": "u8"
+      },
+      {
+        "result": {
+          "ok": null,
+          "err": 13
+        }
+      }
+    ],
+    "resources": [
+      {},
+      {
+        "methods": {
+          "read": {
+            "kind": "method",
+            "ty": 0
+          },
+          "blocking-read": {
+            "kind": "method",
+            "ty": 0
+          },
+          "skip": {
+            "kind": "method",
+            "ty": 1
+          },
+          "blocking-skip": {
+            "kind": "method",
+            "ty": 1
+          },
+          "subscribe": {
+            "kind": "method",
+            "ty": 2
+          }
+        }
+      },
+      {
+        "methods": {
+          "check-write": {
+            "kind": "method",
+            "ty": 3
+          },
+          "write": {
+            "kind": "method",
+            "ty": 4
+          },
+          "blocking-write-and-flush": {
+            "kind": "method",
+            "ty": 4
+          },
+          "flush": {
+            "kind": "method",
+            "ty": 5
+          },
+          "blocking-flush": {
+            "kind": "method",
+            "ty": 5
+          },
+          "subscribe": {
+            "kind": "method",
+            "ty": 6
+          },
+          "write-zeroes": {
+            "kind": "method",
+            "ty": 7
+          },
+          "blocking-write-zeroes-and-flush": {
+            "kind": "method",
+            "ty": 7
+          },
+          "splice": {
+            "kind": "method",
+            "ty": 8
+          },
+          "blocking-splice": {
+            "kind": "method",
+            "ty": 8
+          },
+          "forward": {
+            "kind": "method",
+            "ty": 9
+          }
+        }
+      },
+      {
+        "methods": {
+          "check-write": {
+            "kind": "method",
+            "ty": 10
+          },
+          "write": {
+            "kind": "method",
+            "ty": 11
+          },
+          "blocking-write-and-flush": {
+            "kind": "method",
+            "ty": 11
+          },
+          "blocking-flush": {
+            "kind": "method",
+            "ty": 12
+          }
+        }
+      },
+      {}
+    ],
+    "funcs": [
+      {
+        "params": {
+          "len": "u64"
+        },
+        "results": {
+          "scalar": 7
+        }
+      },
+      {
+        "params": {
+          "len": "u64"
+        },
+        "results": {
+          "scalar": 9
+        }
+      },
+      {
+        "params": {},
+        "results": {
+          "scalar": 0
+        }
+      },
+      {
+        "params": {},
+        "results": {
+          "scalar": 10
+        }
+      },
+      {
+        "params": {
+          "contents": 5
+        },
+        "results": {
+          "scalar": 11
+        }
+      },
+      {
+        "params": {},
+        "results": {
+          "scalar": 11
+        }
+      },
+      {
+        "params": {},
+        "results": {
+          "scalar": 0
+        }
+      },
+      {
+        "params": {
+          "len": "u64"
+        },
+        "results": {
+          "scalar": 11
+        }
+      },
+      {
+        "params": {
+          "src": 2,
+          "len": "u64"
+        },
+        "results": {
+          "scalar": 9
+        }
+      },
+      {
+        "params": {
+          "src": 2
+        },
+        "results": {
+          "scalar": 9
+        }
+      },
+      {
+        "params": {},
+        "results": {
+          "scalar": 15
+        }
+      },
+      {
+        "params": {
+          "contents": 16
+        },
+        "results": {
+          "scalar": 17
+        }
+      },
+      {
+        "params": {},
+        "results": {
+          "scalar": 17
+        }
+      },
+      {
+        "params": {},
+        "results": null
+      }
+    ],
+    "interfaces": [
+      {
+        "id": "wasi:io/streams@0.2.0-rc-2023-10-18",
+        "exports": {
+          "pollable": {
+            "kind": {
+              "type": {
+                "value": 0
+              }
+            }
+          },
+          "stream-status": {
+            "kind": {
+              "type": {
+                "value": 1
+              }
+            }
+          },
+          "input-stream": {
+            "kind": {
+              "type": {
+                "value": 2
+              }
+            }
+          },
+          "write-error": {
+            "kind": {
+              "type": {
+                "value": 3
+              }
+            }
+          },
+          "output-stream": {
+            "kind": {
+              "type": {
+                "value": 4
+              }
+            }
+          }
+        },
+        "scope": null
+      },
+      {
+        "id": "wasi:io/streams@0.2.0-rc-2023-10-18",
+        "exports": {
+          "output-stream": {
+            "kind": {
+              "type": {
+                "value": 12
+              }
+            }
+          },
+          "write-error": {
+            "kind": {
+              "type": {
+                "value": 13
+              }
+            }
+          },
+          "input-stream": {
+            "kind": {
+              "type": {
+                "value": 14
+              }
+            }
+          }
+        },
+        "scope": null
+      },
+      {
+        "id": "foo:bar/baz@0.1.0",
+        "exports": {
+          "f": {
+            "kind": {
+              "func": 13
+            }
+          }
+        },
+        "scope": null
+      }
+    ],
+    "worlds": [
+      {
+        "imports": {},
+        "exports": {
+          "wasi:io/streams@0.2.0-rc-2023-10-18": {
+            "kind": {
+              "instance": 0
+            }
+          }
+        },
+        "scope": null
+      },
+      {
+        "imports": {},
+        "exports": {
+          "streams": {
+            "kind": {
+              "type": {
+                "world": 0
+              }
+            }
+          }
+        },
+        "scope": null
+      },
+      {
+        "imports": {
+          "wasi:io/streams@0.2.0-rc-2023-10-18": {
+            "kind": {
+              "instance": 1
+            }
+          },
+          "foo:bar/baz@0.1.0": {
+            "kind": {
+              "instance": 2
+            }
+          }
+        },
+        "exports": {
+          "foo:bar/baz@0.1.0": {
+            "kind": {
+              "instance": 2
+            }
+          }
+        },
+        "scope": null
+      }
+    ],
+    "modules": []
+  },
+  "items": [
+    {
+      "kind": {
+        "instance": 0
+      },
+      "source": {
+        "import": {
+          "with": null
+        }
+      }
+    },
+    {
+      "kind": {
+        "instantiation": 2
+      },
+      "source": {
+        "instantiation": {
+          "arguments": {
+            "wasi:io/streams@0.2.0-rc-2023-10-18": 0
+          }
+        }
+      }
+    },
+    {
+      "kind": {
+        "instance": 2
+      },
+      "source": {
+        "alias": {
+          "item": 1,
+          "export": "foo:bar/baz@0.1.0"
+        }
+      }
+    },
+    {
+      "kind": {
+        "instantiation": 2
+      },
+      "source": {
+        "instantiation": {
+          "arguments": {
+            "wasi:io/streams@0.2.0-rc-2023-10-18": 0,
+            "foo:bar/baz@0.1.0": 2
+          }
+        }
+      }
+    }
+  ],
+  "scopes": [
+    {
+      "parent": null,
+      "items": {
+        "streams": 0,
+        "i": 3
+      }
+    }
+  ]
+}

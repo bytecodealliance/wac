@@ -43,11 +43,10 @@ where
 }
 
 /// Creates a new error with the given message, file path, and span.
-pub fn new_error_with_span(msg: impl fmt::Display, path: &Path, span: Span) -> anyhow::Error {
-    let msg = msg.to_string();
+pub fn new_error_with_span(path: &Path, span: Span, msg: impl fmt::Display) -> anyhow::Error {
     let mut e = Error::new_from_span(
         ErrorVariant::CustomError::<Rule> {
-            message: msg.clone(),
+            message: msg.to_string(),
         },
         span,
     );
@@ -56,7 +55,15 @@ pub fn new_error_with_span(msg: impl fmt::Display, path: &Path, span: Span) -> a
         e = e.with_path(path)
     }
 
-    anyhow!(e).context(msg)
+    let (line, column) = match e.line_col {
+        pest::error::LineColLocation::Pos((l, c)) => (l, c),
+        pest::error::LineColLocation::Span((l, c), _) => (l, c),
+    };
+
+    anyhow!(format!(
+        "{path}:{line}:{column}: {msg}\n\n{e}",
+        path = path.display()
+    ))
 }
 
 /// Used to indent output when displaying AST nodes.

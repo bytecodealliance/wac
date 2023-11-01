@@ -1,0 +1,4 @@
+import x: interface {
+};
+
+let i = new foo:bar { x };

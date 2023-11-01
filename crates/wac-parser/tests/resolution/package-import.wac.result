@@ -14,14 +14,12 @@
     ],
     "resources": [
       {
-        "methods": [
-          {
-            "instance": {
-              "name": "x",
-              "ty": 0
-            }
+        "methods": {
+          "x": {
+            "kind": "method",
+            "ty": 0
           }
-        ]
+        }
       }
     ],
     "funcs": [
@@ -93,19 +91,24 @@
     ],
     "modules": []
   },
-  "scopes": [
+  "items": [
     {
-      "parent": null,
-      "names": {
-        "i": {
-          "start": 7,
-          "end": 8,
-          "kind": {
-            "instance": 0
-          }
+      "kind": {
+        "instance": 0
+      },
+      "source": {
+        "import": {
+          "with": null
         }
       }
     }
   ],
-  "rootScope": 0
+  "scopes": [
+    {
+      "parent": null,
+      "items": {
+        "i": 0
+      }
+    }
+  ]
 }

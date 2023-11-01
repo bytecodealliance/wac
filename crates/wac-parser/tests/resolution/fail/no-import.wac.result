@@ -1,0 +1,8 @@
+tests/resolution/fail/no-import.wac:2:23: component `foo:bar` has no import named `x`
+
+ --> tests/resolution/fail/no-import.wac:2:23
+  |
+2 | let i = new foo:bar { x };
+  |                       ^
+  |
+  = component `foo:bar` has no import named `x`

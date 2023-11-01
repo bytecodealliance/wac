@@ -77,8 +77,8 @@ mod test {
 
         roundtrip::<LetStatement>(
             Rule::LetStatement,
-            "let x = new foo:bar { foo, bar: (new baz:qux {...}), baz: foo[\"baz\"].qux };",
-            "let x = new foo:bar {\n  foo,\n  bar: (new baz:qux { ... }),\n  baz: foo[\"baz\"].qux,\n};",
+            "let x = new foo:bar { foo, \"bar\": (new baz:qux {...}), \"baz\": foo[\"baz\"].qux };",
+            "let x = new foo:bar {\n  foo,\n  \"bar\": (new baz:qux { ... }),\n  \"baz\": foo[\"baz\"].qux,\n};",
         )
         .unwrap();
     }

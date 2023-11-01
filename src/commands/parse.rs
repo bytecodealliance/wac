@@ -7,6 +7,21 @@ use wac_parser::{
     resolution::{FileSystemPackageResolver, ResolvedDocument},
 };
 
+fn parse<T, U>(s: &str) -> Result<(T, U)>
+where
+    T: std::str::FromStr,
+    T::Err: Into<anyhow::Error>,
+    U: std::str::FromStr,
+    U::Err: Into<anyhow::Error>,
+{
+    let (k, v) = s.split_once('=').context("value does not contain `=`")?;
+
+    Ok((
+        k.trim().parse().map_err(Into::into)?,
+        v.trim().parse().map_err(Into::into)?,
+    ))
+}
+
 #[derive(Serialize)]
 struct Output<'a> {
     ast: &'a Document<'a>,
@@ -20,6 +35,14 @@ pub struct ParseCommand {
     /// The package being parsed.
     #[clap(long, short, value_name = "PACKAGE")]
     pub package: String,
+
+    /// The directory to search for package dependencies.
+    #[clap(long, value_name = "PATH", default_value = "deps")]
+    pub deps_dir: PathBuf,
+
+    /// The directory to search for package dependencies.
+    #[clap(long = "dep", short, value_name = "PKG=PATH", value_parser = parse::<String, PathBuf>)]
+    pub deps: Vec<(String, PathBuf)>,
 
     /// The path to the composition file.
     #[clap(value_name = "PATH")]
@@ -38,7 +61,10 @@ impl ParseCommand {
         let resolved = ResolvedDocument::new(
             &document,
             self.package,
-            Some(Box::<FileSystemPackageResolver>::default()),
+            Some(Box::new(FileSystemPackageResolver::new(
+                self.deps_dir,
+                self.deps.into_iter().collect(),
+            ))),
         )?;
 
         serde_json::to_writer_pretty(

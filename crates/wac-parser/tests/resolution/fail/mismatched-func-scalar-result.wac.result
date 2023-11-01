@@ -1,0 +1,13 @@
+tests/resolution/fail/mismatched-func-scalar-result.wac:5:23: mismatched instantiation argument `x`
+
+ --> tests/resolution/fail/mismatched-func-scalar-result.wac:5:23
+  |
+5 | let i = new foo:bar { x };
+  |                       ^
+  |
+  = mismatched instantiation argument `x`
+
+Caused by:
+    0: mismatched type for export `f`
+    1: mismatched type for function result
+    2: expected u8, found string

@@ -1,0 +1,9 @@
+import x: interface {
+    flags f {
+        a,
+        c,
+        b,
+    }
+};
+
+let i = new foo:bar { x };

@@ -2,13 +2,14 @@
 
 use self::package::Package;
 use crate::ast::{self, new_error_with_span};
-use anyhow::{Context, Result};
+use anyhow::{bail, Context, Result};
 use id_arena::{Arena, Id};
 use indexmap::{IndexMap, IndexSet};
 use pest::{Position, Span};
 use serde::{Serialize, Serializer};
 use std::{
-    collections::{hash_map, HashMap, HashSet},
+    borrow::Cow,
+    collections::{hash_map, HashMap},
     fmt, fs,
     path::{Path, PathBuf},
 };
@@ -29,6 +30,24 @@ where
     let mut s = serializer.serialize_seq(Some(arena.len()))?;
     for (_, e) in arena.iter() {
         s.serialize_element(e)?;
+    }
+
+    s.end()
+}
+
+fn serialize_id_map<T, S>(
+    map: &IndexMap<String, Id<T>>,
+    serializer: S,
+) -> std::result::Result<S::Ok, S::Error>
+where
+    S: Serializer,
+    T: Serialize,
+{
+    use serde::ser::SerializeMap;
+
+    let mut s = serializer.serialize_map(Some(map.len()))?;
+    for (k, v) in map {
+        s.serialize_entry(k, &v.index())?;
     }
 
     s.end()
@@ -69,29 +88,60 @@ pub trait PackageResolver {
 /// Used to resolve packages from the file system.
 pub struct FileSystemPackageResolver {
     root: PathBuf,
+    overrides: HashMap<String, PathBuf>,
 }
 
 impl FileSystemPackageResolver {
     /// Creates a new `FileSystemPackageResolver` with the given root directory.
-    pub fn new(root: impl Into<PathBuf>) -> Self {
-        Self { root: root.into() }
+    pub fn new(root: impl Into<PathBuf>, overrides: HashMap<String, PathBuf>) -> Self {
+        Self {
+            root: root.into(),
+            overrides,
+        }
     }
 }
 
 impl Default for FileSystemPackageResolver {
     fn default() -> Self {
-        Self::new("deps")
+        Self::new("deps", Default::default())
     }
 }
 
 impl PackageResolver for FileSystemPackageResolver {
     fn resolve(&self, name: &ast::PackageName) -> Result<Option<Vec<u8>>> {
-        let mut path = self.root.clone();
-        for part in &name.parts {
-            path.push(part.as_str());
-        }
+        let path = if let Some(path) = self.overrides.get(name.as_str()) {
+            if !path.exists() {
+                bail!(
+                    "local path `{path}` for package `{name}` does not exist",
+                    path = path.display(),
+                    name = name.as_str()
+                )
+            }
 
-        // First check to see if a directory `<root>/ns*/name` exists.
+            path.clone()
+        } else {
+            let mut path = self.root.clone();
+            for part in &name.parts {
+                path.push(part.as_str());
+            }
+
+            // If the path is not a directory, use a `.wasm` or `.wat` extension
+            if !path.is_dir() {
+                path.set_extension("wasm");
+
+                #[cfg(feature = "wat")]
+                {
+                    path.set_extension("wat");
+                    if !path.exists() {
+                        path.set_extension("wasm");
+                    }
+                }
+            }
+
+            path
+        };
+
+        // First check to see if a directory exists.
         // If so, then treat it as a textual WIT package.
         if path.is_dir() {
             log::debug!(
@@ -112,77 +162,176 @@ impl PackageResolver for FileSystemPackageResolver {
                 .map(Some);
         }
 
-        // Otherwise, check if `<root>/ns*/name.wasm` exists as a file
-        path.set_extension("wasm");
         if !path.is_file() {
             log::debug!("package `{path}` does not exist", path = path.display());
             return Ok(None);
         }
 
         log::debug!("loading package from `{path}`", path = path.display());
-        fs::read(&path)
-            .with_context(|| format!("failed to read package `{path}`", path = path.display()))
-            .map(Some)
+        let bytes = fs::read(&path)
+            .with_context(|| format!("failed to read package `{path}`", path = path.display()))?;
+
+        #[cfg(feature = "wat")]
+        if path.extension().and_then(std::ffi::OsStr::to_str) == Some("wat") {
+            let bytes = match wat::parse_bytes(&bytes) {
+                Ok(std::borrow::Cow::Borrowed(_)) => bytes,
+                Ok(std::borrow::Cow::Owned(wat)) => wat,
+                Err(mut e) => {
+                    e.set_path(path);
+                    bail!(e);
+                }
+            };
+
+            return Ok(Some(bytes));
+        }
+
+        Ok(Some(bytes))
     }
 }
+
+/// Represents the kind of an item.
+#[derive(Debug, Clone, Copy, Serialize, Hash, Eq, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub enum ItemKind {
+    /// The kind is a type.
+    Type(Type),
+    /// The kind is a function.
+    Func(#[serde(serialize_with = "serialize_id")] FuncId),
+    /// The kind is a component instance.
+    Instance(#[serde(serialize_with = "serialize_id")] InterfaceId),
+    /// The kind is an instantiation of a component.
+    Instantiation(#[serde(serialize_with = "serialize_id")] WorldId),
+    /// The kind is a component.
+    Component(#[serde(serialize_with = "serialize_id")] WorldId),
+    /// The kind is a core module.
+    Module(#[serde(serialize_with = "serialize_id")] ModuleId),
+    /// The kind is a value.
+    Value(ValueType),
+}
+
+impl ItemKind {
+    pub(crate) fn display<'a>(&'a self, definitions: &'a Definitions) -> impl fmt::Display + 'a {
+        ItemKindDisplay {
+            kind: *self,
+            definitions,
+        }
+    }
+}
+
+struct ItemKindDisplay<'a> {
+    kind: ItemKind,
+    definitions: &'a Definitions,
+}
+
+impl fmt::Display for ItemKindDisplay<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self.kind {
+            ItemKind::Func(_) => write!(f, "function"),
+            ItemKind::Type(ty) => ty.display(self.definitions).fmt(f),
+            ItemKind::Instance(_) | ItemKind::Instantiation(_) => write!(f, "instance"),
+            ItemKind::Component(_) => write!(f, "component"),
+            ItemKind::Module(_) => write!(f, "module"),
+            ItemKind::Value(_) => write!(f, "value"),
+        }
+    }
+}
+
+/// Represents the source of an item.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum ItemSource {
+    /// The item comes from a local definition.
+    Definition,
+    /// The item comes from a use statement.
+    Use,
+    /// The item comes from an import,
+    Import {
+        /// The import string to use.
+        with: Option<String>,
+    },
+    /// The item comes from an alias.
+    Alias {
+        /// The instance being aliased.
+        #[serde(serialize_with = "serialize_id")]
+        item: ItemId,
+        /// The export name.
+        export: String,
+    },
+    /// The item comes from an instantiation.
+    Instantiation {
+        /// The arguments of the instantiation.
+        #[serde(serialize_with = "serialize_id_map")]
+        arguments: IndexMap<String, ItemId>,
+    },
+}
+
+/// Represents an item in a resolved document.
+#[derive(Debug, Clone, Serialize)]
+pub struct Item {
+    /// The kind of the item.
+    pub kind: ItemKind,
+    /// The source of the item.
+    pub source: ItemSource,
+}
+
+/// Represents an identifier for an item.
+pub type ItemId = Id<Item>;
 
 /// An identifier for scopes.
 pub type ScopeId = Id<Scope>;
 
-/// Represents a defined name.
-#[derive(Debug, Clone, Copy, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct Name {
-    /// The starting position of the name.
-    pub start: usize,
-    /// The ending position of the name.
-    pub end: usize,
-    /// The extern kind of name.
-    pub kind: ExternKind,
-}
-
-/// Represents a scope for names.
+/// Represents a scope for named items.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
-
 pub struct Scope {
     #[serde(serialize_with = "serialize_optional_id")]
     parent: Option<ScopeId>,
-    names: IndexMap<String, Name>,
+    #[serde(serialize_with = "serialize_id_map")]
+    items: IndexMap<String, ItemId>,
 }
 
 impl Scope {
-    /// Gets a name from the scope.
-    pub fn get(&self, name: &str) -> Option<Name> {
-        self.names.get(name).copied()
+    /// Gets a named item from the scope.
+    pub fn get(&self, name: &str) -> Option<ItemId> {
+        self.items.get(name).copied()
     }
 
-    /// Iterates all names in the scope.
-    pub fn iter(&self) -> impl Iterator<Item = &Name> {
-        self.names.values()
+    /// Iterates all named items in the scope.
+    pub fn iter(&self) -> impl Iterator<Item = ItemId> + '_ {
+        self.items.values().copied()
     }
 }
 
 struct ResolutionState<'a> {
     document: &'a ast::Document<'a>,
     resolver: Option<Box<dyn PackageResolver>>,
+    root_scope: ScopeId,
     current_scope: ScopeId,
     packages: HashMap<String, Package>,
+    offsets: HashMap<ItemId, usize>,
+    aliases: HashMap<(ItemId, String), ItemId>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum FuncKind {
+/// Represents a kind of function in the component model.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum FuncKind {
+    /// The function is a "free" function (i.e. not associated with a resource).
     Free,
+    /// The function is a method on a resource.
     Method,
+    /// The function is a static method on a resource.
     Static,
+    /// The function is a resource constructor.
     Constructor,
 }
 
 impl fmt::Display for FuncKind {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             FuncKind::Free => write!(f, "function"),
-            FuncKind::Method | FuncKind::Static => write!(f, "method"),
+            FuncKind::Method => write!(f, "method"),
+            FuncKind::Static => write!(f, "static method"),
             FuncKind::Constructor => write!(f, "constructor"),
         }
     }
@@ -198,12 +347,12 @@ pub struct ResolvedDocument {
     pub package: String,
     /// The definitions in the resolution.
     pub definitions: Definitions,
+    /// The items in the resolution.
+    #[serde(serialize_with = "serialize_arena")]
+    pub items: Arena<Item>,
     /// The name scopes in the resolution.
     #[serde(serialize_with = "serialize_arena")]
     pub scopes: Arena<Scope>,
-    /// The id of the root scope.
-    #[serde(serialize_with = "serialize_id")]
-    pub root_scope: ScopeId,
 }
 
 impl ResolvedDocument {
@@ -216,28 +365,31 @@ impl ResolvedDocument {
         let mut scopes = Arena::new();
         let root_scope = scopes.alloc(Scope {
             parent: None,
-            names: Default::default(),
+            items: Default::default(),
         });
 
         let mut resolution = ResolvedDocument {
             package: package.into(),
             definitions: Default::default(),
+            items: Default::default(),
             scopes,
-            root_scope,
         };
 
         let mut state = ResolutionState {
             document,
             resolver,
+            root_scope,
             current_scope: root_scope,
             packages: Default::default(),
+            offsets: Default::default(),
+            aliases: Default::default(),
         };
 
         for stmt in &document.statements {
             match &stmt.stmt {
                 ast::Statement::Import(i) => resolution.import(&mut state, i)?,
                 ast::Statement::Type(t) => resolution.type_statement(&mut state, t)?,
-                ast::Statement::Let(_) => todo!("implement let statements"),
+                ast::Statement::Let(l) => resolution.let_statement(&mut state, l)?,
                 ast::Statement::Export(_) => todo!("implement export statements"),
             }
         }
@@ -250,23 +402,23 @@ impl ResolvedDocument {
         todo!("implement encoding")
     }
 
-    fn get(&self, state: &ResolutionState, id: &ast::Ident) -> Option<Name> {
+    fn get(&self, state: &ResolutionState, id: &ast::Ident) -> Option<ItemId> {
         let mut current = &self.scopes[state.current_scope];
         loop {
-            if let Some(name) = current.get(id.as_str()) {
-                return Some(name);
+            if let Some(item) = current.get(id.as_str()) {
+                return Some(item);
             }
 
             current = &self.scopes[current.parent?];
         }
     }
 
-    fn require(&self, state: &ResolutionState, id: &ast::Ident) -> Result<Name> {
+    fn require(&self, state: &ResolutionState, id: &ast::Ident) -> Result<ItemId> {
         self.get(state, id).ok_or_else(|| {
             new_error_with_span(
-                format!("undefined name `{id}`", id = id.as_str()),
                 state.document.path,
                 id.0,
+                format!("undefined name `{id}`", id = id.as_str()),
             )
         })
     }
@@ -274,7 +426,7 @@ impl ResolvedDocument {
     fn push_scope(&mut self, state: &mut ResolutionState) {
         state.current_scope = self.scopes.alloc(Scope {
             parent: Some(state.current_scope),
-            names: Default::default(),
+            items: Default::default(),
         });
     }
 
@@ -288,31 +440,28 @@ impl ResolvedDocument {
 
     fn register_name(
         &mut self,
-        state: &ResolutionState,
+        state: &mut ResolutionState,
         id: ast::Ident,
-        kind: ExternKind,
+        item: ItemId,
     ) -> Result<()> {
-        if let Some(prev) = self.scopes[state.current_scope].names.insert(
-            id.as_str().to_owned(),
-            Name {
-                start: id.0.start(),
-                end: id.0.end(),
-                kind,
-            },
-        ) {
-            let (line, column) = Position::new(id.0.get_input(), prev.start)
-                .unwrap()
-                .line_col();
+        if let Some(prev) = self.scopes[state.current_scope]
+            .items
+            .insert(id.as_str().to_owned(), item)
+        {
+            let offset = state.offsets[&prev];
+            let (line, column) = Position::new(id.0.get_input(), offset).unwrap().line_col();
             return Err(new_error_with_span(
+                state.document.path,
+                id.0,
                 format!(
                     "`{id}` was previously defined at {path}:{line}:{column}",
                     id = id.as_str(),
                     path = state.document.path.display(),
                 ),
-                state.document.path,
-                id.0,
             ));
         }
+
+        state.offsets.insert(item, id.0.start());
 
         Ok(())
     }
@@ -320,25 +469,32 @@ impl ResolvedDocument {
     fn import(&mut self, state: &mut ResolutionState, stmt: &ast::ImportStatement) -> Result<()> {
         let kind = match &stmt.ty {
             ast::ImportType::Package(p) => self.resolve_package_export(state, p)?,
-            ast::ImportType::Func(ty) => ExternKind::Func(self.func_type(
+            ast::ImportType::Func(ty) => ItemKind::Func(self.func_type(
                 state,
                 &ty.params,
                 ty.results.as_ref(),
                 FuncKind::Free,
             )?),
             ast::ImportType::Interface(i) => self.inline_interface(state, i)?,
-            ast::ImportType::Ident(id) => self.require(state, id)?.kind,
+            ast::ImportType::Ident(id) => self.items[self.require(state, id)?].kind,
         };
 
         // Promote function types, instance types, and component types to functions, instances, and components
         let kind = match kind {
-            ExternKind::Type(ExternType::Func(id)) => ExternKind::Func(id),
-            ExternKind::Type(ExternType::Interface(id)) => ExternKind::Instance(id),
-            ExternKind::Type(ExternType::World(id)) => ExternKind::Component(id),
+            ItemKind::Type(Type::Func(id)) => ItemKind::Func(id),
+            ItemKind::Type(Type::Interface(id)) => ItemKind::Instance(id),
+            ItemKind::Type(Type::World(id)) => ItemKind::Component(id),
             _ => kind,
         };
 
-        self.register_name(state, stmt.id, kind)
+        let id = self.items.alloc(Item {
+            kind,
+            source: ItemSource::Import {
+                with: stmt.with.as_ref().map(|w| w.name.as_str().to_owned()),
+            },
+        });
+
+        self.register_name(state, stmt.id, id)
     }
 
     fn type_statement(
@@ -353,11 +509,20 @@ impl ResolvedDocument {
         }
     }
 
+    fn let_statement<'a>(
+        &mut self,
+        state: &mut ResolutionState<'a>,
+        stmt: &'a ast::LetStatement,
+    ) -> Result<()> {
+        let item = self.expr(state, &stmt.expr)?;
+        self.register_name(state, stmt.id, item)
+    }
+
     fn inline_interface(
         &mut self,
         state: &mut ResolutionState,
         iface: &ast::InlineInterface,
-    ) -> Result<ExternKind> {
+    ) -> Result<ItemKind> {
         self.push_scope(state);
 
         let mut ty = Interface {
@@ -370,7 +535,7 @@ impl ResolvedDocument {
 
         self.pop_scope(state);
 
-        Ok(ExternKind::Type(ExternType::Interface(
+        Ok(ItemKind::Type(Type::Interface(
             self.definitions.interfaces.alloc(ty),
         )))
     }
@@ -396,8 +561,14 @@ impl ResolvedDocument {
 
         self.pop_scope(state);
 
-        let id = self.definitions.interfaces.alloc(ty);
-        self.register_name(state, decl.id, ExternKind::Type(ExternType::Interface(id)))
+        let ty = self.definitions.interfaces.alloc(ty);
+
+        let id = self.items.alloc(Item {
+            kind: ItemKind::Type(Type::Interface(ty)),
+            source: ItemSource::Definition,
+        });
+
+        self.register_name(state, decl.id, id)
     }
 
     fn world_decl(&mut self, state: &mut ResolutionState, decl: &ast::WorldDecl) -> Result<()> {
@@ -413,8 +584,14 @@ impl ResolvedDocument {
 
         self.pop_scope(state);
 
-        let id = self.definitions.worlds.alloc(ty);
-        self.register_name(state, decl.id, ExternKind::Type(ExternType::World(id)))
+        let ty = self.definitions.worlds.alloc(ty);
+
+        let id = self.items.alloc(Item {
+            kind: ItemKind::Type(Type::World(ty)),
+            source: ItemSource::Definition,
+        });
+
+        self.register_name(state, decl.id, id)
     }
 
     fn interface_body(
@@ -430,21 +607,22 @@ impl ResolvedDocument {
                     self.use_type(state, u, &mut ty.exports, false)?
                 }
                 ast::InterfaceItemStatement::Type(decl) => {
-                    let kind: ExternKind = self.type_decl(state, decl)?;
+                    let kind = self.type_decl(state, decl)?;
                     let prev = ty
                         .exports
                         .insert(decl.id().as_str().into(), Extern::Kind(kind));
                     assert!(prev.is_none(), "duplicate type in scope");
                 }
                 ast::InterfaceItemStatement::Export(e) => {
-                    let kind =
-                        ExternKind::Func(self.func_type_ref(state, &e.ty, FuncKind::Free)?);
+                    let kind = ItemKind::Func(self.func_type_ref(state, &e.ty, FuncKind::Free)?);
                     if ty
                         .exports
                         .insert(e.id.as_str().into(), Extern::Kind(kind))
                         .is_some()
                     {
                         return Err(new_error_with_span(
+                            state.document.path,
+                            e.id.0,
                             match name {
                                 Some(name) => format!(
                                     "duplicate interface export `{id}` for interface `{name}`",
@@ -454,8 +632,6 @@ impl ResolvedDocument {
                                     format!("duplicate interface export `{id}`", id = e.id.as_str())
                                 }
                             },
-                            state.document.path,
-                            e.id.0,
                         ));
                     }
                 }
@@ -523,12 +699,12 @@ impl ResolvedDocument {
             };
             if exists {
                 return Err(new_error_with_span(
+                    state.document.path,
+                    span,
                     format!(
                         "{dir} `{name}` conflicts with existing {dir} of the same name in world `{world}`",
                         dir = if import { "import" } else { "export" },
                     ),
-                    state.document.path,
-                    span,
                 ));
             }
 
@@ -543,27 +719,28 @@ impl ResolvedDocument {
                     named.id.as_str().into(),
                     match &named.ty {
                         ast::ExternType::Ident(id) => {
-                            let name = self.require(state, id)?;
-                            match name.kind {
-                                ExternKind::Type(ExternType::Interface(id))
-                                | ExternKind::Instance(id) => ExternKind::Instance(id),
-                                ExternKind::Type(ExternType::Func(id)) | ExternKind::Func(id) => {
-                                    ExternKind::Func(id)
+                            let item = &self.items[self.require(state, id)?];
+                            match item.kind {
+                                ItemKind::Type(Type::Interface(id)) | ItemKind::Instance(id) => {
+                                    ItemKind::Instance(id)
+                                }
+                                ItemKind::Type(Type::Func(id)) | ItemKind::Func(id) => {
+                                    ItemKind::Func(id)
                                 }
                                 _ => {
                                     return Err(new_error_with_span(
-                                        format!(
-                                            "{kind} `{id}` is not a function type or interface",
-                                            kind = name.kind,
-                                            id = id.as_str(),
-                                        ),
                                         state.document.path,
                                         id.0,
+                                        format!(
+                                            "`{id}` ({kind}) is not a function type or interface",
+                                            kind = item.kind.display(&self.definitions),
+                                            id = id.as_str(),
+                                        ),
                                     ))
                                 }
                             }
                         }
-                        ast::ExternType::Func(f) => ExternKind::Func(self.func_type(
+                        ast::ExternType::Func(f) => ItemKind::Func(self.func_type(
                             state,
                             &f.params,
                             f.results.as_ref(),
@@ -575,44 +752,48 @@ impl ResolvedDocument {
             }
             ast::WorldItemDecl::Interface(i) => match i {
                 ast::InterfaceRef::Ident(id) => {
-                    let name = self.require(state, id)?;
-                    match name.kind {
-                        ExternKind::Type(ExternType::Interface(iface_ty_id))
-                        | ExternKind::Instance(iface_ty_id) => {
+                    let item = &self.items[self.require(state, id)?];
+                    match item.kind {
+                        ItemKind::Type(Type::Interface(iface_ty_id))
+                        | ItemKind::Instance(iface_ty_id) => {
                             let iface_id = self.definitions.interfaces[iface_ty_id]
                                 .id
                                 .as_ref()
                                 .expect("expected an interface id");
                             check_name(iface_id, id.0, ty)?;
-                            (iface_id.clone(), ExternKind::Instance(iface_ty_id))
+                            (iface_id.clone(), ItemKind::Instance(iface_ty_id))
                         }
                         _ => {
                             return Err(new_error_with_span(
-                                format!(
-                                    "{kind} `{id}` is not an interface",
-                                    kind = name.kind,
-                                    id = id.as_str()
-                                ),
                                 state.document.path,
                                 id.0,
+                                format!(
+                                    "`{id}` ({kind}) is not an interface",
+                                    kind = item.kind.display(&self.definitions),
+                                    id = id.as_str()
+                                ),
                             ))
                         }
                     }
                 }
                 ast::InterfaceRef::Path(p) => match self.resolve_package_export(state, p)? {
-                    ExternKind::Type(ExternType::Interface(id)) | ExternKind::Instance(id) => {
+                    ItemKind::Type(Type::Interface(id)) | ItemKind::Instance(id) => {
                         let name = self.definitions.interfaces[id]
                             .id
                             .as_ref()
                             .expect("expected an interface id");
                         check_name(name, p.span(), ty)?;
-                        (name.clone(), ExternKind::Instance(id))
+                        (name.clone(), ItemKind::Instance(id))
                     }
-                    ty => {
+                    kind => {
                         return Err(new_error_with_span(
-                            format!("{ty} `{path}` is not an interface", path = p.as_str()),
                             state.document.path,
                             p.span(),
+                            format!(
+                                "`{path}` ({kind}) is not an interface",
+                                path = p.as_str(),
+                                kind = kind.display(&self.definitions)
+                            ),
                         ))
                     }
                 },
@@ -645,37 +826,45 @@ impl ResolvedDocument {
             let prev = replacements.insert(item.name.as_str(), item);
             if prev.is_some() {
                 return Err(new_error_with_span(
+                    state.document.path,
+                    item.name.0,
                     format!(
                         "duplicate `{name}` in world include `with` clause",
                         name = item.name,
                     ),
-                    state.document.path,
-                    item.name.0,
                 ));
             }
         }
 
         let id = match &stmt.world {
             ast::WorldRef::Ident(id) => {
-                let name = self.require(state, id)?;
-                match name.kind {
-                    ExternKind::Type(ExternType::World(id)) | ExternKind::Component(id) => id,
+                let item = &self.items[self.require(state, id)?];
+                match item.kind {
+                    ItemKind::Type(Type::World(id)) | ItemKind::Component(id) => id,
                     kind => {
                         return Err(new_error_with_span(
-                            format!("{kind} `{id}` is not a world", id = id.as_str()),
                             state.document.path,
                             id.0,
+                            format!(
+                                "`{id}` ({kind}) is not a world",
+                                id = id.as_str(),
+                                kind = kind.display(&self.definitions)
+                            ),
                         ))
                     }
                 }
             }
             ast::WorldRef::Path(path) => match self.resolve_package_export(state, path)? {
-                ExternKind::Type(ExternType::World(id)) | ExternKind::Component(id) => id,
-                ty => {
+                ItemKind::Type(Type::World(id)) | ItemKind::Component(id) => id,
+                kind => {
                     return Err(new_error_with_span(
-                        format!("{ty} `{path}` is not a world", path = path.as_str()),
                         state.document.path,
                         path.span(),
+                        format!(
+                            "`{path}` ({kind}) is not a world",
+                            path = path.as_str(),
+                            kind = kind.display(&self.definitions)
+                        ),
                     ))
                 }
             },
@@ -710,13 +899,13 @@ impl ResolvedDocument {
 
         if let Some(missing) = replacements.values().next() {
             return Err(new_error_with_span(
+                state.document.path,
+                missing.name.0,
                 format!(
                     "world `{other}` does not have an import or export with kebab-name `{name}`",
                     other = stmt.world.name(),
                     name = missing.name.as_str(),
                 ),
-                state.document.path,
-                missing.name.0,
             ));
         }
 
@@ -749,6 +938,8 @@ impl ResolvedDocument {
 
             if exists {
                 return Err(new_error_with_span(
+                    path,
+                    span,
                     format!(
                         "{dir} `{name}` from world `{other}` conflicts with {dir} of the same name in world `{world}`{hint}",
                         dir = if import { "import" } else { "export" },
@@ -757,8 +948,6 @@ impl ResolvedDocument {
                             " (consider using a `with` clause to use a different name)"
                         }
                     ),
-                    path,
-                    span,
                 ));
             }
 
@@ -775,27 +964,33 @@ impl ResolvedDocument {
     ) -> Result<()> {
         let (interface, name) = match &stmt.items.path {
             ast::UsePath::Package(path) => match self.resolve_package_export(state, path)? {
-                ExternKind::Type(ExternType::Interface(id)) | ExternKind::Instance(id) => {
-                    (id, path.as_str())
-                }
-                ty => {
+                ItemKind::Type(Type::Interface(id)) | ItemKind::Instance(id) => (id, path.as_str()),
+                kind => {
                     return Err(new_error_with_span(
-                        format!("{ty} `{path}` is not an interface", path = path.as_str()),
                         state.document.path,
                         path.span(),
+                        format!(
+                            "`{path}` ({kind}) is not an interface",
+                            path = path.as_str(),
+                            kind = kind.display(&self.definitions)
+                        ),
                     ))
                 }
             },
             ast::UsePath::Ident(id) => {
-                let name = self.require(state, id)?;
-                match name.kind {
-                    ExternKind::Type(ExternType::Interface(iface_ty_id))
-                    | ExternKind::Instance(iface_ty_id) => (iface_ty_id, id.as_str()),
+                let item = &self.items[self.require(state, id)?];
+                match item.kind {
+                    ItemKind::Type(Type::Interface(iface_ty_id))
+                    | ItemKind::Instance(iface_ty_id) => (iface_ty_id, id.as_str()),
                     kind => {
                         return Err(new_error_with_span(
-                            format!("{kind} `{id}` is not an interface", id = id.as_str()),
                             state.document.path,
                             id.0,
+                            format!(
+                                "`{id}` ({kind}) is not an interface",
+                                id = id.as_str(),
+                                kind = kind.display(&self.definitions)
+                            ),
                         ))
                     }
                 }
@@ -809,18 +1004,18 @@ impl ResolvedDocument {
                 .get_full(item.id.as_str())
                 .ok_or_else(|| {
                     new_error_with_span(
+                        state.document.path,
+                        item.id.0,
                         format!(
                             "type `{item}` is not defined in interface `{name}`",
                             item = item.id.as_str()
                         ),
-                        state.document.path,
-                        item.id.0,
                     )
                 })?;
 
             let kind = ext.kind();
             match kind {
-                ExternKind::Type(ExternType::Value(ty)) => {
+                ItemKind::Type(Type::Value(ty)) => {
                     let new_extern = Extern::Use {
                         interface,
                         export_index: index,
@@ -844,7 +1039,7 @@ impl ResolvedDocument {
                             if !externs.contains_key(id) {
                                 externs.insert(
                                     id.to_owned(),
-                                    Extern::Kind(ExternKind::Instance(interface)),
+                                    Extern::Kind(ItemKind::Instance(interface)),
                                 );
                             }
 
@@ -853,16 +1048,22 @@ impl ResolvedDocument {
                     }
 
                     externs.insert(ident.as_str().into(), new_extern);
-                    self.register_name(state, ident, kind)?;
+
+                    let id = self.items.alloc(Item {
+                        kind,
+                        source: ItemSource::Use,
+                    });
+                    self.register_name(state, ident, id)?;
                 }
                 _ => {
                     return Err(new_error_with_span(
-                        format!(
-                            "{kind} `{item}` is not a value type in interface `{name}`",
-                            item = item.id.as_str()
-                        ),
                         state.document.path,
                         item.id.0,
+                        format!(
+                            "`{item}` ({kind}) is not a value type in interface `{name}`",
+                            kind = kind.display(&self.definitions),
+                            item = item.id.as_str()
+                        ),
                     ));
                 }
             }
@@ -871,11 +1072,7 @@ impl ResolvedDocument {
         Ok(())
     }
 
-    fn type_decl(
-        &mut self,
-        state: &mut ResolutionState,
-        decl: &ast::TypeDecl,
-    ) -> Result<ExternKind> {
+    fn type_decl(&mut self, state: &mut ResolutionState, decl: &ast::TypeDecl) -> Result<ItemKind> {
         match decl {
             ast::TypeDecl::Resource(r) => self.resource_decl(state, r),
             ast::TypeDecl::Variant(v) => self.variant_decl(state, v),
@@ -890,76 +1087,73 @@ impl ResolvedDocument {
         &mut self,
         state: &mut ResolutionState,
         decl: &ast::ResourceDecl,
-    ) -> Result<ExternKind> {
+    ) -> Result<ItemKind> {
         // Resources are allowed to be self-referential, so we need to allocate the resource
         // before we resolve the methods.
         let id = self.definitions.resources.alloc(Resource {
             methods: Default::default(),
         });
-        let kind = ExternKind::Type(ExternType::Value(
+        let kind = ItemKind::Type(Type::Value(
             self.definitions.types.alloc(DefinedType::Resource(id)),
         ));
+        let item_id = self.items.alloc(Item {
+            kind,
+            source: ItemSource::Definition,
+        });
 
-        self.register_name(state, decl.id, kind)?;
+        self.register_name(state, decl.id, item_id)?;
 
         self.definitions.resources[id].methods = match &decl.body {
-            ast::ResourceBody::Empty(_) => Vec::new(),
+            ast::ResourceBody::Empty(_) => Default::default(),
             ast::ResourceBody::Methods { methods, .. } => {
-                let mut constructor = false;
-                let mut names = HashSet::new();
-
-                methods
-                    .iter()
-                    .map(|(m, _)| match m {
-                        ast::ResourceMethod::Constructor(ast::Constructor { keyword, params }) => {
-                            if constructor {
-                                return Err(new_error_with_span(
-                                    format!(
-                                        "duplicate constructor for resource `{res}`",
-                                        res = decl.id
-                                    ),
-                                    state.document.path,
-                                    keyword.0,
-                                ));
-                            }
-
-                            constructor = true;
-                            Ok(ResourceMethod::Constructor(self.func_type(
-                                state,
-                                params,
-                                None,
-                                FuncKind::Constructor,
-                            )?))
-                        }
+                let mut resource_methods = IndexMap::new();
+                for (method, _) in methods.iter() {
+                    let (name, method, span) = match method {
+                        ast::ResourceMethod::Constructor(ast::Constructor { keyword, params }) => (
+                            String::new(),
+                            ResourceMethod {
+                                kind: FuncKind::Constructor,
+                                ty: self.func_type(state, params, None, FuncKind::Constructor)?,
+                            },
+                            keyword.0,
+                        ),
                         ast::ResourceMethod::Method(ast::Method {
                             id, func, keyword, ..
-                        }) => {
-                            if !names.insert(id.as_str()) {
-                                return Err(new_error_with_span(
-                                    format!(
-                                        "duplicate method `{id}` for resource `{res}`",
-                                        id = id.as_str(),
-                                        res = decl.id.as_str()
-                                    ),
-                                    state.document.path,
-                                    id.0,
-                                ));
-                            }
+                        }) => (
+                            id.as_str().into(),
+                            ResourceMethod {
+                                kind: if keyword.is_some() {
+                                    FuncKind::Static
+                                } else {
+                                    FuncKind::Method
+                                },
+                                ty: self.func_type_ref(state, func, FuncKind::Method)?,
+                            },
+                            id.0,
+                        ),
+                    };
 
-                            if keyword.is_some() {
-                                Ok(ResourceMethod::Static {
-                                    name: id.as_str().into(),
-                                    ty: self.func_type_ref(state, func, FuncKind::Method)?,
-                                })
+                    let prev = resource_methods.insert(name.clone(), method);
+                    if prev.is_some() {
+                        return Err(new_error_with_span(
+                            state.document.path,
+                            span,
+                            if name.is_empty() {
+                                format!(
+                                    "duplicate constructor for resource `{res}`",
+                                    res = decl.id.as_str()
+                                )
                             } else {
-                                Ok(ResourceMethod::Instance {
-                                    name: id.as_str().into(),
-                                    ty: self.func_type_ref(state, func, FuncKind::Method)?,
-                                })
-                            }
-                        }
-                    })
-                    .collect::<Result<_>>()?
+                                format!(
+                                    "duplicate method `{name}` for resource `{res}`",
+                                    res = decl.id.as_str()
+                                )
+                            },
+                        ));
+                    }
+                }
+
+                resource_methods
             }
         };
 
@@ -970,7 +1164,7 @@ impl ResolvedDocument {
         &mut self,
         state: &mut ResolutionState,
         decl: &ast::VariantDecl,
-    ) -> Result<ExternKind> {
+    ) -> Result<ItemKind> {
         let mut cases = IndexMap::new();
         for case in &decl.body.cases {
             if cases
@@ -984,23 +1178,27 @@ impl ResolvedDocument {
                 .is_some()
             {
                 return Err(new_error_with_span(
+                    state.document.path,
+                    case.id.0,
                     format!(
                         "duplicate case `{case}` for variant type `{ty}`",
                         case = case.id,
                         ty = decl.id
                     ),
-                    state.document.path,
-                    case.id.0,
                 ));
             }
         }
 
-        let kind = ExternKind::Type(ExternType::Value(
+        let kind = ItemKind::Type(Type::Value(
             self.definitions
                 .types
                 .alloc(DefinedType::Variant(Variant { cases })),
         ));
-        self.register_name(state, decl.id, kind)?;
+        let id = self.items.alloc(Item {
+            kind,
+            source: ItemSource::Definition,
+        });
+        self.register_name(state, decl.id, id)?;
         Ok(kind)
     }
 
@@ -1008,7 +1206,7 @@ impl ResolvedDocument {
         &mut self,
         state: &mut ResolutionState,
         decl: &ast::RecordDecl,
-    ) -> Result<ExternKind> {
+    ) -> Result<ItemKind> {
         let mut fields = IndexMap::new();
         for field in &decl.body.fields {
             if fields
@@ -1016,23 +1214,27 @@ impl ResolvedDocument {
                 .is_some()
             {
                 return Err(new_error_with_span(
+                    state.document.path,
+                    field.id.0,
                     format!(
                         "duplicate field `{field}` for record type `{ty}`",
                         field = field.id,
                         ty = decl.id
                     ),
-                    state.document.path,
-                    field.id.0,
                 ));
             }
         }
 
-        let kind = ExternKind::Type(ExternType::Value(
+        let kind = ItemKind::Type(Type::Value(
             self.definitions
                 .types
                 .alloc(DefinedType::Record(Record { fields })),
         ));
-        self.register_name(state, decl.id, kind)?;
+        let id = self.items.alloc(Item {
+            kind,
+            source: ItemSource::Definition,
+        });
+        self.register_name(state, decl.id, id)?;
         Ok(kind)
     }
 
@@ -1040,50 +1242,54 @@ impl ResolvedDocument {
         &mut self,
         state: &mut ResolutionState,
         decl: &ast::FlagsDecl,
-    ) -> Result<ExternKind> {
+    ) -> Result<ItemKind> {
         let mut flags = IndexSet::new();
         for flag in &decl.body.flags {
             if !flags.insert(flag.as_str().into()) {
                 return Err(new_error_with_span(
+                    state.document.path,
+                    flag.0,
                     format!(
                         "duplicate flag `{flag}` for flags type `{ty}`",
                         ty = decl.id
                     ),
-                    state.document.path,
-                    flag.0,
                 ));
             }
         }
 
-        let kind = ExternKind::Type(ExternType::Value(
+        let kind = ItemKind::Type(Type::Value(
             self.definitions
                 .types
                 .alloc(DefinedType::Flags(Flags(flags))),
         ));
-        self.register_name(state, decl.id, kind)?;
+        let id = self.items.alloc(Item {
+            kind,
+            source: ItemSource::Definition,
+        });
+        self.register_name(state, decl.id, id)?;
         Ok(kind)
     }
 
-    fn enum_decl(
-        &mut self,
-        state: &mut ResolutionState,
-        decl: &ast::EnumDecl,
-    ) -> Result<ExternKind> {
+    fn enum_decl(&mut self, state: &mut ResolutionState, decl: &ast::EnumDecl) -> Result<ItemKind> {
         let mut cases = IndexSet::new();
         for case in &decl.body.cases {
             if !cases.insert(case.as_str().into()) {
                 return Err(new_error_with_span(
-                    format!("duplicate case `{case}` for enum type `{ty}`", ty = decl.id),
                     state.document.path,
                     case.0,
+                    format!("duplicate case `{case}` for enum type `{ty}`", ty = decl.id),
                 ));
             }
         }
 
-        let kind = ExternKind::Type(ExternType::Value(
+        let kind = ItemKind::Type(Type::Value(
             self.definitions.types.alloc(DefinedType::Enum(Enum(cases))),
         ));
-        self.register_name(state, decl.id, kind)?;
+        let id = self.items.alloc(Item {
+            kind,
+            source: ItemSource::Definition,
+        });
+        self.register_name(state, decl.id, id)?;
         Ok(kind)
     }
 
@@ -1091,9 +1297,9 @@ impl ResolvedDocument {
         &mut self,
         state: &mut ResolutionState,
         alias: &ast::TypeAlias,
-    ) -> Result<ExternKind> {
+    ) -> Result<ItemKind> {
         let kind = match &alias.kind {
-            ast::TypeAliasKind::Func(f) => ExternKind::Type(ExternType::Func(self.func_type(
+            ast::TypeAliasKind::Func(f) => ItemKind::Type(Type::Func(self.func_type(
                 state,
                 &f.params,
                 f.results.as_ref(),
@@ -1101,41 +1307,44 @@ impl ResolvedDocument {
             )?)),
             ast::TypeAliasKind::Type(ty) => match ty {
                 ast::Type::Ident(id) => {
-                    let name = self.require(state, id)?;
-                    match name.kind {
-                        ExternKind::Type(ExternType::Value(id)) => {
-                            ExternKind::Type(ExternType::Value(
-                                self.definitions
-                                    .types
-                                    .alloc(DefinedType::Alias(Type::Defined(id))),
-                            ))
-                        }
-                        ExternKind::Type(ExternType::Func(id)) | ExternKind::Func(id) => {
-                            ExternKind::Type(ExternType::Func(id))
+                    let item = &self.items[self.require(state, id)?];
+                    match item.kind {
+                        ItemKind::Type(Type::Value(id)) => ItemKind::Type(Type::Value(
+                            self.definitions
+                                .types
+                                .alloc(DefinedType::Alias(ValueType::Defined(id))),
+                        )),
+                        ItemKind::Type(Type::Func(id)) | ItemKind::Func(id) => {
+                            ItemKind::Type(Type::Func(id))
                         }
                         _ => {
                             return Err(new_error_with_span(
-                                format!(
-                                    "{kind} `{id}` cannot be used in a type alias",
-                                    kind = name.kind,
-                                    id = id.as_str(),
-                                ),
                                 state.document.path,
                                 id.0,
+                                format!(
+                                    "`{id}` ({kind}) cannot be used in a type alias",
+                                    kind = item.kind.display(&self.definitions),
+                                    id = id.as_str(),
+                                ),
                             ))
                         }
                     }
                 }
                 _ => {
                     let ty = self.ty(state, ty)?;
-                    ExternKind::Type(ExternType::Value(
+                    ItemKind::Type(Type::Value(
                         self.definitions.types.alloc(DefinedType::Alias(ty)),
                     ))
                 }
             },
         };
 
-        self.register_name(state, alias.id, kind)?;
+        let id = self.items.alloc(Item {
+            kind,
+            source: ItemSource::Definition,
+        });
+
+        self.register_name(state, alias.id, id)?;
         Ok(kind)
     }
 
@@ -1150,38 +1359,38 @@ impl ResolvedDocument {
                 self.func_type(state, &ty.params, ty.results.as_ref(), kind)
             }
             ast::FuncTypeRef::Ident(id) => {
-                let name = self.require(state, id)?;
-                match name.kind {
-                    ExternKind::Type(ExternType::Func(id)) | ExternKind::Func(id) => Ok(id),
+                let item = &self.items[self.require(state, id)?];
+                match item.kind {
+                    ItemKind::Type(Type::Func(id)) | ItemKind::Func(id) => Ok(id),
                     _ => Err(new_error_with_span(
-                        format!(
-                            "{kind} `{id}` is not a function type",
-                            kind = name.kind,
-                            id = id.as_str()
-                        ),
                         state.document.path,
                         id.0,
+                        format!(
+                            "`{id}` ({kind}) is not a function type",
+                            kind = item.kind.display(&self.definitions),
+                            id = id.as_str()
+                        ),
                     )),
                 }
             }
         }
     }
 
-    fn ty(&mut self, state: &ResolutionState, ty: &ast::Type) -> Result<Type> {
+    fn ty(&mut self, state: &ResolutionState, ty: &ast::Type) -> Result<ValueType> {
         match ty {
-            ast::Type::U8(_) => Ok(Type::Primitive(PrimitiveType::U8)),
-            ast::Type::S8(_) => Ok(Type::Primitive(PrimitiveType::S8)),
-            ast::Type::U16(_) => Ok(Type::Primitive(PrimitiveType::U16)),
-            ast::Type::S16(_) => Ok(Type::Primitive(PrimitiveType::S16)),
-            ast::Type::U32(_) => Ok(Type::Primitive(PrimitiveType::U32)),
-            ast::Type::S32(_) => Ok(Type::Primitive(PrimitiveType::S32)),
-            ast::Type::U64(_) => Ok(Type::Primitive(PrimitiveType::U64)),
-            ast::Type::S64(_) => Ok(Type::Primitive(PrimitiveType::S64)),
-            ast::Type::Float32(_) => Ok(Type::Primitive(PrimitiveType::Float32)),
-            ast::Type::Float64(_) => Ok(Type::Primitive(PrimitiveType::Float64)),
-            ast::Type::Char(_) => Ok(Type::Primitive(PrimitiveType::Char)),
-            ast::Type::Bool(_) => Ok(Type::Primitive(PrimitiveType::Bool)),
-            ast::Type::String(_) => Ok(Type::Primitive(PrimitiveType::String)),
+            ast::Type::U8(_) => Ok(ValueType::Primitive(PrimitiveType::U8)),
+            ast::Type::S8(_) => Ok(ValueType::Primitive(PrimitiveType::S8)),
+            ast::Type::U16(_) => Ok(ValueType::Primitive(PrimitiveType::U16)),
+            ast::Type::S16(_) => Ok(ValueType::Primitive(PrimitiveType::S16)),
+            ast::Type::U32(_) => Ok(ValueType::Primitive(PrimitiveType::U32)),
+            ast::Type::S32(_) => Ok(ValueType::Primitive(PrimitiveType::S32)),
+            ast::Type::U64(_) => Ok(ValueType::Primitive(PrimitiveType::U64)),
+            ast::Type::S64(_) => Ok(ValueType::Primitive(PrimitiveType::S64)),
+            ast::Type::Float32(_) => Ok(ValueType::Primitive(PrimitiveType::Float32)),
+            ast::Type::Float64(_) => Ok(ValueType::Primitive(PrimitiveType::Float64)),
+            ast::Type::Char(_) => Ok(ValueType::Primitive(PrimitiveType::Char)),
+            ast::Type::Bool(_) => Ok(ValueType::Primitive(PrimitiveType::Bool)),
+            ast::Type::String(_) => Ok(ValueType::Primitive(PrimitiveType::String)),
             ast::Type::Tuple(v) => {
                 let types = v
                     .types
@@ -1189,19 +1398,19 @@ impl ResolvedDocument {
                     .map(|ty| self.ty(state, ty))
                     .collect::<Result<_>>()?;
 
-                Ok(Type::Defined(
+                Ok(ValueType::Defined(
                     self.definitions.types.alloc(DefinedType::Tuple(types)),
                 ))
             }
             ast::Type::List(l) => {
                 let ty = self.ty(state, &l.ty)?;
-                Ok(Type::Defined(
+                Ok(ValueType::Defined(
                     self.definitions.types.alloc(DefinedType::List(ty)),
                 ))
             }
             ast::Type::Option(o) => {
                 let ty = self.ty(state, &o.ty)?;
-                Ok(Type::Defined(
+                Ok(ValueType::Defined(
                     self.definitions.types.alloc(DefinedType::Option(ty)),
                 ))
             }
@@ -1219,44 +1428,44 @@ impl ResolvedDocument {
                     None => (None, None),
                 };
 
-                Ok(Type::Defined(
+                Ok(ValueType::Defined(
                     self.definitions
                         .types
                         .alloc(DefinedType::Result { ok, err }),
                 ))
             }
             ast::Type::Borrow(b) => {
-                let name = self.require(state, &b.id)?;
-                if let ExternKind::Type(ExternType::Value(id)) = name.kind {
+                let item = &self.items[self.require(state, &b.id)?];
+                if let ItemKind::Type(Type::Value(id)) = item.kind {
                     if let DefinedType::Resource(id) = &self.definitions.types[id] {
-                        return Ok(Type::Defined(
+                        return Ok(ValueType::Defined(
                             self.definitions.types.alloc(DefinedType::Borrow(*id)),
                         ));
                     }
                 }
 
                 Err(new_error_with_span(
-                    format!(
-                        "{kind} `{id}` is not a resource type",
-                        kind = name.kind,
-                        id = b.id.as_str()
-                    ),
                     state.document.path,
                     b.id.0,
+                    format!(
+                        "`{id}` ({kind}) is not a resource type",
+                        kind = item.kind.display(&self.definitions),
+                        id = b.id.as_str()
+                    ),
                 ))
             }
             ast::Type::Ident(id) => {
-                let name = self.require(state, id)?;
-                match name.kind {
-                    ExternKind::Type(ExternType::Value(id)) => Ok(Type::Defined(id)),
+                let item = &self.items[self.require(state, id)?];
+                match item.kind {
+                    ItemKind::Type(Type::Value(id)) => Ok(ValueType::Defined(id)),
                     _ => Err(new_error_with_span(
-                        format!(
-                            "{kind} `{id}` cannot be used as a value type",
-                            kind = name.kind,
-                            id = id.as_str(),
-                        ),
                         state.document.path,
                         id.0,
+                        format!(
+                            "`{id}` ({kind}) cannot be used as a value type",
+                            kind = item.kind.display(&self.definitions),
+                            id = id.as_str(),
+                        ),
                     )),
                 }
             }
@@ -1277,9 +1486,9 @@ impl ResolvedDocument {
                 .is_some()
             {
                 return Err(new_error_with_span(
-                    format!("duplicate {kind} parameter `{id}`", id = param.id.as_str()),
                     state.document.path,
                     param.id.0,
+                    format!("duplicate {kind} parameter `{id}`", id = param.id.as_str()),
                 ));
             }
         }
@@ -1295,9 +1504,9 @@ impl ResolvedDocument {
                             .is_some()
                         {
                             return Err(new_error_with_span(
-                                format!("duplicate {kind} result `{id}`", id = result.id.as_str()),
                                 state.document.path,
                                 result.id.0,
+                                format!("duplicate {kind} result `{id}`", id = result.id.as_str()),
                             ));
                         }
                     }
@@ -1310,45 +1519,55 @@ impl ResolvedDocument {
         Ok(self.definitions.funcs.alloc(Func { params, results }))
     }
 
+    fn resolve_package<'b>(
+        &mut self,
+        state: &'b mut ResolutionState,
+        name: &ast::PackageName,
+    ) -> Result<&'b Package> {
+        match state.packages.entry(name.as_str().to_owned()) {
+            hash_map::Entry::Occupied(e) => Ok(e.into_mut()),
+            hash_map::Entry::Vacant(e) => {
+                log::debug!("resolving package `{name}`");
+                match state
+                    .resolver
+                    .as_deref()
+                    .and_then(|r| r.resolve(name).transpose())
+                    .transpose()
+                    .map_err(|e| {
+                        let msg =
+                            format!("failed to resolve package `{name}`", name = name.as_str());
+                        e.context(new_error_with_span(state.document.path, name.span(), msg))
+                    })? {
+                    Some(bytes) => Ok(e.insert(
+                        Package::parse(&mut self.definitions, bytes).map_err(|e| {
+                            let msg =
+                                format!("failed to parse package `{name}`", name = name.as_str());
+                            e.context(new_error_with_span(state.document.path, name.span(), msg))
+                        })?,
+                    )),
+                    None => {
+                        return Err(new_error_with_span(
+                            state.document.path,
+                            name.span(),
+                            format!("unknown package `{name}`", name = name.as_str()),
+                        ));
+                    }
+                }
+            }
+        }
+    }
+
     fn resolve_package_export(
         &mut self,
         state: &mut ResolutionState,
         path: &ast::PackagePath,
-    ) -> Result<ExternKind> {
+    ) -> Result<ItemKind> {
         // Check for reference to local item
         if path.name.as_str() == self.package {
             return self.resolve_local_export(state, path);
         }
 
-        log::debug!("resolving package path `{path}`");
-        let pkg = match state.packages.entry(path.name.as_str().to_owned()) {
-            hash_map::Entry::Occupied(e) => e.into_mut(),
-            hash_map::Entry::Vacant(e) => match state
-                .resolver
-                .as_deref()
-                .and_then(|r| r.resolve(&path.name).transpose())
-                .transpose()
-                .map_err(|e| {
-                    new_error_with_span(format!("{e:#}"), state.document.path, path.name.span())
-                })? {
-                Some(bytes) => {
-                    e.insert(Package::parse(&mut self.definitions, bytes).map_err(|e| {
-                        new_error_with_span(
-                            format!("failed to parse package `{name}`: {e}", name = path.name),
-                            state.document.path,
-                            path.name.span(),
-                        )
-                    })?)
-                }
-                None => {
-                    return Err(new_error_with_span(
-                        format!("unknown package `{name}`", name = path.name.as_str()),
-                        state.document.path,
-                        path.name.span(),
-                    ));
-                }
-            },
-        };
+        let pkg = self.resolve_package(state, &path.name)?;
 
         let mut current = 0;
         let mut parent_ty = None;
@@ -1365,25 +1584,27 @@ impl ResolvedDocument {
             // Otherwise, project into the parent based on the current segment
             let (ty, export) = match found.unwrap() {
                 // The parent is an interface or instance
-                ExternKind::Type(ExternType::Interface(id)) | ExternKind::Instance(id) => (
+                ItemKind::Type(Type::Interface(id)) | ItemKind::Instance(id) => (
                     "interface",
                     self.definitions.interfaces[id]
                         .exports
                         .get(segment)
                         .map(Extern::kind),
                 ),
-                // The parent is a world or component
-                ExternKind::Type(ExternType::World(id)) | ExternKind::Component(id) => (
+                // The parent is a world or component or component instantiation
+                ItemKind::Type(Type::World(id))
+                | ItemKind::Component(id)
+                | ItemKind::Instantiation(id) => (
                     "world",
                     self.definitions.worlds[id]
                         .exports
                         .get(segment)
                         .map(Extern::kind),
                 ),
-                ExternKind::Func(_) => ("func", None),
-                ExternKind::Type(_) => ("type", None),
-                ExternKind::Module(_) => ("module", None),
-                ExternKind::Value(_) => ("value", None),
+                ItemKind::Func(_) => ("func", None),
+                ItemKind::Type(_) => ("type", None),
+                ItemKind::Module(_) => ("module", None),
+                ItemKind::Value(_) => ("value", None),
             };
 
             parent_ty = Some(ty);
@@ -1396,6 +1617,8 @@ impl ResolvedDocument {
         found.ok_or_else(|| {
             let segment = path.segments[current].1;
             new_error_with_span(
+                state.document.path,
+                segment.0,
                 format!(
                     "{prev}package `{name}` has no export named `{segment}`",
                     prev = match parent_ty {
@@ -1419,8 +1642,6 @@ impl ResolvedDocument {
                     name = path.name.as_str(),
                     segment = segment.as_str(),
                 ),
-                state.document.path,
-                segment.0,
             )
         })
     }
@@ -1429,40 +1650,41 @@ impl ResolvedDocument {
         &self,
         state: &ResolutionState,
         path: &ast::PackagePath,
-    ) -> Result<ExternKind> {
+    ) -> Result<ItemKind> {
         log::debug!("resolving local path `{path}`");
 
         let mut segments = path.segments.iter().map(|(_, s)| s);
         let id = segments.next().unwrap();
-        let name = self.scopes[self.root_scope]
-            .get(id.as_str())
-            .ok_or_else(|| {
-                new_error_with_span(
-                    format!("undefined name `{id}`", id = id.as_str()),
-                    state.document.path,
-                    id.0,
-                )
-            })?;
+        let item =
+            &self.items[self.scopes[state.root_scope]
+                .get(id.as_str())
+                .ok_or_else(|| {
+                    new_error_with_span(
+                        state.document.path,
+                        id.0,
+                        format!("undefined name `{id}`", id = id.as_str()),
+                    )
+                })?];
 
         let mut current = id;
-        let mut kind = name.kind;
+        let mut kind = item.kind;
         for segment in segments {
             let exports = match kind {
-                ExternKind::Type(ExternType::Interface(id)) | ExternKind::Instance(id) => {
+                ItemKind::Type(Type::Interface(id)) | ItemKind::Instance(id) => {
                     &self.definitions.interfaces[id].exports
                 }
-                ExternKind::Type(ExternType::World(id)) | ExternKind::Component(id) => {
+                ItemKind::Type(Type::World(id)) | ItemKind::Component(id) => {
                     &self.definitions.worlds[id].exports
                 }
                 _ => {
                     return Err(new_error_with_span(
-                        format!(
-                            "{kind} `{id}` has no exports",
-                            kind = name.kind,
-                            id = current.as_str()
-                        ),
                         state.document.path,
                         current.0,
+                        format!(
+                            "`{id}` ({kind}) has no exports",
+                            kind = item.kind.display(&self.definitions),
+                            id = current.as_str()
+                        ),
                     ))
                 }
             };
@@ -1472,19 +1694,301 @@ impl ResolvedDocument {
                 .map(Extern::kind)
                 .ok_or_else(|| {
                     new_error_with_span(
+                        state.document.path,
+                        current.0,
                         format!(
-                            "{kind} `{id}` has no export named `{segment}`",
-                            kind = name.kind,
+                            "`{id}` ({kind}) has no export named `{segment}`",
+                            kind = item.kind.display(&self.definitions),
                             id = current.as_str(),
                             segment = segment.as_str(),
                         ),
-                        state.document.path,
-                        current.0,
                     )
                 })?;
             current = segment;
         }
 
         Ok(kind)
+    }
+
+    fn expr<'a>(&mut self, state: &mut ResolutionState<'a>, expr: &'a ast::Expr) -> Result<ItemId> {
+        let mut item = self.primary_expr(state, &expr.primary)?;
+
+        for expr in &expr.postfix {
+            item = self.postfix_expr(state, item, expr)?;
+        }
+
+        Ok(item)
+    }
+
+    fn primary_expr<'a>(
+        &mut self,
+        state: &mut ResolutionState<'a>,
+        expr: &'a ast::PrimaryExpr<'a>,
+    ) -> Result<ItemId> {
+        match expr {
+            ast::PrimaryExpr::New(n) => self.new_expr(state, n),
+            ast::PrimaryExpr::Nested(n) => self.expr(state, &n.expr),
+            ast::PrimaryExpr::Ident(i) => Ok(self.require(state, i)?),
+        }
+    }
+
+    fn new_expr<'a>(
+        &mut self,
+        state: &mut ResolutionState<'a>,
+        expr: &'a ast::NewExpr<'a>,
+    ) -> Result<ItemId> {
+        let pkg = self.resolve_package(state, &expr.package_name)?;
+        let ty = pkg.ty;
+        let require_all = expr.body.ellipsis.is_none();
+
+        let mut arguments: IndexMap<String, ItemId> = Default::default();
+        for arg in &expr.body.arguments {
+            let (name, item, span) = match arg {
+                ast::InstantiationArgument::Named(arg) => {
+                    self.named_instantiation_arg(state, arg, ty)?
+                }
+                ast::InstantiationArgument::Ident(id) => {
+                    self.ident_instantiation_arg(state, id, ty)?
+                }
+            };
+
+            let world = &self.definitions.worlds[ty];
+            let expected = world.imports.get(&name).ok_or_else(|| {
+                new_error_with_span(
+                    state.document.path,
+                    span,
+                    format!(
+                        "component `{pkg}` has no import named `{name}`",
+                        pkg = expr.package_name.as_str(),
+                    ),
+                )
+            })?;
+
+            SubtypeChecker::new(&self.definitions)
+                .is_subtype(expected.kind(), self.items[item].kind)
+                .map_err(|e| {
+                    e.context(new_error_with_span(
+                        state.document.path,
+                        span,
+                        format!("mismatched instantiation argument `{name}`"),
+                    ))
+                })?;
+
+            let prev = arguments.insert(name.clone(), item);
+            if prev.is_some() {
+                return Err(new_error_with_span(
+                    state.document.path,
+                    span,
+                    format!("duplicate instantiation argument `{name}`"),
+                ));
+            }
+        }
+
+        if require_all {
+            let world = &self.definitions.worlds[ty];
+            if let Some((missing, _)) = world
+                .imports
+                .iter()
+                .find(|(n, _)| !arguments.contains_key(*n))
+            {
+                return Err(new_error_with_span(
+                    state.document.path,
+                    expr.package_name.span(),
+                    format!(
+                        "missing instantiation argument `{missing}` for package `{pkg}`",
+                        pkg = expr.package_name.as_str(),
+                    ),
+                ));
+            }
+        }
+
+        Ok(self.items.alloc(Item {
+            kind: ItemKind::Instantiation(ty),
+            source: ItemSource::Instantiation { arguments },
+        }))
+    }
+
+    fn named_instantiation_arg<'a>(
+        &mut self,
+        state: &mut ResolutionState<'a>,
+        arg: &'a ast::NamedInstantiationArgument<'a>,
+        world: WorldId,
+    ) -> Result<(String, ItemId, Span<'a>)> {
+        let item = self.expr(state, &arg.expr)?;
+
+        let name = match &arg.name {
+            ast::InstantiationArgumentName::Ident(ident) => Self::find_matching_interface_name(
+                ident.as_str(),
+                &self.definitions.worlds[world].imports,
+            )
+            .unwrap_or_else(|| ident.as_str()),
+            ast::InstantiationArgumentName::String(name) => name.as_str(),
+        };
+
+        Ok((name.to_owned(), item, arg.name.span()))
+    }
+
+    fn ident_instantiation_arg<'a>(
+        &mut self,
+        state: &mut ResolutionState<'a>,
+        ident: &ast::Ident<'a>,
+        world: WorldId,
+    ) -> Result<(String, ItemId, Span<'a>)> {
+        let item_id = self.require(state, ident)?;
+        let item = &self.items[item_id];
+        let world = &self.definitions.worlds[world];
+
+        // If the item is an instance with an id, try the id.
+        if let ItemKind::Instance(id) = item.kind {
+            if let Some(id) = &self.definitions.interfaces[id].id {
+                if world.imports.contains_key(id.as_str()) {
+                    return Ok((id.clone(), item_id, ident.0));
+                }
+            }
+        }
+
+        // If the item comes from an import or an alias, try the name associated with it
+        match &item.source {
+            ItemSource::Import { with: Some(name) } | ItemSource::Alias { export: name, .. } => {
+                if world.imports.contains_key(name) {
+                    return Ok((name.clone(), item_id, ident.0));
+                }
+            }
+            _ => {}
+        }
+
+        // Fall back to searching for a matching interface name, provided it is not ambiguous
+        // For example, match `foo:bar/baz` if `baz` is the identifier and the only match
+        if let Some(name) = Self::find_matching_interface_name(ident.as_str(), &world.imports) {
+            return Ok((name.to_owned(), item_id, ident.0));
+        }
+
+        // Finally default to the id itself
+        Ok((ident.as_str().to_owned(), item_id, ident.0))
+    }
+
+    fn find_matching_interface_name<'a>(name: &str, externs: &'a ExternMap) -> Option<&'a str> {
+        // If the given name exists directly, don't treat it as an interface name
+        if externs.contains_key(name) {
+            return None;
+        }
+
+        // Fall back to searching for a matching interface name, provided it is not ambiguous
+        // For example, match `foo:bar/baz` if `baz` is the identifier and the only match
+        let mut matches = externs.iter().filter(|(n, _)| match n.rfind('/') {
+            Some(start) => {
+                let mut n = &n[start + 1..];
+                if let Some(index) = n.find('@') {
+                    n = &n[..index];
+                }
+                n == name
+            }
+            None => false,
+        });
+
+        let (name, _) = matches.next()?;
+        if matches.next().is_some() {
+            // More than one match, the name is ambiguous
+            return None;
+        }
+
+        Some(name)
+    }
+
+    fn postfix_expr<'a>(
+        &mut self,
+        state: &mut ResolutionState<'a>,
+        item: ItemId,
+        expr: &'a ast::PostfixExpr<'a>,
+    ) -> Result<ItemId> {
+        match expr {
+            ast::PostfixExpr::Access(expr) => {
+                let exports = self.instance_exports(item, state, expr.id.0)?;
+                let name: Cow<'a, str> =
+                    Self::find_matching_interface_name(expr.id.as_str(), exports)
+                        .map(|s| s.to_string().into())
+                        .unwrap_or_else(|| expr.id.as_str().into());
+                self.access_expr(state, item, name.as_ref(), expr.id.0)
+            }
+            ast::PostfixExpr::NamedAccess(expr) => {
+                self.access_expr(state, item, expr.string.as_str(), expr.string.0)
+            }
+        }
+    }
+
+    fn instance_exports(
+        &self,
+        item: ItemId,
+        state: &ResolutionState,
+        span: Span,
+    ) -> Result<&ExternMap> {
+        match self.items[item].kind {
+            ItemKind::Instance(id) => Ok(&self.definitions.interfaces[id].exports),
+            ItemKind::Instantiation(id) => Ok(&self.definitions.worlds[id].exports),
+            ItemKind::Type(Type::Interface(_)) => Err(new_error_with_span(
+                state.document.path,
+                span,
+                "an interface cannot be accessed",
+            )),
+            ItemKind::Type(ty) => Err(new_error_with_span(
+                state.document.path,
+                span,
+                format!(
+                    "a {ty} cannot be accessed",
+                    ty = ty.display(&self.definitions)
+                ),
+            )),
+            ItemKind::Func(_) => Err(new_error_with_span(
+                state.document.path,
+                span,
+                "a function cannot be accessed",
+            )),
+            ItemKind::Component(_) => Err(new_error_with_span(
+                state.document.path,
+                span,
+                "a component cannot be accessed",
+            )),
+            ItemKind::Module(_) => Err(new_error_with_span(
+                state.document.path,
+                span,
+                "a module cannot be accessed",
+            )),
+            ItemKind::Value(_) => Err(new_error_with_span(
+                state.document.path,
+                span,
+                "a value cannot be accessed",
+            )),
+        }
+    }
+
+    fn access_expr(
+        &mut self,
+        state: &mut ResolutionState,
+        item: ItemId,
+        name: &str,
+        span: Span,
+    ) -> Result<ItemId> {
+        let exports = self.instance_exports(item, state, span)?;
+        let kind = exports.get(name).map(Extern::kind).ok_or_else(|| {
+            new_error_with_span(
+                state.document.path,
+                span,
+                format!("the instance has no export named `{name}`"),
+            )
+        })?;
+
+        match state.aliases.entry((item, name.to_owned())) {
+            hash_map::Entry::Occupied(e) => Ok(*e.get()),
+            hash_map::Entry::Vacant(e) => {
+                let id = self.items.alloc(Item {
+                    kind,
+                    source: ItemSource::Alias {
+                        item,
+                        export: name.to_owned(),
+                    },
+                });
+                Ok(*e.insert(id))
+            }
+        }
     }
 }

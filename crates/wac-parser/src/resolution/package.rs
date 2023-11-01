@@ -1,8 +1,8 @@
 use self::cache::{MappedResourceId, ResourceMapper, TypeCache};
 use super::{
-    CoreExtern, CoreFunc, DefinedType, DefinedTypeId, Definitions, Enum, Extern, ExternKind,
-    ExternType, Flags, Func, FuncId, FuncKind, FuncResult, Interface, InterfaceId, Module,
-    ModuleId, Record, Resource, ResourceMethod, Type, Variant, World, WorldId,
+    CoreExtern, CoreFunc, DefinedType, DefinedTypeId, Definitions, Enum, Extern, Flags, Func,
+    FuncId, FuncKind, FuncResult, Interface, InterfaceId, ItemKind, Module, ModuleId, Record,
+    Resource, ResourceMethod, Type, ValueType, Variant, World, WorldId,
 };
 use anyhow::{bail, Result};
 use indexmap::IndexMap;
@@ -22,11 +22,11 @@ pub struct Package {
     /// The world (component type) of the package.
     pub ty: WorldId,
     /// Defined interfaces and worlds from a WIT package.
-    pub definitions: HashMap<String, ExternKind>,
+    pub definitions: HashMap<String, ItemKind>,
 }
 
 impl Package {
-    /// Parses the given bytes into a package.      
+    /// Parses the given bytes into a package.
     pub(crate) fn parse(definitions: &mut Definitions, bytes: Vec<u8>) -> Result<Self> {
         let mut parser = Parser::new(0);
         let mut parsers = Vec::new();
@@ -111,12 +111,12 @@ impl Package {
         }
     }
 
-    fn find_definitions(definitions: &Definitions, world: WorldId) -> HashMap<String, ExternKind> {
+    fn find_definitions(definitions: &Definitions, world: WorldId) -> HashMap<String, ItemKind> {
         // Look for any component type exports that export a component type or instance type
         let exports = &definitions.worlds[world].exports;
         let mut defs = HashMap::new();
-        for (name, kind) in exports {
-            if let Extern::Kind(ExternKind::Type(ExternType::World(id))) = kind {
+        for (name, ext) in exports {
+            if let Extern::Kind(ItemKind::Type(Type::World(id))) = ext {
                 let world = &definitions.worlds[*id];
                 if world.exports.len() != 1 {
                     continue;
@@ -129,11 +129,11 @@ impl Package {
                 }
 
                 match ext.kind() {
-                    ExternKind::Instance(id) => {
-                        defs.insert(name.clone(), ExternKind::Type(ExternType::Interface(id)));
+                    ItemKind::Instance(id) => {
+                        defs.insert(name.clone(), ItemKind::Type(Type::Interface(id)));
                     }
-                    ExternKind::Component(id) => {
-                        defs.insert(name.clone(), ExternKind::Type(ExternType::World(id)));
+                    ItemKind::Component(id) => {
+                        defs.insert(name.clone(), ItemKind::Type(Type::World(id)));
                     }
                     _ => continue,
                 }
@@ -198,23 +198,23 @@ impl<'a> TypeConverter<'a> {
         &mut self,
         name: &str,
         ty: wasm::ComponentEntityType,
-    ) -> Result<ExternKind> {
+    ) -> Result<ItemKind> {
         match ty {
-            wasm::ComponentEntityType::Module(ty) => Ok(ExternKind::Module(self.module_type(ty)?)),
-            wasm::ComponentEntityType::Func(ty) => Ok(ExternKind::Func(
+            wasm::ComponentEntityType::Module(ty) => Ok(ItemKind::Module(self.module_type(ty)?)),
+            wasm::ComponentEntityType::Func(ty) => Ok(ItemKind::Func(
                 self.component_func_type(ty, FuncKind::Free)?,
             )),
             wasm::ComponentEntityType::Value(ty) => {
-                Ok(ExternKind::Value(self.component_val_type(ty)?))
+                Ok(ItemKind::Value(self.component_val_type(ty)?))
             }
             wasm::ComponentEntityType::Type { referenced, .. } => {
-                Ok(ExternKind::Type(self.ty(referenced)?))
+                Ok(ItemKind::Type(self.ty(referenced)?))
             }
-            wasm::ComponentEntityType::Instance(ty) => Ok(ExternKind::Instance(
+            wasm::ComponentEntityType::Instance(ty) => Ok(ItemKind::Instance(
                 self.component_instance_type(Some(name), ty)?,
             )),
             wasm::ComponentEntityType::Component(ty) => {
-                Ok(ExternKind::Component(self.component_type(ty)?))
+                Ok(ItemKind::Component(self.component_type(ty)?))
             }
         }
     }
@@ -223,7 +223,7 @@ impl<'a> TypeConverter<'a> {
         let key = self.cache.key(None, ty);
         if let Some(ty) = self.cache.get(&key) {
             match ty {
-                ExternType::Func(id) => return Ok(id),
+                Type::Func(id) => return Ok(id),
                 _ => unreachable!("invalid cached type"),
             }
         }
@@ -259,7 +259,7 @@ impl<'a> TypeConverter<'a> {
         };
 
         let id = self.definitions.funcs.alloc(Func { params, results });
-        self.cache.insert(key, ExternType::Func(id));
+        self.cache.insert(key, Type::Func(id));
         Ok(id)
     }
 
@@ -267,7 +267,7 @@ impl<'a> TypeConverter<'a> {
         let key = self.cache.key(None, ty);
         if let Some(ty) = self.cache.get(&key) {
             match ty {
-                ExternType::Module(id) => return Ok(id),
+                Type::Module(id) => return Ok(id),
                 _ => unreachable!("invalid cached type"),
             }
         }
@@ -288,22 +288,22 @@ impl<'a> TypeConverter<'a> {
 
         let id = self.definitions.modules.alloc(Module { imports, exports });
 
-        self.cache.insert(key, ExternType::Module(id));
+        self.cache.insert(key, Type::Module(id));
         Ok(id)
     }
 
-    fn ty(&mut self, ty: wasm::TypeId) -> Result<ExternType> {
+    fn ty(&mut self, ty: wasm::TypeId) -> Result<Type> {
         match &self.types[ty] {
-            wasm::Type::Defined(_) => Ok(ExternType::Value(self.component_defined_type(ty)?)),
-            wasm::Type::Resource(_) => Ok(ExternType::Value(self.resource(ty))),
-            wasm::Type::ComponentFunc(_) => Ok(ExternType::Func(
-                self.component_func_type(ty, FuncKind::Free)?,
-            )),
-            wasm::Type::Module(_) => Ok(ExternType::Module(self.module_type(ty)?)),
-            wasm::Type::Component(_) => Ok(ExternType::World(self.component_type(ty)?)),
-            wasm::Type::ComponentInstance(_) => Ok(ExternType::Interface(
-                self.component_instance_type(None, ty)?,
-            )),
+            wasm::Type::Defined(_) => Ok(Type::Value(self.component_defined_type(ty)?)),
+            wasm::Type::Resource(_) => Ok(Type::Value(self.resource(ty))),
+            wasm::Type::ComponentFunc(_) => {
+                Ok(Type::Func(self.component_func_type(ty, FuncKind::Free)?))
+            }
+            wasm::Type::Module(_) => Ok(Type::Module(self.module_type(ty)?)),
+            wasm::Type::Component(_) => Ok(Type::World(self.component_type(ty)?)),
+            wasm::Type::ComponentInstance(_) => {
+                Ok(Type::Interface(self.component_instance_type(None, ty)?))
+            }
             wasm::Type::Instance(_) => {
                 unreachable!("module instances are not a valid component extern type")
             }
@@ -311,11 +311,11 @@ impl<'a> TypeConverter<'a> {
         }
     }
 
-    fn component_val_type(&mut self, ty: wasm::ComponentValType) -> Result<Type> {
+    fn component_val_type(&mut self, ty: wasm::ComponentValType) -> Result<ValueType> {
         match ty {
-            wasm::ComponentValType::Primitive(ty) => Ok(Type::Primitive(ty.into())),
+            wasm::ComponentValType::Primitive(ty) => Ok(ValueType::Primitive(ty.into())),
             wasm::ComponentValType::Type(ty) => match self.ty(ty)? {
-                ExternType::Value(id) => Ok(Type::Defined(id)),
+                Type::Value(id) => Ok(ValueType::Defined(id)),
                 _ => unreachable!("expected type to be a value type"),
             },
         }
@@ -327,9 +327,9 @@ impl<'a> TypeConverter<'a> {
         ty: wasm::TypeId,
     ) -> Result<InterfaceId> {
         let key = self.cache.key(name, ty);
-        if let Some(kind) = self.cache.get(&key) {
-            match kind {
-                ExternType::Interface(id) => {
+        if let Some(cached_ty) = self.cache.get(&key) {
+            match cached_ty {
+                Type::Interface(id) => {
                     // We still need to map ownership of any types for this interface
                     for (index, (_, ty)) in self.types[ty]
                         .unwrap_component_instance()
@@ -362,16 +362,16 @@ impl<'a> TypeConverter<'a> {
             let export = match ty {
                 wasm::ComponentEntityType::Type { referenced, .. } => {
                     let ty = self.resolve_alias(*referenced);
-                    let kind = self.ty(ty)?;
+                    let converted_ty = self.ty(ty)?;
                     let (interface, index) = *self.owners.entry(ty).or_insert((id, index));
 
-                    match kind {
-                        ExternType::Value(ty) if interface != id => Extern::Use {
+                    match converted_ty {
+                        Type::Value(ty) if interface != id => Extern::Use {
                             interface,
                             export_index: index,
                             ty,
                         },
-                        _ => Extern::Kind(ExternKind::Type(kind)),
+                        _ => Extern::Kind(ItemKind::Type(converted_ty)),
                     }
                 }
                 wasm::ComponentEntityType::Func(ty) => {
@@ -389,7 +389,7 @@ impl<'a> TypeConverter<'a> {
             assert!(prev.is_none());
         }
 
-        self.cache.insert(key, ExternType::Interface(id));
+        self.cache.insert(key, Type::Interface(id));
         Ok(id)
     }
 
@@ -420,32 +420,38 @@ impl<'a> TypeConverter<'a> {
     ) -> Result<Option<Extern>> {
         if let Some(res) = name.strip_prefix("[constructor]") {
             let id = self.component_func_type(ty, FuncKind::Constructor)?;
-            self.resource_export(externs, res)
-                .methods
-                .push(ResourceMethod::Constructor(id));
+            self.resource_export(externs, res).methods.insert(
+                String::new(),
+                ResourceMethod {
+                    kind: FuncKind::Constructor,
+                    ty: id,
+                },
+            );
             Ok(None)
         } else if let Some(name) = name.strip_prefix("[method]") {
             let (res, name) = name.split_once('.').unwrap();
             let id = self.component_func_type(ty, FuncKind::Method)?;
-            self.resource_export(externs, res)
-                .methods
-                .push(ResourceMethod::Instance {
-                    name: name.to_owned(),
+            self.resource_export(externs, res).methods.insert(
+                name.to_owned(),
+                ResourceMethod {
+                    kind: FuncKind::Method,
                     ty: id,
-                });
+                },
+            );
             Ok(None)
         } else if let Some(name) = name.strip_prefix("[static]") {
             let (res, name) = name.split_once('.').unwrap();
             let id = self.component_func_type(ty, FuncKind::Static)?;
-            self.resource_export(externs, res)
-                .methods
-                .push(ResourceMethod::Static {
-                    name: name.to_owned(),
+            self.resource_export(externs, res).methods.insert(
+                name.to_owned(),
+                ResourceMethod {
+                    kind: FuncKind::Static,
                     ty: id,
-                });
+                },
+            );
             Ok(None)
         } else {
-            Ok(Some(Extern::Kind(ExternKind::Func(
+            Ok(Some(Extern::Kind(ItemKind::Func(
                 self.component_func_type(ty, FuncKind::Free)?,
             ))))
         }
@@ -455,7 +461,7 @@ impl<'a> TypeConverter<'a> {
         let key = self.cache.key(None, ty);
         if let Some(ty) = self.cache.get(&key) {
             match ty {
-                ExternType::World(id) => return Ok(id),
+                Type::World(id) => return Ok(id),
                 _ => unreachable!("invalid cached type"),
             }
         }
@@ -467,15 +473,15 @@ impl<'a> TypeConverter<'a> {
             let export = match ty {
                 wasm::ComponentEntityType::Type { referenced, .. } => {
                     let ty = self.resolve_alias(*referenced);
-                    let kind = self.ty(ty)?;
+                    let converted_ty = self.ty(ty)?;
                     let interface = self.owners.get(&ty).copied();
-                    match (interface, kind) {
-                        (Some((interface, index)), ExternType::Value(ty)) => Extern::Use {
+                    match (interface, converted_ty) {
+                        (Some((interface, index)), Type::Value(ty)) => Extern::Use {
                             interface,
                             export_index: index,
                             ty,
                         },
-                        _ => Extern::Kind(ExternKind::Type(kind)),
+                        _ => Extern::Kind(ItemKind::Type(converted_ty)),
                     }
                 }
                 wasm::ComponentEntityType::Func(ty) => {
@@ -508,7 +514,7 @@ impl<'a> TypeConverter<'a> {
             scope: None,
         });
 
-        self.cache.insert(key, ExternType::World(id));
+        self.cache.insert(key, Type::World(id));
         Ok(id)
     }
 
@@ -516,7 +522,7 @@ impl<'a> TypeConverter<'a> {
         let key = self.cache.key(None, ty);
         if let Some(ty) = self.cache.get(&key) {
             match ty {
-                ExternType::Value(id) => return Ok(id),
+                Type::Value(id) => return Ok(id),
                 _ => unreachable!("invalid cached type"),
             }
         }
@@ -608,7 +614,7 @@ impl<'a> TypeConverter<'a> {
             },
         };
 
-        self.cache.insert(key, ExternType::Value(id));
+        self.cache.insert(key, Type::Value(id));
         Ok(id)
     }
 
@@ -616,7 +622,7 @@ impl<'a> TypeConverter<'a> {
         let key = self.cache.key(None, ty);
         if let Some(ty) = self.cache.get(&key) {
             match ty {
-                ExternType::Value(id) => return id,
+                Type::Value(id) => return id,
                 _ => unreachable!("invalid cached type"),
             }
         }
@@ -634,7 +640,7 @@ impl<'a> TypeConverter<'a> {
         let prev = self.resources.insert(internal_id, id);
         assert!(prev.is_none(), "duplicate resource");
 
-        self.cache.insert(key, ExternType::Value(id));
+        self.cache.insert(key, Type::Value(id));
         id
     }
 

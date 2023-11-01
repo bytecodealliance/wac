@@ -1,9 +1,8 @@
-duplicate method `x` for resource `x`
+tests/resolution/fail/duplicate-resource-method.wac:3:5: duplicate method `x` for resource `x`
 
-Caused by:
-     --> tests/resolution/fail/duplicate-resource-method.wac:3:5
-      |
-    3 |     x: static func();
-      |     ^
-      |
-      = duplicate method `x` for resource `x`
+ --> tests/resolution/fail/duplicate-resource-method.wac:3:5
+  |
+3 |     x: static func();
+  |     ^
+  |
+  = duplicate method `x` for resource `x`

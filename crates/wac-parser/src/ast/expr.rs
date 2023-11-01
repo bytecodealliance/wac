@@ -8,6 +8,7 @@ use super::{
     AstDisplay, Ident, Indenter, PackageName,
 };
 use crate::parser::Rule;
+use pest::Span;
 use pest_ast::FromPest;
 use serde::Serialize;
 use std::fmt;
@@ -172,8 +173,8 @@ display!(InstantiationArgument);
 #[pest_ast(rule(Rule::NamedInstantiationArgument))]
 #[serde(rename_all = "camelCase")]
 pub struct NamedInstantiationArgument<'a> {
-    /// The identifier in the argument.
-    pub id: Ident<'a>,
+    /// The name of the argument.
+    pub name: InstantiationArgumentName<'a>,
     /// The colon in the argument.
     pub colon: Colon<'a>,
     /// The expression in the argument.
@@ -182,12 +183,45 @@ pub struct NamedInstantiationArgument<'a> {
 
 impl AstDisplay for NamedInstantiationArgument<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, indenter: &mut Indenter) -> fmt::Result {
-        write!(f, "{id}{colon} ", id = self.id, colon = self.colon)?;
+        self.name.fmt(f, indenter)?;
+        write!(f, "{colon} ", colon = self.colon)?;
         self.expr.fmt(f, indenter)
     }
 }
 
 display!(NamedInstantiationArgument);
+
+/// Represents the argument name in an instantiation argument in the AST.
+#[derive(Debug, Clone, Serialize, FromPest)]
+#[pest_ast(rule(Rule::InstantiationArgumentName))]
+#[serde(rename_all = "camelCase")]
+pub enum InstantiationArgumentName<'a> {
+    /// The argument name is an identifier.
+    Ident(Ident<'a>),
+    /// The argument name is a string.
+    String(super::String<'a>),
+}
+
+impl<'a> InstantiationArgumentName<'a> {
+    /// Gets the span of the instantiation argument name.
+    pub fn span(&self) -> Span<'a> {
+        match self {
+            InstantiationArgumentName::Ident(ident) => ident.0,
+            InstantiationArgumentName::String(string) => string.0,
+        }
+    }
+}
+
+impl AstDisplay for InstantiationArgumentName<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, _indenter: &mut Indenter) -> fmt::Result {
+        match self {
+            InstantiationArgumentName::Ident(ident) => ident.fmt(f, _indenter),
+            InstantiationArgumentName::String(string) => string.fmt(f, _indenter),
+        }
+    }
+}
+
+display!(InstantiationArgumentName);
 
 /// Represents a nested expression in the AST.
 #[derive(Debug, Clone, Serialize, FromPest)]
@@ -223,11 +257,21 @@ pub enum PostfixExpr<'a> {
     NamedAccess(NamedAccessExpr<'a>),
 }
 
+impl<'a> PostfixExpr<'a> {
+    /// Gets the span of the postfix expression.
+    pub fn span(&self) -> pest::Span<'a> {
+        match self {
+            PostfixExpr::Access(access) => access.span(),
+            PostfixExpr::NamedAccess(access) => access.span(),
+        }
+    }
+}
+
 impl AstDisplay for PostfixExpr<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, indenter: &mut Indenter) -> fmt::Result {
         match self {
             PostfixExpr::Access(access) => access.fmt(f, indenter),
-            PostfixExpr::NamedAccess(named_access) => named_access.fmt(f, indenter),
+            PostfixExpr::NamedAccess(access) => access.fmt(f, indenter),
         }
     }
 }
@@ -243,6 +287,13 @@ pub struct AccessExpr<'a> {
     pub dot: Dot<'a>,
     /// The identifier in the expression.
     pub id: Ident<'a>,
+}
+
+impl<'a> AccessExpr<'a> {
+    /// Gets the span of the access expression.
+    pub fn span(&self) -> Span<'a> {
+        Span::new(self.dot.0.get_input(), self.dot.0.start(), self.id.0.end()).unwrap()
+    }
 }
 
 impl AstDisplay for AccessExpr<'_> {
@@ -264,6 +315,18 @@ pub struct NamedAccessExpr<'a> {
     pub string: super::String<'a>,
     /// The close bracket in the expression.
     pub close: CloseBracket<'a>,
+}
+
+impl<'a> NamedAccessExpr<'a> {
+    /// Gets the span of the access expression.
+    pub fn span(&self) -> Span<'a> {
+        Span::new(
+            self.open.0.get_input(),
+            self.open.0.start(),
+            self.close.0.end(),
+        )
+        .unwrap()
+    }
 }
 
 impl AstDisplay for NamedAccessExpr<'_> {
@@ -303,8 +366,8 @@ mod test {
 
         roundtrip::<Expr>(
             Rule::Expr,
-            "new foo:bar { foo, bar: (new baz:qux {...}), baz: foo[\"baz\"].qux }",
-            "new foo:bar {\n  foo,\n  bar: (new baz:qux { ... }),\n  baz: foo[\"baz\"].qux,\n}",
+            "new foo:bar { foo, \"bar\": (new baz:qux {...}), \"baz\": foo[\"baz\"].qux }",
+            "new foo:bar {\n  foo,\n  \"bar\": (new baz:qux { ... }),\n  \"baz\": foo[\"baz\"].qux,\n}",
         )
         .unwrap();
     }

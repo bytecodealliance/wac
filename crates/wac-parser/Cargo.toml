@@ -24,6 +24,10 @@ serde = { workspace = true }
 wasmparser = { workspace = true }
 wit-parser = { workspace = true }
 wit-component = { workspace = true }
+wat = { workspace = true, optional = true }
+
+[features]
+default = ["wat"]
 
 [dev-dependencies]
 pretty_assertions = "1.4.0"

@@ -25,7 +25,6 @@
 //! Additionally, some of the shared data structures need interior mutability
 //! via `RefCell`.
 
-use crate::resolution::ExternType;
 use std::{
     cell::RefCell,
     collections::{hash_map::DefaultHasher, HashMap},
@@ -732,7 +731,7 @@ pub struct TypeCache {
     /// A map of wasmparser resource ids to their mapped ids.
     resources: Rc<RefCell<ResourceMap>>,
     /// A map of type cache keys to the resolved extern type.
-    cache: HashMap<TypeCacheKey, ExternType>,
+    cache: HashMap<TypeCacheKey, super::Type>,
 }
 
 impl TypeCache {
@@ -777,14 +776,14 @@ impl TypeCache {
     }
 
     /// Gets a type from the cache by key.
-    pub fn get(&mut self, key: &TypeCacheKey) -> Option<ExternType> {
+    pub fn get(&mut self, key: &TypeCacheKey) -> Option<super::Type> {
         self.cache.get(key).copied()
     }
 
     /// Inserts a new key into the cache.
     ///
     /// Panics if the key is already present.
-    pub fn insert(&mut self, key: TypeCacheKey, ty: ExternType) {
+    pub fn insert(&mut self, key: TypeCacheKey, ty: super::Type) {
         let prev = self.cache.insert(key, ty);
         assert!(prev.is_none());
     }

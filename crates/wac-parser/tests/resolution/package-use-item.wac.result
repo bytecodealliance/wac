@@ -194,94 +194,95 @@
     ],
     "modules": []
   },
+  "items": [
+    {
+      "kind": {
+        "type": {
+          "value": 0
+        }
+      },
+      "source": "use"
+    },
+    {
+      "kind": {
+        "type": {
+          "value": 1
+        }
+      },
+      "source": "use"
+    },
+    {
+      "kind": {
+        "type": {
+          "value": 2
+        }
+      },
+      "source": "use"
+    },
+    {
+      "kind": {
+        "type": {
+          "interface": 2
+        }
+      },
+      "source": "definition"
+    },
+    {
+      "kind": {
+        "type": {
+          "value": 3
+        }
+      },
+      "source": "use"
+    },
+    {
+      "kind": {
+        "type": {
+          "value": 4
+        }
+      },
+      "source": "use"
+    },
+    {
+      "kind": {
+        "type": {
+          "value": 2
+        }
+      },
+      "source": "use"
+    },
+    {
+      "kind": {
+        "type": {
+          "world": 3
+        }
+      },
+      "source": "definition"
+    }
+  ],
   "scopes": [
     {
       "parent": null,
-      "names": {
-        "i": {
-          "start": 10,
-          "end": 11,
-          "kind": {
-            "type": {
-              "interface": 2
-            }
-          }
-        },
-        "w": {
-          "start": 54,
-          "end": 55,
-          "kind": {
-            "type": {
-              "world": 3
-            }
-          }
-        }
+      "items": {
+        "i": 3,
+        "w": 7
       }
     },
     {
       "parent": 0,
-      "names": {
-        "a": {
-          "start": 35,
-          "end": 36,
-          "kind": {
-            "type": {
-              "value": 0
-            }
-          }
-        },
-        "b": {
-          "start": 38,
-          "end": 39,
-          "kind": {
-            "type": {
-              "value": 1
-            }
-          }
-        },
-        "c": {
-          "start": 41,
-          "end": 42,
-          "kind": {
-            "type": {
-              "value": 2
-            }
-          }
-        }
+      "items": {
+        "a": 0,
+        "b": 1,
+        "c": 2
       }
     },
     {
       "parent": 0,
-      "names": {
-        "x": {
-          "start": 79,
-          "end": 80,
-          "kind": {
-            "type": {
-              "value": 3
-            }
-          }
-        },
-        "y": {
-          "start": 82,
-          "end": 83,
-          "kind": {
-            "type": {
-              "value": 4
-            }
-          }
-        },
-        "z": {
-          "start": 85,
-          "end": 86,
-          "kind": {
-            "type": {
-              "value": 2
-            }
-          }
-        }
+      "items": {
+        "x": 4,
+        "y": 5,
+        "z": 6
       }
     }
-  ],
-  "rootScope": 0
+  ]
 }

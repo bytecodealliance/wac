@@ -1,0 +1,6 @@
+import x: interface {
+    resource r;
+    f: func(r: r);
+};
+
+let i = new foo:bar { x };

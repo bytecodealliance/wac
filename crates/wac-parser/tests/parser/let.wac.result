@@ -220,22 +220,24 @@
                     },
                     {
                       "named": {
-                        "id": {
-                          "str": "c",
-                          "start": 188,
-                          "end": 189
+                        "name": {
+                          "string": {
+                            "str": "\"c\"",
+                            "start": 188,
+                            "end": 191
+                          }
                         },
                         "colon": {
                           "str": ":",
-                          "start": 189,
-                          "end": 190
+                          "start": 191,
+                          "end": 192
                         },
                         "expr": {
                           "primary": {
                             "ident": {
                               "str": "c",
-                              "start": 191,
-                              "end": 192
+                              "start": 193,
+                              "end": 194
                             }
                           },
                           "postfix": []
@@ -246,8 +248,8 @@
                   "ellipsis": null,
                   "close": {
                     "str": "}",
-                    "start": 194,
-                    "end": 195
+                    "start": 196,
+                    "end": 197
                   }
                 }
               }
@@ -256,8 +258,8 @@
           },
           "semicolon": {
             "str": ";",
-            "start": 195,
-            "end": 196
+            "start": 197,
+            "end": 198
           }
         }
       }
@@ -266,117 +268,119 @@
       "docs": [
         {
           "str": "/// Instantiation with arguments and import-propagation.\n",
-          "start": 198,
-          "end": 255
+          "start": 200,
+          "end": 257
         }
       ],
       "stmt": {
         "let": {
           "keyword": {
             "str": "let",
-            "start": 255,
-            "end": 258
+            "start": 257,
+            "end": 260
           },
           "id": {
             "str": "d",
-            "start": 259,
-            "end": 260
+            "start": 261,
+            "end": 262
           },
           "equals": {
             "str": "=",
-            "start": 261,
-            "end": 262
+            "start": 263,
+            "end": 264
           },
           "expr": {
             "primary": {
               "new": {
                 "keyword": {
                   "str": "new",
-                  "start": 263,
-                  "end": 266
+                  "start": 265,
+                  "end": 268
                 },
                 "packageName": {
                   "parts": [
                     {
                       "str": "foo",
-                      "start": 267,
-                      "end": 270
+                      "start": 269,
+                      "end": 272
                     },
                     {
                       "str": "bar",
-                      "start": 271,
-                      "end": 274
+                      "start": 273,
+                      "end": 276
                     }
                   ]
                 },
                 "body": {
                   "open": {
                     "str": "{",
-                    "start": 275,
-                    "end": 276
+                    "start": 277,
+                    "end": 278
                   },
                   "arguments": [
                     {
                       "ident": {
                         "str": "a",
-                        "start": 277,
-                        "end": 278
+                        "start": 279,
+                        "end": 280
                       }
                     },
                     {
                       "named": {
-                        "id": {
-                          "str": "b",
-                          "start": 280,
-                          "end": 281
+                        "name": {
+                          "string": {
+                            "str": "\"b\"",
+                            "start": 282,
+                            "end": 285
+                          }
                         },
                         "colon": {
                           "str": ":",
-                          "start": 281,
-                          "end": 282
+                          "start": 285,
+                          "end": 286
                         },
                         "expr": {
                           "primary": {
                             "nested": {
                               "open": {
                                 "str": "(",
-                                "start": 283,
-                                "end": 284
+                                "start": 287,
+                                "end": 288
                               },
                               "expr": {
                                 "primary": {
                                   "new": {
                                     "keyword": {
                                       "str": "new",
-                                      "start": 284,
-                                      "end": 287
+                                      "start": 288,
+                                      "end": 291
                                     },
                                     "packageName": {
                                       "parts": [
                                         {
                                           "str": "foo",
-                                          "start": 288,
-                                          "end": 291
+                                          "start": 292,
+                                          "end": 295
                                         },
                                         {
                                           "str": "bar",
-                                          "start": 292,
-                                          "end": 295
+                                          "start": 296,
+                                          "end": 299
                                         }
                                       ]
                                     },
                                     "body": {
                                       "open": {
                                         "str": "{",
-                                        "start": 296,
-                                        "end": 297
+                                        "start": 300,
+                                        "end": 301
                                       },
                                       "arguments": [],
                                       "ellipsis": null,
                                       "close": {
                                         "str": "}",
-                                        "start": 298,
-                                        "end": 299
+                                        "start": 302,
+                                        "end": 303
                                       }
                                     }
                                   }
@@ -385,8 +389,8 @@
                               },
                               "close": {
                                 "str": ")",
-                                "start": 299,
-                                "end": 300
+                                "start": 303,
+                                "end": 304
                               }
                             }
                           },
@@ -396,22 +400,24 @@
                     },
                     {
                       "named": {
-                        "id": {
-                          "str": "c",
-                          "start": 302,
-                          "end": 303
+                        "name": {
+                          "ident": {
+                            "str": "c",
+                            "start": 306,
+                            "end": 307
+                          }
                         },
                         "colon": {
                           "str": ":",
-                          "start": 303,
-                          "end": 304
+                          "start": 307,
+                          "end": 308
                         },
                         "expr": {
                           "primary": {
                             "ident": {
                               "str": "c",
-                              "start": 305,
-                              "end": 306
+                              "start": 309,
+                              "end": 310
                             }
                           },
                           "postfix": []
@@ -421,13 +427,13 @@
                   ],
                   "ellipsis": {
                     "str": "...",
-                    "start": 308,
-                    "end": 311
+                    "start": 312,
+                    "end": 315
                   },
                   "close": {
                     "str": "}",
-                    "start": 312,
-                    "end": 313
+                    "start": 316,
+                    "end": 317
                   }
                 }
               }
@@ -436,8 +442,8 @@
           },
           "semicolon": {
             "str": ";",
-            "start": 313,
-            "end": 314
+            "start": 317,
+            "end": 318
           }
         }
       }
@@ -446,49 +452,49 @@
       "docs": [
         {
           "str": "/// Nested expression\n",
-          "start": 316,
-          "end": 338
+          "start": 320,
+          "end": 342
         }
       ],
       "stmt": {
         "let": {
           "keyword": {
             "str": "let",
-            "start": 338,
-            "end": 341
+            "start": 342,
+            "end": 345
           },
           "id": {
             "str": "e",
-            "start": 342,
-            "end": 343
+            "start": 346,
+            "end": 347
           },
           "equals": {
             "str": "=",
-            "start": 344,
-            "end": 345
+            "start": 348,
+            "end": 349
           },
           "expr": {
             "primary": {
               "nested": {
                 "open": {
                   "str": "(",
-                  "start": 346,
-                  "end": 347
+                  "start": 350,
+                  "end": 351
                 },
                 "expr": {
                   "primary": {
                     "ident": {
                       "str": "b",
-                      "start": 347,
-                      "end": 348
+                      "start": 351,
+                      "end": 352
                     }
                   },
                   "postfix": []
                 },
                 "close": {
                   "str": ")",
-                  "start": 348,
-                  "end": 349
+                  "start": 352,
+                  "end": 353
                 }
               }
             },
@@ -496,8 +502,8 @@
           },
           "semicolon": {
             "str": ";",
-            "start": 349,
-            "end": 350
+            "start": 353,
+            "end": 354
           }
         }
       }
@@ -506,33 +512,33 @@
       "docs": [
         {
           "str": "/// Access expression\n",
-          "start": 352,
-          "end": 374
+          "start": 356,
+          "end": 378
         }
       ],
       "stmt": {
         "let": {
           "keyword": {
             "str": "let",
-            "start": 374,
-            "end": 377
+            "start": 378,
+            "end": 381
           },
           "id": {
             "str": "f",
-            "start": 378,
-            "end": 379
+            "start": 382,
+            "end": 383
           },
           "equals": {
             "str": "=",
-            "start": 380,
-            "end": 381
+            "start": 384,
+            "end": 385
           },
           "expr": {
             "primary": {
               "ident": {
                 "str": "e",
-                "start": 382,
-                "end": 383
+                "start": 386,
+                "end": 387
               }
             },
             "postfix": [
@@ -540,18 +546,18 @@
                 "namedAccess": {
                   "open": {
                     "str": "[",
-                    "start": 383,
-                    "end": 384
+                    "start": 387,
+                    "end": 388
                   },
                   "string": {
                     "str": "\"b-c\"",
-                    "start": 384,
-                    "end": 389
+                    "start": 388,
+                    "end": 393
                   },
                   "close": {
                     "str": "]",
-                    "start": 389,
-                    "end": 390
+                    "start": 393,
+                    "end": 394
                   }
                 }
               },
@@ -559,13 +565,13 @@
                 "access": {
                   "dot": {
                     "str": ".",
-                    "start": 390,
-                    "end": 391
+                    "start": 394,
+                    "end": 395
                   },
                   "id": {
                     "str": "c",
-                    "start": 391,
-                    "end": 392
+                    "start": 395,
+                    "end": 396
                   }
                 }
               },
@@ -573,13 +579,13 @@
                 "access": {
                   "dot": {
                     "str": ".",
-                    "start": 392,
-                    "end": 393
+                    "start": 396,
+                    "end": 397
                   },
                   "id": {
                     "str": "d",
-                    "start": 393,
-                    "end": 394
+                    "start": 397,
+                    "end": 398
                   }
                 }
               },
@@ -587,18 +593,18 @@
                 "namedAccess": {
                   "open": {
                     "str": "[",
-                    "start": 394,
-                    "end": 395
+                    "start": 398,
+                    "end": 399
                   },
                   "string": {
                     "str": "\"foo:bar/baz\"",
-                    "start": 395,
-                    "end": 408
+                    "start": 399,
+                    "end": 412
                   },
                   "close": {
                     "str": "]",
-                    "start": 408,
-                    "end": 409
+                    "start": 412,
+                    "end": 413
                   }
                 }
               },
@@ -606,13 +612,13 @@
                 "access": {
                   "dot": {
                     "str": ".",
-                    "start": 409,
-                    "end": 410
+                    "start": 413,
+                    "end": 414
                   },
                   "id": {
                     "str": "e",
-                    "start": 410,
-                    "end": 411
+                    "start": 414,
+                    "end": 415
                   }
                 }
               }
@@ -620,8 +626,8 @@
           },
           "semicolon": {
             "str": ";",
-            "start": 411,
-            "end": 412
+            "start": 415,
+            "end": 416
           }
         }
       }

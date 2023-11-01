@@ -1,0 +1,12 @@
+tests/resolution/fail/mismatched-flags.wac:9:23: mismatched instantiation argument `x`
+
+ --> tests/resolution/fail/mismatched-flags.wac:9:23
+  |
+9 | let i = new foo:bar { x };
+  |                       ^
+  |
+  = mismatched instantiation argument `x`
+
+Caused by:
+    0: mismatched type for export `f`
+    1: expected flag 1 to be named `b`, found a flag named `c`

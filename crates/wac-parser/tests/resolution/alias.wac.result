@@ -20,39 +20,40 @@
     "worlds": [],
     "modules": []
   },
+  "items": [
+    {
+      "kind": {
+        "type": {
+          "value": 0
+        }
+      },
+      "source": "definition"
+    },
+    {
+      "kind": {
+        "type": {
+          "value": 1
+        }
+      },
+      "source": "definition"
+    },
+    {
+      "kind": {
+        "type": {
+          "func": 0
+        }
+      },
+      "source": "definition"
+    }
+  ],
   "scopes": [
     {
       "parent": null,
-      "names": {
-        "a": {
-          "start": 5,
-          "end": 6,
-          "kind": {
-            "type": {
-              "value": 0
-            }
-          }
-        },
-        "b": {
-          "start": 20,
-          "end": 21,
-          "kind": {
-            "type": {
-              "value": 1
-            }
-          }
-        },
-        "c": {
-          "start": 38,
-          "end": 39,
-          "kind": {
-            "type": {
-              "func": 0
-            }
-          }
-        }
+      "items": {
+        "a": 0,
+        "b": 1,
+        "c": 2
       }
     }
-  ],
-  "rootScope": 0
+  ]
 }
