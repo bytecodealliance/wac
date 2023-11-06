@@ -422,9 +422,7 @@
         "instance": 0
       },
       "source": {
-        "import": {
-          "with": null
-        }
+        "import": "wasi:io/streams@0.2.0-rc-2023-10-18"
       }
     },
     {
@@ -462,8 +460,26 @@
           }
         }
       }
+    },
+    {
+      "kind": {
+        "instance": 2
+      },
+      "source": {
+        "alias": {
+          "item": 3,
+          "export": "foo:bar/baz@0.1.0"
+        }
+      }
     }
   ],
+  "imports": {
+    "wasi:io/streams@0.2.0-rc-2023-10-18": 0
+  },
+  "exports": {
+    "foo:bar/baz@0.1.0": 4,
+    "i": 3
+  },
   "scopes": [
     {
       "parent": null,

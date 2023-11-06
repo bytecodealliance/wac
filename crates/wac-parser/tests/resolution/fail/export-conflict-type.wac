@@ -1,0 +1,7 @@
+import f with "x": func();
+
+record x {
+    a: u32
+}
+
+export f with "x";

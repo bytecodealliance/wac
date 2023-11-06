@@ -1,1 +1,3 @@
 import i: foo:bar/i;
+
+export i;

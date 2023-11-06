@@ -34,17 +34,18 @@ use std::{
 };
 use wasmparser::{
     types::{
-        ComponentDefinedType, ComponentEntityType, ComponentFuncType, ComponentInstanceType,
-        ComponentType, ComponentValType, EntityType, ModuleType, ResourceId, Type, TypeId, Types,
+        AnyTypeId, ComponentAnyTypeId, ComponentCoreTypeId, ComponentDefinedType,
+        ComponentEntityType, ComponentFuncType, ComponentInstanceType, ComponentType,
+        ComponentValType, EntityType, ModuleType, ResourceId, Types,
     },
     PrimitiveValType,
 };
 
 /// Map between two type ids and the result of a comparison check.
-type TypeComparisonMap = HashMap<(TypeId, TypeId), bool>;
+type TypeComparisonMap = HashMap<(AnyTypeId, AnyTypeId), bool>;
 
 /// Map between a type id and its structural hash.
-type TypeHashMap = HashMap<TypeId, u64>;
+type TypeHashMap = HashMap<AnyTypeId, u64>;
 
 /// Represents a mapped resource id.
 ///
@@ -94,17 +95,13 @@ impl ResourceMapper {
             ComponentEntityType::Module(_)
             | ComponentEntityType::Func(_)
             | ComponentEntityType::Value(_) => {}
-            ComponentEntityType::Type { referenced, .. } => match &types[referenced] {
-                Type::ComponentInstance(ty) => self.component_instance_type(name, ty),
-                Type::Component(ty) => self.component_type(name, ty),
+            ComponentEntityType::Type { referenced, .. } => match referenced {
+                ComponentAnyTypeId::Instance(ty) => self.component_instance_type(name, &types[ty]),
+                ComponentAnyTypeId::Component(ty) => self.component_type(name, &types[ty]),
                 _ => {}
             },
-            ComponentEntityType::Instance(ty) => {
-                self.component_instance_type(name, types[ty].unwrap_component_instance())
-            }
-            ComponentEntityType::Component(ty) => {
-                self.component_type(name, types[ty].unwrap_component())
-            }
+            ComponentEntityType::Instance(ty) => self.component_instance_type(name, &types[ty]),
+            ComponentEntityType::Component(ty) => self.component_type(name, &types[ty]),
         }
     }
 
@@ -132,23 +129,26 @@ impl ResourceMapper {
         }
     }
 
-    fn map_resource(&mut self, pkg: &str, name: &str, ty: TypeId) {
+    fn map_resource(&mut self, pkg: &str, name: &str, ty: ComponentAnyTypeId) {
         let ty = self.resolve_alias(ty);
-        if let Type::Resource(id) = self.types[ty] {
-            self.map.borrow_mut().entry(id).or_insert_with(|| {
-                *self
-                    .resources
-                    .entry(format!("{pkg}/{name}"))
-                    .or_insert_with(|| {
-                        let id = self.next_id;
-                        self.next_id += 1;
-                        MappedResourceId(id)
-                    })
-            });
+        if let ComponentAnyTypeId::Resource(id) = ty {
+            self.map
+                .borrow_mut()
+                .entry(id.resource())
+                .or_insert_with(|| {
+                    *self
+                        .resources
+                        .entry(format!("{pkg}/{name}"))
+                        .or_insert_with(|| {
+                            let id = self.next_id;
+                            self.next_id += 1;
+                            MappedResourceId(id)
+                        })
+                });
         }
     }
 
-    fn resolve_alias(&self, id: TypeId) -> TypeId {
+    fn resolve_alias(&self, id: ComponentAnyTypeId) -> ComponentAnyTypeId {
         let mut cur = id;
         loop {
             cur = match self.types.peel_alias(cur) {
@@ -170,35 +170,34 @@ struct TypeHasher<'a, H: Hasher> {
 }
 
 impl<'a, H: Hasher> TypeHasher<'a, H> {
-    fn type_id(&mut self, ty: TypeId) {
-        match self.types.get(ty).unwrap() {
-            Type::Sub(_) => unreachable!("GC types are not a valid component extern type"),
-            Type::Module(ty) => {
+    fn type_id(&mut self, id: AnyTypeId) {
+        match id {
+            AnyTypeId::Component(ComponentAnyTypeId::Component(id)) => {
+                0u8.hash(self.state);
+                self.component_type(&self.types[id]);
+            }
+            AnyTypeId::Component(ComponentAnyTypeId::Instance(id)) => {
                 1u8.hash(self.state);
-                self.module_type(ty);
+                self.component_instance_type(&self.types[id])
             }
-            Type::Instance(_) => {
-                unreachable!("module instances are not a valid component extern type")
+            AnyTypeId::Component(ComponentAnyTypeId::Func(id)) => {
+                2u8.hash(self.state);
+                self.component_func_type(&self.types[id]);
             }
-            Type::Component(ty) => {
-                3u8.hash(self.state);
-                self.component_type(ty);
-            }
-            Type::ComponentInstance(ty) => {
+            AnyTypeId::Component(ComponentAnyTypeId::Defined(id)) => {
                 4u8.hash(self.state);
-                self.component_instance_type(ty)
+                self.component_defined_type(&self.types[id]);
             }
-            Type::ComponentFunc(ty) => {
+            AnyTypeId::Component(ComponentAnyTypeId::Resource(id)) => {
                 5u8.hash(self.state);
-                self.component_func_type(ty);
+                self.resources[&id.resource()].hash(self.state);
             }
-            Type::Defined(ty) => {
+            AnyTypeId::Core(ComponentCoreTypeId::Module(id)) => {
                 6u8.hash(self.state);
-                self.component_defined_type(ty);
+                self.module_type(&self.types[id]);
             }
-            Type::Resource(id) => {
-                7u8.hash(self.state);
-                self.resources[id].hash(self.state);
+            AnyTypeId::Core(ComponentCoreTypeId::Sub(_)) => {
+                unreachable!("not a valid component extern type");
             }
         }
     }
@@ -219,16 +218,16 @@ impl<'a, H: Hasher> TypeHasher<'a, H> {
 
     fn entity_type(&mut self, ty: EntityType) {
         match ty {
-            EntityType::Func(ty) => {
+            EntityType::Func(id) => {
                 0u8.hash(self.state);
-                self.type_id(ty);
+                self.types[id].unwrap_func().hash(self.state);
             }
             EntityType::Table(ty) => (1u8, ty).hash(self.state),
             EntityType::Memory(ty) => (2u8, ty).hash(self.state),
             EntityType::Global(ty) => (3u8, ty).hash(self.state),
-            EntityType::Tag(ty) => {
+            EntityType::Tag(id) => {
                 4u8.hash(self.state);
-                self.type_id(ty);
+                self.types[id].unwrap_func().hash(self.state);
             }
         }
     }
@@ -237,39 +236,39 @@ impl<'a, H: Hasher> TypeHasher<'a, H> {
         ty.exports.len().hash(self.state);
         for (n, ty) in &ty.exports {
             n.hash(self.state);
-            self.component_entity_type(ty);
+            self.component_entity_type(*ty);
         }
     }
 
-    fn component_entity_type(&mut self, ty: &ComponentEntityType) {
+    fn component_entity_type(&mut self, ty: ComponentEntityType) {
         match ty {
-            ComponentEntityType::Module(ty) => {
+            ComponentEntityType::Module(id) => {
                 0u8.hash(self.state);
-                self.type_id(*ty);
+                self.module_type(&self.types[id]);
             }
-            ComponentEntityType::Func(ty) => {
+            ComponentEntityType::Func(id) => {
                 1u8.hash(self.state);
-                self.type_id(*ty);
+                self.component_func_type(&self.types[id]);
             }
             ComponentEntityType::Value(ty) => {
                 2u8.hash(self.state);
-                self.component_val_type(*ty);
+                self.component_val_type(ty);
             }
             ComponentEntityType::Type {
                 referenced,
                 created,
             } => {
                 3u8.hash(self.state);
-                self.type_id(*referenced);
-                self.type_id(*created);
+                self.type_id(AnyTypeId::Component(referenced));
+                self.type_id(AnyTypeId::Component(created));
             }
-            ComponentEntityType::Instance(ty) => {
+            ComponentEntityType::Instance(id) => {
                 4u8.hash(self.state);
-                self.type_id(*ty);
+                self.component_instance_type(&self.types[id]);
             }
-            ComponentEntityType::Component(ty) => {
+            ComponentEntityType::Component(id) => {
                 5u8.hash(self.state);
-                self.type_id(*ty);
+                self.component_type(&self.types[id]);
             }
         }
     }
@@ -280,9 +279,9 @@ impl<'a, H: Hasher> TypeHasher<'a, H> {
                 0u8.hash(self.state);
                 self.primitive_val_type(ty);
             }
-            ComponentValType::Type(ty) => {
+            ComponentValType::Type(id) => {
                 1u8.hash(self.state);
-                self.type_id(ty);
+                self.component_defined_type(&self.types[id]);
             }
         }
     }
@@ -310,13 +309,13 @@ impl<'a, H: Hasher> TypeHasher<'a, H> {
         ty.imports.len().hash(self.state);
         for (n, ty) in &ty.imports {
             n.hash(self.state);
-            self.component_entity_type(ty);
+            self.component_entity_type(*ty);
         }
 
         ty.exports.len().hash(self.state);
         for (n, ty) in &ty.exports {
             n.hash(self.state);
-            self.component_entity_type(ty);
+            self.component_entity_type(*ty);
         }
     }
 
@@ -402,13 +401,13 @@ impl<'a, H: Hasher> TypeHasher<'a, H> {
                     None => 1u8.hash(self.state),
                 }
             }
-            ComponentDefinedType::Own(ty) => {
+            ComponentDefinedType::Own(id) => {
                 9u8.hash(self.state);
-                self.type_id(*ty);
+                self.resources[&id.resource()].hash(self.state);
             }
-            ComponentDefinedType::Borrow(ty) => {
+            ComponentDefinedType::Borrow(id) => {
                 10u8.hash(self.state);
-                self.type_id(*ty);
+                self.resources[&id.resource()].hash(self.state);
             }
         }
     }
@@ -426,7 +425,7 @@ struct TypeComparer<'a> {
 }
 
 impl<'a> TypeComparer<'a> {
-    fn type_id(&mut self, a: TypeId, b: TypeId) -> bool {
+    fn type_id(&mut self, a: AnyTypeId, b: AnyTypeId) -> bool {
         // Check for id equality first
         if a == b {
             return true;
@@ -442,23 +441,35 @@ impl<'a> TypeComparer<'a> {
         }
 
         // Otherwise, check for type structural equality
-        let result = match (self.types.get(a).unwrap(), self.types.get(b).unwrap()) {
-            (Type::Sub(_), Type::Sub(_)) => {
-                unreachable!("GC types are not a valid component extern type")
+        let result = match (a, b) {
+            (AnyTypeId::Core(ComponentCoreTypeId::Sub(_)), _)
+            | (_, AnyTypeId::Core(ComponentCoreTypeId::Sub(_))) => {
+                unreachable!("not a valid component extern type")
             }
-            (Type::Module(a), Type::Module(b)) => self.module_type(a, b),
-            (Type::Instance(_), Type::Instance(_)) => {
-                unreachable!("module instances are not a valid component extern type")
-            }
-            (Type::Component(a), Type::Component(b)) => self.component_type(a, b),
-            (Type::ComponentInstance(a), Type::ComponentInstance(b)) => {
-                self.component_instance_type(a, b)
-            }
-            (Type::ComponentFunc(a), Type::ComponentFunc(b)) => self.component_func_type(a, b),
-            (Type::Defined(a), Type::Defined(b)) => self.component_defined_type(a, b),
-            (Type::Resource(a), Type::Resource(b)) => {
-                a == b || self.resources[a] == self.resources[b]
-            }
+            (
+                AnyTypeId::Core(ComponentCoreTypeId::Module(a)),
+                AnyTypeId::Core(ComponentCoreTypeId::Module(b)),
+            ) => self.module_type(&self.types[a], &self.types[b]),
+            (
+                AnyTypeId::Component(ComponentAnyTypeId::Component(a)),
+                AnyTypeId::Component(ComponentAnyTypeId::Component(b)),
+            ) => self.component_type(&self.types[a], &self.types[b]),
+            (
+                AnyTypeId::Component(ComponentAnyTypeId::Instance(a)),
+                AnyTypeId::Component(ComponentAnyTypeId::Instance(b)),
+            ) => self.component_instance_type(&self.types[a], &self.types[b]),
+            (
+                AnyTypeId::Component(ComponentAnyTypeId::Func(a)),
+                AnyTypeId::Component(ComponentAnyTypeId::Func(b)),
+            ) => self.component_func_type(&self.types[a], &self.types[b]),
+            (
+                AnyTypeId::Component(ComponentAnyTypeId::Defined(a)),
+                AnyTypeId::Component(ComponentAnyTypeId::Defined(b)),
+            ) => self.component_defined_type(&self.types[a], &self.types[b]),
+            (
+                AnyTypeId::Component(ComponentAnyTypeId::Resource(a)),
+                AnyTypeId::Component(ComponentAnyTypeId::Resource(b)),
+            ) => a == b || self.resources[&a.resource()] == self.resources[&b.resource()],
             _ => false,
         };
 
@@ -483,11 +494,15 @@ impl<'a> TypeComparer<'a> {
 
     fn entity_type(&mut self, a: EntityType, b: EntityType) -> bool {
         match (a, b) {
-            (EntityType::Func(a), EntityType::Func(b)) => self.type_id(a, b),
+            (EntityType::Func(a), EntityType::Func(b)) => {
+                self.types[a].unwrap_func() == self.types[b].unwrap_func()
+            }
             (EntityType::Table(a), EntityType::Table(b)) => a == b,
             (EntityType::Memory(a), EntityType::Memory(b)) => a == b,
             (EntityType::Global(a), EntityType::Global(b)) => a == b,
-            (EntityType::Tag(a), EntityType::Tag(b)) => self.type_id(a, b),
+            (EntityType::Tag(a), EntityType::Tag(b)) => {
+                self.types[a].unwrap_func() == self.types[b].unwrap_func()
+            }
             _ => false,
         }
     }
@@ -513,20 +528,24 @@ impl<'a> TypeComparer<'a> {
 
     fn component_entity_type(&mut self, a: ComponentEntityType, b: ComponentEntityType) -> bool {
         match (a, b) {
-            (ComponentEntityType::Module(a), ComponentEntityType::Module(b)) => self.type_id(a, b),
-            (ComponentEntityType::Func(a), ComponentEntityType::Func(b)) => self.type_id(a, b),
+            (ComponentEntityType::Module(a), ComponentEntityType::Module(b)) => {
+                self.module_type(&self.types[a], &self.types[b])
+            }
+            (ComponentEntityType::Func(a), ComponentEntityType::Func(b)) => {
+                self.component_func_type(&self.types[a], &self.types[b])
+            }
             (ComponentEntityType::Value(a), ComponentEntityType::Value(b)) => {
                 self.component_val_type(a, b)
             }
             (
                 ComponentEntityType::Type { referenced: a, .. },
                 ComponentEntityType::Type { referenced: b, .. },
-            ) => self.type_id(a, b),
+            ) => self.type_id(AnyTypeId::Component(a), AnyTypeId::Component(b)),
             (ComponentEntityType::Instance(a), ComponentEntityType::Instance(b)) => {
-                self.type_id(a, b)
+                self.component_instance_type(&self.types[a], &self.types[b])
             }
             (ComponentEntityType::Component(a), ComponentEntityType::Component(b)) => {
-                self.type_id(a, b)
+                self.component_type(&self.types[a], &self.types[b])
             }
             _ => false,
         }
@@ -535,7 +554,9 @@ impl<'a> TypeComparer<'a> {
     fn component_val_type(&mut self, a: ComponentValType, b: ComponentValType) -> bool {
         match (a, b) {
             (ComponentValType::Primitive(a), ComponentValType::Primitive(b)) => a == b,
-            (ComponentValType::Type(a), ComponentValType::Type(b)) => self.type_id(a, b),
+            (ComponentValType::Type(a), ComponentValType::Type(b)) => {
+                self.component_defined_type(&self.types[a], &self.types[b])
+            }
             _ => false,
         }
     }
@@ -660,9 +681,9 @@ impl<'a> TypeComparer<'a> {
 
                 true
             }
-            (ComponentDefinedType::Own(a), ComponentDefinedType::Own(b)) => self.type_id(*a, *b),
-            (ComponentDefinedType::Borrow(a), ComponentDefinedType::Borrow(b)) => {
-                self.type_id(*a, *b)
+            (ComponentDefinedType::Own(a), ComponentDefinedType::Own(b))
+            | (ComponentDefinedType::Borrow(a), ComponentDefinedType::Borrow(b)) => {
+                a == b || self.resources[&a.resource()] == self.resources[&b.resource()]
             }
             _ => false,
         }
@@ -676,7 +697,7 @@ pub struct TypeCacheKey {
     comparisons: Rc<RefCell<TypeComparisonMap>>,
     resources: Rc<RefCell<ResourceMap>>,
     name: Option<String>,
-    ty: TypeId,
+    ty: AnyTypeId,
     hash: u64,
 }
 
@@ -747,7 +768,7 @@ impl TypeCache {
     }
 
     /// Gets a key for the cache for the given type.
-    pub fn key(&mut self, name: Option<&str>, ty: TypeId) -> TypeCacheKey {
+    pub fn key(&mut self, name: Option<&str>, ty: AnyTypeId) -> TypeCacheKey {
         let hash = match self.hashes.get(&ty) {
             Some(hash) => *hash,
             None => {
@@ -761,7 +782,9 @@ impl TypeCache {
                 };
 
                 hasher.type_id(ty);
-                state.finish()
+                let hash = state.finish();
+                self.hashes.insert(ty, hash);
+                hash
             }
         };
 

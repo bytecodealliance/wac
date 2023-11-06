@@ -46,6 +46,12 @@
       "source": "definition"
     }
   ],
+  "imports": {},
+  "exports": {
+    "a2": 0,
+    "b2": 1,
+    "c2": 2
+  },
   "scopes": [
     {
       "parent": null,

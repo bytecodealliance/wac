@@ -75,9 +75,7 @@
         "func": 0
       },
       "source": {
-        "import": {
-          "with": null
-        }
+        "import": "a"
       }
     },
     {
@@ -93,9 +91,7 @@
         "func": 1
       },
       "source": {
-        "import": {
-          "with": null
-        }
+        "import": "b"
       }
     },
     {
@@ -103,9 +99,7 @@
         "func": 2
       },
       "source": {
-        "import": {
-          "with": "hello-world"
-        }
+        "import": "hello-world"
       }
     },
     {
@@ -113,9 +107,7 @@
         "instance": 0
       },
       "source": {
-        "import": {
-          "with": null
-        }
+        "import": "e"
       }
     },
     {
@@ -123,12 +115,22 @@
         "instance": 1
       },
       "source": {
-        "import": {
-          "with": null
-        }
+        "import": "foo:bar/baz"
       }
     }
   ],
+  "imports": {
+    "a": 0,
+    "b": 2,
+    "hello-world": 3,
+    "e": 4,
+    "foo:bar/baz": 5
+  },
+  "exports": {
+    "hello-world": 3,
+    "e": 4,
+    "foo:bar/baz": 5
+  },
   "scopes": [
     {
       "parent": null,

@@ -97,12 +97,16 @@
         "instance": 0
       },
       "source": {
-        "import": {
-          "with": null
-        }
+        "import": "foo:bar/i"
       }
     }
   ],
+  "imports": {
+    "foo:bar/i": 0
+  },
+  "exports": {
+    "foo:bar/i": 0
+  },
   "scopes": [
     {
       "parent": null,

@@ -525,7 +525,7 @@ impl fmt::Display for CoreRefType {
         let s = match (self.nullable, self.heap_type) {
             (true, HeapType::Func) => "funcref",
             (true, HeapType::Extern) => "externref",
-            (true, HeapType::Indexed(i)) => return write!(f, "(ref null {i})"),
+            (true, HeapType::Concrete(i)) => return write!(f, "(ref null {i})"),
             (true, HeapType::Any) => "anyref",
             (true, HeapType::None) => "nullref",
             (true, HeapType::NoExtern) => "nullexternref",
@@ -536,7 +536,7 @@ impl fmt::Display for CoreRefType {
             (true, HeapType::I31) => "i31ref",
             (false, HeapType::Func) => "(ref func)",
             (false, HeapType::Extern) => "(ref extern)",
-            (false, HeapType::Indexed(i)) => return write!(f, "(ref {i})"),
+            (false, HeapType::Concrete(i)) => return write!(f, "(ref {i})"),
             (false, HeapType::Any) => "(ref any)",
             (false, HeapType::None) => "(ref none)",
             (false, HeapType::NoExtern) => "(ref noextern)",
@@ -564,7 +564,7 @@ impl From<wasmparser::RefType> for CoreRefType {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize)]
 pub enum HeapType {
     /// User defined type at the given index.
-    Indexed(u32),
+    Concrete(u32),
     /// Untyped (any) function.
     Func,
     /// External heap type.
@@ -600,7 +600,7 @@ impl From<wasmparser::HeapType> for HeapType {
             wasmparser::HeapType::NoFunc => Self::NoFunc,
             wasmparser::HeapType::Struct => Self::Struct,
             wasmparser::HeapType::Array => Self::Array,
-            wasmparser::HeapType::Indexed(index) => Self::Indexed(index),
+            wasmparser::HeapType::Concrete(index) => Self::Concrete(index),
         }
     }
 }

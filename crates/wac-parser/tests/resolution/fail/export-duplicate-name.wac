@@ -1,0 +1,3 @@
+import f: func();
+export f with "x";
+export f with "x";

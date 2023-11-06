@@ -1,3 +1,6 @@
 import streams: wasi:io/streams;
 
 let i = new foo:bar { streams, baz: new foo:bar { streams, ... }.baz };
+
+export i.baz;
+export i with "i";

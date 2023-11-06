@@ -1,0 +1,5 @@
+export `foo` conflicts with interface definition at tests/resolution/fail/export-conflict-interface.wac:3:11
+    --> tests/resolution/fail/export-conflict-interface.wac:7:15
+     |
+   7 | export f with "foo";
+     |               ^---^

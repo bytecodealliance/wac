@@ -1,0 +1,5 @@
+export statement requires a `with` clause as the export name cannot be inferred
+    --> tests/resolution/fail/export-needs-with.wac:2:1
+     |
+   2 | export i;
+     | ^----^

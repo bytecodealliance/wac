@@ -1,0 +1,5 @@
+duplicate import `foo`
+    --> tests/resolution/fail/import-duplicate-name.wac:2:15
+     |
+   2 | import y with "foo": interface {};
+     |               ^---^
