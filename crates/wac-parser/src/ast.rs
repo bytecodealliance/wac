@@ -32,7 +32,7 @@ impl fmt::Display for Found {
 }
 
 struct Expected<'a> {
-    expected: &'a Vec<Token>,
+    expected: &'a [Token],
     more: bool,
 }
 
@@ -95,7 +95,7 @@ pub enum Error<'a> {
     #[error("expected either {expected}, found {found}", expected = Expected { expected, more: *.more }, found = Found(*.found))]
     ExpectedMultiple {
         /// The tokens that were expected.
-        expected: Vec<Token>,
+        expected: SmallVec<[Token; 5]>,
         /// Whether or not more tokens were expected.
         more: bool,
         /// The found token.
@@ -240,7 +240,7 @@ impl<'a> Lookahead<'a> {
                 span,
             },
             _ => Error::ExpectedMultiple {
-                expected: self.attempts.into_vec(),
+                expected: self.attempts,
                 more,
                 found,
                 span,
