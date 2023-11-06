@@ -5,7 +5,6 @@ use crate::{
     Spanned,
 };
 use serde::Serialize;
-use smallvec::SmallVec;
 use std::{fmt, path::Path};
 
 mod export;
@@ -32,26 +31,27 @@ impl fmt::Display for Found {
 }
 
 struct Expected<'a> {
-    expected: &'a [Token],
-    more: bool,
+    expected: &'a [Option<Token>],
+    count: usize,
 }
 
 impl fmt::Display for Expected<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        for (i, t) in self.expected.iter().enumerate() {
+        let mut expected = self.expected.iter().enumerate();
+        while let Some((i, Some(token))) = expected.next() {
             if i > 0 {
                 write!(f, ", ")?;
             }
 
-            if i == self.expected.len() - 1 {
+            if i == self.expected.len() - 1 && self.count <= self.expected.len() {
                 write!(f, "or ")?;
             }
 
-            t.fmt(f)?;
+            token.fmt(f)?;
         }
 
-        if self.more {
-            write!(f, " (and more...) ")?;
+        if self.count > self.expected.len() {
+            write!(f, ", or more...")?;
         }
 
         Ok(())
@@ -92,12 +92,12 @@ pub enum Error<'a> {
         span: Span<'a>,
     },
     /// An unexpected token was encountered when multiple tokens were expected.
-    #[error("expected either {expected}, found {found}", expected = Expected { expected, more: *.more }, found = Found(*.found))]
+    #[error("expected either {expected}, found {found}", expected = Expected { expected, count: *.count }, found = Found(*.found))]
     ExpectedMultiple {
         /// The tokens that were expected.
-        expected: SmallVec<[Token; 5]>,
-        /// Whether or not more tokens were expected.
-        more: bool,
+        expected: [Option<Token>; 10],
+        /// The count of expected tokens.
+        count: usize,
         /// The found token.
         found: Option<Token>,
         /// The span of the found token.
@@ -182,11 +182,11 @@ where
 
 /// Used to look ahead one token in the lexer.
 ///
-/// The lookahead stores up to 5 attempted tokens.
+/// The lookahead stores up to 10 attempted tokens.
 pub struct Lookahead<'a> {
     next: Option<(LexerResult<'a, Token>, Span<'a>)>,
-    span: Span<'a>,
-    attempts: SmallVec<[Token; 5]>,
+    source: &'a str,
+    attempts: [Option<Token>; 10],
     count: usize,
 }
 
@@ -195,7 +195,7 @@ impl<'a> Lookahead<'a> {
     pub fn new(lexer: &Lexer<'a>) -> Self {
         Self {
             next: lexer.peek(),
-            span: lexer.span(),
+            source: lexer.source(),
             attempts: Default::default(),
             count: 0,
         }
@@ -206,9 +206,8 @@ impl<'a> Lookahead<'a> {
         match &self.next {
             Some((Ok(t), _)) if *t == expected => true,
             _ => {
-                // Push up to the capacity to ensure no allocations
-                if self.count < self.attempts.capacity() {
-                    self.attempts.push(expected);
+                if self.count < self.attempts.len() {
+                    self.attempts[self.count] = Some(expected);
                 }
 
                 self.count += 1;
@@ -218,30 +217,34 @@ impl<'a> Lookahead<'a> {
     }
 
     /// Returns an error based on the attempted tokens.
+    ///
+    /// Panics if no peeks were attempted.
     pub fn error(self) -> Error<'a> {
         let (found, span) = match self.next {
             Some((Ok(token), span)) => (Some(token), span),
             Some((Err(e), s)) => return (e, s).into(),
-            None => (None, self.span),
+            None => (
+                None,
+                Span::from_span(self.source, &(self.source.len()..self.source.len())),
+            ),
         };
 
-        let more = self.count > self.attempts.len();
         match self.count {
             0 => unreachable!("lookahead had no attempts"),
             1 => Error::Expected {
-                expected: self.attempts[0],
+                expected: self.attempts[0].unwrap(),
                 found,
                 span,
             },
             2 => Error::ExpectedEither {
-                first: self.attempts[0],
-                second: self.attempts[1],
+                first: self.attempts[0].unwrap(),
+                second: self.attempts[1].unwrap(),
                 found,
                 span,
             },
             _ => Error::ExpectedMultiple {
                 expected: self.attempts,
-                more,
+                count: self.count,
                 found,
                 span,
             },

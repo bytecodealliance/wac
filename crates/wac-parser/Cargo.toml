@@ -21,7 +21,6 @@ serde = { workspace = true }
 wasmparser = { workspace = true }
 wit-parser = { workspace = true }
 wit-component = { workspace = true }
-smallvec = { workspace = true }
 wat = { workspace = true, optional = true }
 owo-colors = { workspace = true }
 
