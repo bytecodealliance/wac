@@ -1,0 +1,5 @@
+`1` is not a valid semantic version
+    --> tests/parser/fail/invalid-semver.wac:1:17
+     |
+   1 | package foo:bar@1;
+     |                 ^

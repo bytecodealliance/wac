@@ -1,3 +1,5 @@
+package test:comp;
+
 world foo {
     resource x {
         x: func();

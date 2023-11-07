@@ -1,5 +1,5 @@
 enum must contain at least one case
-    --> tests/parser/fail/empty-enum.wac:1:9
+    --> tests/parser/fail/empty-enum.wac:3:9
      |
-   1 | enum e {}
+   3 | enum e {}
      |         ^

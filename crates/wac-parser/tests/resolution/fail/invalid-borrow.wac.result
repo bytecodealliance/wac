@@ -1,5 +1,5 @@
 `x` (u32) is not a resource type
-    --> tests/resolution/fail/invalid-borrow.wac:3:17
+    --> tests/resolution/fail/invalid-borrow.wac:5:17
      |
-   3 | type y = borrow<x>;
+   5 | type y = borrow<x>;
      |                 ^

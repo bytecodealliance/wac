@@ -1,5 +1,5 @@
 type `x` is not defined in interface `a`
-    --> tests/resolution/fail/missing-type-in-use.wac:6:12
+    --> tests/resolution/fail/missing-type-in-use.wac:8:12
      |
-   6 |     use a.{x};
+   8 |     use a.{x};
      |            ^

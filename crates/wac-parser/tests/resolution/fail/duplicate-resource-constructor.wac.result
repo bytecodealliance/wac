@@ -1,5 +1,5 @@
 duplicate constructor for resource `x`
-    --> tests/resolution/fail/duplicate-resource-constructor.wac:4:9
+    --> tests/resolution/fail/duplicate-resource-constructor.wac:6:9
      |
-   4 |         constructor(x: u32);
+   6 |         constructor(x: u32);
      |         ^---------^

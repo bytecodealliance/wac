@@ -1,5 +1,5 @@
 record must contain at least one field
-    --> tests/parser/fail/empty-record.wac:1:11
+    --> tests/parser/fail/empty-record.wac:3:11
      |
-   1 | record r {}
+   3 | record r {}
      |           ^

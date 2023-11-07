@@ -1,5 +1,5 @@
 `x` (u32) is not a function type
-    --> tests/resolution/fail/invalid-func-type-ref.wac:4:8
+    --> tests/resolution/fail/invalid-func-type-ref.wac:6:8
      |
-   4 |     x: x;
+   6 |     x: x;
      |        ^

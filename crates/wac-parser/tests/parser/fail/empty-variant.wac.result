@@ -1,5 +1,5 @@
 variant must contain at least one case
-    --> tests/parser/fail/empty-variant.wac:1:12
+    --> tests/parser/fail/empty-variant.wac:3:12
      |
-   1 | variant v {}
+   3 | variant v {}
      |            ^

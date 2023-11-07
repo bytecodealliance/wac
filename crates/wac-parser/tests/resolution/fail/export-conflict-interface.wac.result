@@ -1,5 +1,5 @@
-export `foo` conflicts with interface definition at tests/resolution/fail/export-conflict-interface.wac:3:11
-    --> tests/resolution/fail/export-conflict-interface.wac:7:15
+export `foo` conflicts with interface definition at tests/resolution/fail/export-conflict-interface.wac:5:11
+    --> tests/resolution/fail/export-conflict-interface.wac:9:15
      |
-   7 | export f with "foo";
+   9 | export f with "foo";
      |               ^---^

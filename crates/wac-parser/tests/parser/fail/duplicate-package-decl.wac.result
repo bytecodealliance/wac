@@ -1,0 +1,5 @@
+expected either `import` keyword, `let` keyword, `export` keyword, `interface` keyword, `world` keyword, `variant` keyword, `record` keyword, `flags` keyword, `enum` keyword, or `type` keyword, found `package` keyword
+    --> tests/parser/fail/duplicate-package-decl.wac:2:1
+     |
+   2 | package test:comp;
+     | ^-----^

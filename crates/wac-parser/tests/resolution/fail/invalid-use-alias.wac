@@ -1,3 +1,5 @@
+package test:comp;
+
 interface a {
     type a = u32;
 }

@@ -1,3 +1,5 @@
+package test:comp@1.0.0;
+
 type a = u32;
 
 type b = string;

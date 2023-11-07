@@ -1,5 +1,5 @@
 duplicate function result `a`
-    --> tests/resolution/fail/duplicate-func-result.wac:1:29
+    --> tests/resolution/fail/duplicate-func-result.wac:3:29
      |
-   1 | type f = func() -> (a: u32, a: s8);
+   3 | type f = func() -> (a: u32, a: s8);
      |                             ^

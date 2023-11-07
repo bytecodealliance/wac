@@ -1,3 +1,5 @@
+package test:comp;
+
 import x: interface {
     f: func() -> (a: string, c: u32);
 };

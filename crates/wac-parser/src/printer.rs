@@ -27,6 +27,14 @@ impl<W: Write> DocumentPrinter<W> {
 
     /// Prints the given document.
     pub fn document(&mut self, doc: &Document) -> std::fmt::Result {
+        self.docs(&doc.docs)?;
+        writeln!(
+            self.writer,
+            "package {package};",
+            package = doc.package.span.as_str()
+        )?;
+        self.newline()?;
+
         for (i, statement) in doc.statements.iter().enumerate() {
             if i > 0 {
                 self.newline()?;

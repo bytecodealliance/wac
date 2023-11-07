@@ -1,3 +1,5 @@
+package test:comp;
+
 interface foo {
     /// Resource without methods
     resource r1;

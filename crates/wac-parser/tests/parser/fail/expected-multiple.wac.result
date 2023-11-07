@@ -1,5 +1,5 @@
 expected either `func` keyword, `u8` keyword, `s8` keyword, `u16` keyword, `s16` keyword, `u32` keyword, `s32` keyword, `u64` keyword, `s64` keyword, `float32` keyword, or more..., found end of input
-    --> tests/parser/fail/expected-multiple.wac:1:10
+    --> tests/parser/fail/expected-multiple.wac:3:10
      |
-   1 | type x = 
+   3 | type x = 
      |          ^

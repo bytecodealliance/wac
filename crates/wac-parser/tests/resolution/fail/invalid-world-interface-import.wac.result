@@ -1,5 +1,5 @@
 `x` (u32) is not an interface
-    --> tests/resolution/fail/invalid-world-interface-import.wac:4:12
+    --> tests/resolution/fail/invalid-world-interface-import.wac:6:12
      |
-   4 |     import x;
+   6 |     import x;
      |            ^

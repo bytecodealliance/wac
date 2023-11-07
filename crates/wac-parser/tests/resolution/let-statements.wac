@@ -1,6 +1,8 @@
+package test:comp@1.0.0;
+
 import streams: wasi:io/streams;
 
-let i = new foo:bar { streams, baz: new foo:bar { streams, ... }.baz };
+let i = new foo:bar { streams, baz: new foo:bar@100.0.0 { streams, ... }.baz };
 
 export i.baz;
 export i with "i";

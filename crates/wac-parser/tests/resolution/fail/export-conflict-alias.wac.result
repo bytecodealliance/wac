@@ -1,5 +1,5 @@
-export `x` conflicts with u32 definition at tests/resolution/fail/export-conflict-alias.wac:3:6 (consider using a `with` clause to use a different name)
-    --> tests/resolution/fail/export-conflict-alias.wac:5:1
+export `x` conflicts with u32 definition at tests/resolution/fail/export-conflict-alias.wac:5:6 (consider using a `with` clause to use a different name)
+    --> tests/resolution/fail/export-conflict-alias.wac:7:1
      |
-   5 | export f;
+   7 | export f;
      | ^----^

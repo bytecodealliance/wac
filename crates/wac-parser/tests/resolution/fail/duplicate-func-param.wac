@@ -1,1 +1,3 @@
+package test:comp;
+
 type f = func(x: u32, x: string);

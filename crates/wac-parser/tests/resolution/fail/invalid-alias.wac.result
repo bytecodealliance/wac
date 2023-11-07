@@ -1,5 +1,5 @@
 `a` (interface) cannot be used in a type alias
-    --> tests/resolution/fail/invalid-alias.wac:5:10
+    --> tests/resolution/fail/invalid-alias.wac:7:10
      |
-   5 | type x = a;
+   7 | type x = a;
      |          ^

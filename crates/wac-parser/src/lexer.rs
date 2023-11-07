@@ -148,7 +148,7 @@ fn detect_invalid_input(source: &str) -> Result<(), (Error, Span)> {
 #[logos(skip r"[ \t\n\f]+")]
 #[logos(subpattern id = r"%?[a-z][a-z0-9]*(-[a-z][a-z0-9]*)*")]
 #[logos(subpattern package_name = r"(?&id)(:(?&id))+")]
-#[logos(subpattern semver = r"(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(-((0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(\.(0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(\+([0-9a-zA-Z-]+(\.[0-9a-zA-Z-]+)*))?")]
+#[logos(subpattern semver = r"[0-9a-zA-Z-\.\+]+")]
 pub enum Token {
     /// A comment.
     #[regex(r"//[^\n]*", logos::skip)]
@@ -167,7 +167,7 @@ pub enum Token {
     String,
 
     /// A package name.
-    #[regex(r"(?&id)(:(?&id))+")]
+    #[regex(r"(?&package_name)(@(?&semver))?")]
     PackageName,
 
     /// A package path with optional semantic version.
@@ -285,6 +285,9 @@ pub enum Token {
     /// The `as` keyword.
     #[token("as")]
     AsKeyword,
+    /// The `package` keyword.
+    #[token("package")]
+    PackageKeyword,
 
     /// The `;` symbol.
     #[token(";")]
@@ -387,6 +390,7 @@ impl fmt::Display for Token {
             Token::UseKeyword => write!(f, "`use` keyword"),
             Token::IncludeKeyword => write!(f, "`include` keyword"),
             Token::AsKeyword => write!(f, "`as` keyword"),
+            Token::PackageKeyword => write!(f, "`package` keyword"),
             Token::Semicolon => write!(f, "`;`"),
             Token::OpenBrace => write!(f, "`{{`"),
             Token::CloseBrace => write!(f, "`}}`"),

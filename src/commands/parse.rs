@@ -33,10 +33,6 @@ struct Output<'a> {
 #[derive(Args)]
 #[clap(disable_version_flag = true)]
 pub struct ParseCommand {
-    /// The package being parsed.
-    #[clap(long, short, value_name = "PACKAGE")]
-    pub package: String,
-
     /// The directory to search for package dependencies.
     #[clap(long, value_name = "PATH", default_value = "deps")]
     pub deps_dir: PathBuf,
@@ -66,7 +62,6 @@ impl ParseCommand {
         })?;
         let resolved = ResolvedDocument::new(
             &document,
-            self.package,
             Some(Box::new(FileSystemPackageResolver::new(
                 self.deps_dir,
                 self.deps.into_iter().collect(),

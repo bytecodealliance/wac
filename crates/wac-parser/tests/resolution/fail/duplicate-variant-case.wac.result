@@ -1,5 +1,5 @@
 duplicate case `a` for variant type `x`
-    --> tests/resolution/fail/duplicate-variant-case.wac:6:5
+    --> tests/resolution/fail/duplicate-variant-case.wac:8:5
      |
-   6 |     a,
+   8 |     a,
      |     ^

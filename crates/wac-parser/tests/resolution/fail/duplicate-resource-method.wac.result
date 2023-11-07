@@ -1,5 +1,5 @@
 duplicate method `x` for resource `x`
-    --> tests/resolution/fail/duplicate-resource-method.wac:4:9
+    --> tests/resolution/fail/duplicate-resource-method.wac:6:9
      |
-   4 |         x: static func();
+   6 |         x: static func();
      |         ^

@@ -1,3 +1,5 @@
+package test:comp;
+
 /// Import by func type
 import a: func();
 

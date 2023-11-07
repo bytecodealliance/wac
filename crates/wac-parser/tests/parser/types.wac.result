@@ -1,4 +1,14 @@
 {
+  "docs": [],
+  "package": {
+    "name": "test:comp",
+    "version": null,
+    "span": {
+      "str": "test:comp",
+      "start": 8,
+      "end": 17
+    }
+  },
   "statements": [
     {
       "Type": {
@@ -8,8 +18,8 @@
               "comment": "Defining an interface",
               "span": {
                 "str": "/// Defining an interface",
-                "start": 0,
-                "end": 25
+                "start": 20,
+                "end": 45
               }
             }
           ],
@@ -17,8 +27,8 @@
             "string": "i",
             "span": {
               "str": "i",
-              "start": 36,
-              "end": 37
+              "start": 56,
+              "end": 57
             }
           },
           "items": [
@@ -30,8 +40,8 @@
                       "comment": "Defining a resource",
                       "span": {
                         "str": "/// Defining a resource",
-                        "start": 44,
-                        "end": 67
+                        "start": 64,
+                        "end": 87
                       }
                     }
                   ],
@@ -39,8 +49,8 @@
                     "string": "res",
                     "span": {
                       "str": "res",
-                      "start": 81,
-                      "end": 84
+                      "start": 101,
+                      "end": 104
                     }
                   },
                   "methods": [
@@ -49,8 +59,8 @@
                         "docs": [],
                         "span": {
                           "str": "constructor",
-                          "start": 95,
-                          "end": 106
+                          "start": 115,
+                          "end": 126
                         },
                         "params": []
                       }
@@ -67,8 +77,8 @@
                       "comment": "Type alias a",
                       "span": {
                         "str": "/// Type alias a",
-                        "start": 121,
-                        "end": 137
+                        "start": 141,
+                        "end": 157
                       }
                     }
                   ],
@@ -76,8 +86,8 @@
                     "string": "a",
                     "span": {
                       "str": "a",
-                      "start": 147,
-                      "end": 148
+                      "start": 167,
+                      "end": 168
                     }
                   },
                   "kind": {
@@ -97,8 +107,8 @@
                       "comment": "Record type",
                       "span": {
                         "str": "/// Record type",
-                        "start": 163,
-                        "end": 178
+                        "start": 183,
+                        "end": 198
                       }
                     }
                   ],
@@ -106,8 +116,8 @@
                     "string": "r",
                     "span": {
                       "str": "r",
-                      "start": 190,
-                      "end": 191
+                      "start": 210,
+                      "end": 211
                     }
                   },
                   "fields": [
@@ -117,8 +127,8 @@
                         "string": "x",
                         "span": {
                           "str": "x",
-                          "start": 202,
-                          "end": 203
+                          "start": 222,
+                          "end": 223
                         }
                       },
                       "ty": "u32"
@@ -134,8 +144,8 @@
                     "comment": "Export func",
                     "span": {
                       "str": "/// Export func",
-                      "start": 219,
-                      "end": 234
+                      "start": 239,
+                      "end": 254
                     }
                   }
                 ],
@@ -143,8 +153,8 @@
                   "string": "x",
                   "span": {
                     "str": "x",
-                    "start": 239,
-                    "end": 240
+                    "start": 259,
+                    "end": 260
                   }
                 },
                 "ty": {
@@ -162,8 +172,8 @@
                     "comment": "Export func of type a",
                     "span": {
                       "str": "/// Export func of type a",
-                      "start": 254,
-                      "end": 279
+                      "start": 274,
+                      "end": 299
                     }
                   }
                 ],
@@ -171,8 +181,8 @@
                   "string": "y",
                   "span": {
                     "str": "y",
-                    "start": 284,
-                    "end": 285
+                    "start": 304,
+                    "end": 305
                   }
                 },
                 "ty": {
@@ -180,8 +190,8 @@
                     "string": "a",
                     "span": {
                       "str": "a",
-                      "start": 287,
-                      "end": 288
+                      "start": 307,
+                      "end": 308
                     }
                   }
                 }
@@ -199,8 +209,8 @@
               "comment": "Defining a second interface",
               "span": {
                 "str": "/// Defining a second interface",
-                "start": 293,
-                "end": 324
+                "start": 313,
+                "end": 344
               }
             }
           ],
@@ -208,8 +218,8 @@
             "string": "i2",
             "span": {
               "str": "i2",
-              "start": 335,
-              "end": 337
+              "start": 355,
+              "end": 357
             }
           },
           "items": [
@@ -220,8 +230,8 @@
                     "comment": "Use type r from i",
                     "span": {
                       "str": "/// Use type r from i",
-                      "start": 344,
-                      "end": 365
+                      "start": 364,
+                      "end": 385
                     }
                   }
                 ],
@@ -230,8 +240,8 @@
                     "string": "i",
                     "span": {
                       "str": "i",
-                      "start": 374,
-                      "end": 375
+                      "start": 394,
+                      "end": 395
                     }
                   }
                 },
@@ -241,8 +251,8 @@
                       "string": "r",
                       "span": {
                         "str": "r",
-                        "start": 377,
-                        "end": 378
+                        "start": 397,
+                        "end": 398
                       }
                     },
                     "asId": null
@@ -257,8 +267,8 @@
                     "comment": "Use type r from i with alias z",
                     "span": {
                       "str": "/// Use type r from i with alias z",
-                      "start": 386,
-                      "end": 420
+                      "start": 406,
+                      "end": 440
                     }
                   }
                 ],
@@ -267,8 +277,8 @@
                     "string": "i",
                     "span": {
                       "str": "i",
-                      "start": 429,
-                      "end": 430
+                      "start": 449,
+                      "end": 450
                     }
                   }
                 },
@@ -278,16 +288,16 @@
                       "string": "r",
                       "span": {
                         "str": "r",
-                        "start": 432,
-                        "end": 433
+                        "start": 452,
+                        "end": 453
                       }
                     },
                     "asId": {
                       "string": "z",
                       "span": {
                         "str": "z",
-                        "start": 437,
-                        "end": 438
+                        "start": 457,
+                        "end": 458
                       }
                     }
                   }
@@ -306,8 +316,8 @@
               "comment": "Defining a world",
               "span": {
                 "str": "/// Defining a world",
-                "start": 444,
-                "end": 464
+                "start": 464,
+                "end": 484
               }
             }
           ],
@@ -315,8 +325,8 @@
             "string": "w1",
             "span": {
               "str": "w1",
-              "start": 471,
-              "end": 473
+              "start": 491,
+              "end": 493
             }
           },
           "items": [
@@ -327,8 +337,8 @@
                     "comment": "Use type r from foo:bar/i",
                     "span": {
                       "str": "/// Use type r from foo:bar/i",
-                      "start": 480,
-                      "end": 509
+                      "start": 500,
+                      "end": 529
                     }
                   }
                 ],
@@ -336,8 +346,8 @@
                   "package": {
                     "span": {
                       "str": "foo:bar/i",
-                      "start": 518,
-                      "end": 527
+                      "start": 538,
+                      "end": 547
                     },
                     "name": "foo:bar",
                     "segments": "i",
@@ -350,8 +360,8 @@
                       "string": "r",
                       "span": {
                         "str": "r",
-                        "start": 529,
-                        "end": 530
+                        "start": 549,
+                        "end": 550
                       }
                     },
                     "asId": null
@@ -366,8 +376,8 @@
                     "comment": "Import a function",
                     "span": {
                       "str": "/// Import a function",
-                      "start": 538,
-                      "end": 559
+                      "start": 558,
+                      "end": 579
                     }
                   }
                 ],
@@ -377,8 +387,8 @@
                       "string": "a",
                       "span": {
                         "str": "a",
-                        "start": 571,
-                        "end": 572
+                        "start": 591,
+                        "end": 592
                       }
                     },
                     "ty": {
@@ -398,8 +408,8 @@
                     "comment": "Import an interface",
                     "span": {
                       "str": "/// Import an interface",
-                      "start": 586,
-                      "end": 609
+                      "start": 606,
+                      "end": 629
                     }
                   }
                 ],
@@ -408,8 +418,8 @@
                     "string": "i",
                     "span": {
                       "str": "i",
-                      "start": 621,
-                      "end": 622
+                      "start": 641,
+                      "end": 642
                     }
                   }
                 }
@@ -422,8 +432,8 @@
                     "comment": "Import by name with type `c`",
                     "span": {
                       "str": "/// Import by name with type `c`",
-                      "start": 628,
-                      "end": 660
+                      "start": 648,
+                      "end": 680
                     }
                   }
                 ],
@@ -433,8 +443,8 @@
                       "string": "c",
                       "span": {
                         "str": "c",
-                        "start": 672,
-                        "end": 673
+                        "start": 692,
+                        "end": 693
                       }
                     },
                     "ty": {
@@ -442,8 +452,8 @@
                         "string": "c",
                         "span": {
                           "str": "c",
-                          "start": 675,
-                          "end": 676
+                          "start": 695,
+                          "end": 696
                         }
                       }
                     }
@@ -458,8 +468,8 @@
                     "comment": "Export an inline interface",
                     "span": {
                       "str": "/// Export an inline interface",
-                      "start": 683,
-                      "end": 713
+                      "start": 703,
+                      "end": 733
                     }
                   }
                 ],
@@ -469,8 +479,8 @@
                       "string": "d",
                       "span": {
                         "str": "d",
-                        "start": 725,
-                        "end": 726
+                        "start": 745,
+                        "end": 746
                       }
                     },
                     "ty": {
@@ -483,8 +493,8 @@
                                 "string": "x",
                                 "span": {
                                   "str": "x",
-                                  "start": 748,
-                                  "end": 749
+                                  "start": 768,
+                                  "end": 769
                                 }
                               },
                               "ty": {
@@ -509,8 +519,8 @@
                     "comment": "Export an interface",
                     "span": {
                       "str": "/// Export an interface",
-                      "start": 770,
-                      "end": 793
+                      "start": 790,
+                      "end": 813
                     }
                   }
                 ],
@@ -519,8 +529,8 @@
                     "string": "i2",
                     "span": {
                       "str": "i2",
-                      "start": 805,
-                      "end": 807
+                      "start": 825,
+                      "end": 827
                     }
                   }
                 }
@@ -533,8 +543,8 @@
                     "comment": "Export by name with type `f`",
                     "span": {
                       "str": "/// Export by name with type `f`",
-                      "start": 813,
-                      "end": 845
+                      "start": 833,
+                      "end": 865
                     }
                   }
                 ],
@@ -544,8 +554,8 @@
                       "string": "f",
                       "span": {
                         "str": "f",
-                        "start": 857,
-                        "end": 858
+                        "start": 877,
+                        "end": 878
                       }
                     },
                     "ty": {
@@ -553,8 +563,8 @@
                         "string": "f",
                         "span": {
                           "str": "f",
-                          "start": 860,
-                          "end": 861
+                          "start": 880,
+                          "end": 881
                         }
                       }
                     }
@@ -574,8 +584,8 @@
               "comment": "Defining a second world",
               "span": {
                 "str": "/// Defining a second world",
-                "start": 866,
-                "end": 893
+                "start": 886,
+                "end": 913
               }
             }
           ],
@@ -583,8 +593,8 @@
             "string": "w2",
             "span": {
               "str": "w2",
-              "start": 900,
-              "end": 902
+              "start": 920,
+              "end": 922
             }
           },
           "items": [
@@ -595,8 +605,8 @@
                     "comment": "Include the first world",
                     "span": {
                       "str": "/// Include the first world",
-                      "start": 909,
-                      "end": 936
+                      "start": 929,
+                      "end": 956
                     }
                   }
                 ],
@@ -605,8 +615,8 @@
                     "string": "w1",
                     "span": {
                       "str": "w1",
-                      "start": 949,
-                      "end": 951
+                      "start": 969,
+                      "end": 971
                     }
                   }
                 },
@@ -620,8 +630,8 @@
                     "comment": "Include a world by path",
                     "span": {
                       "str": "/// Include a world by path",
-                      "start": 958,
-                      "end": 985
+                      "start": 978,
+                      "end": 1005
                     }
                   }
                 ],
@@ -629,8 +639,8 @@
                   "package": {
                     "span": {
                       "str": "foo:bar/baz",
-                      "start": 998,
-                      "end": 1009
+                      "start": 1018,
+                      "end": 1029
                     },
                     "name": "foo:bar",
                     "segments": "baz",
@@ -653,8 +663,8 @@
                 "comment": "Defining a variant",
                 "span": {
                   "str": "/// Defining a variant",
-                  "start": 1014,
-                  "end": 1036
+                  "start": 1034,
+                  "end": 1056
                 }
               }
             ],
@@ -662,8 +672,8 @@
               "string": "v",
               "span": {
                 "str": "v",
-                "start": 1045,
-                "end": 1046
+                "start": 1065,
+                "end": 1066
               }
             },
             "cases": [
@@ -673,8 +683,8 @@
                   "string": "a",
                   "span": {
                     "str": "a",
-                    "start": 1053,
-                    "end": 1054
+                    "start": 1073,
+                    "end": 1074
                   }
                 },
                 "ty": {
@@ -682,8 +692,8 @@
                     "string": "x",
                     "span": {
                       "str": "x",
-                      "start": 1055,
-                      "end": 1056
+                      "start": 1075,
+                      "end": 1076
                     }
                   }
                 }
@@ -694,8 +704,8 @@
                   "string": "b",
                   "span": {
                     "str": "b",
-                    "start": 1063,
-                    "end": 1064
+                    "start": 1083,
+                    "end": 1084
                   }
                 },
                 "ty": "string"
@@ -706,8 +716,8 @@
                   "string": "c",
                   "span": {
                     "str": "c",
-                    "start": 1078,
-                    "end": 1079
+                    "start": 1098,
+                    "end": 1099
                   }
                 },
                 "ty": "u32"
@@ -718,8 +728,8 @@
                   "string": "d",
                   "span": {
                     "str": "d",
-                    "start": 1090,
-                    "end": 1091
+                    "start": 1110,
+                    "end": 1111
                   }
                 },
                 "ty": null
@@ -738,8 +748,8 @@
                 "comment": "Defining a record",
                 "span": {
                   "str": "/// Defining a record",
-                  "start": 1096,
-                  "end": 1117
+                  "start": 1116,
+                  "end": 1137
                 }
               }
             ],
@@ -747,8 +757,8 @@
               "string": "r",
               "span": {
                 "str": "r",
-                "start": 1125,
-                "end": 1126
+                "start": 1145,
+                "end": 1146
               }
             },
             "fields": [
@@ -758,8 +768,8 @@
                   "string": "x",
                   "span": {
                     "str": "x",
-                    "start": 1133,
-                    "end": 1134
+                    "start": 1153,
+                    "end": 1154
                   }
                 },
                 "ty": "u32"
@@ -770,8 +780,8 @@
                   "string": "y",
                   "span": {
                     "str": "y",
-                    "start": 1145,
-                    "end": 1146
+                    "start": 1165,
+                    "end": 1166
                   }
                 },
                 "ty": "string"
@@ -782,8 +792,8 @@
                   "string": "z",
                   "span": {
                     "str": "z",
-                    "start": 1160,
-                    "end": 1161
+                    "start": 1180,
+                    "end": 1181
                   }
                 },
                 "ty": {
@@ -791,8 +801,8 @@
                     "string": "v",
                     "span": {
                       "str": "v",
-                      "start": 1163,
-                      "end": 1164
+                      "start": 1183,
+                      "end": 1184
                     }
                   }
                 }
@@ -811,8 +821,8 @@
                 "comment": "Defining flags",
                 "span": {
                   "str": "/// Defining flags",
-                  "start": 1170,
-                  "end": 1188
+                  "start": 1190,
+                  "end": 1208
                 }
               }
             ],
@@ -820,8 +830,8 @@
               "string": "f",
               "span": {
                 "str": "f",
-                "start": 1195,
-                "end": 1196
+                "start": 1215,
+                "end": 1216
               }
             },
             "flags": [
@@ -831,8 +841,8 @@
                   "string": "a",
                   "span": {
                     "str": "a",
-                    "start": 1203,
-                    "end": 1204
+                    "start": 1223,
+                    "end": 1224
                   }
                 }
               },
@@ -842,8 +852,8 @@
                   "string": "b",
                   "span": {
                     "str": "b",
-                    "start": 1210,
-                    "end": 1211
+                    "start": 1230,
+                    "end": 1231
                   }
                 }
               },
@@ -853,8 +863,8 @@
                   "string": "c",
                   "span": {
                     "str": "c",
-                    "start": 1217,
-                    "end": 1218
+                    "start": 1237,
+                    "end": 1238
                   }
                 }
               }
@@ -872,8 +882,8 @@
                 "comment": "Defining an enum",
                 "span": {
                   "str": "/// Defining an enum",
-                  "start": 1223,
-                  "end": 1243
+                  "start": 1243,
+                  "end": 1263
                 }
               }
             ],
@@ -881,8 +891,8 @@
               "string": "e",
               "span": {
                 "str": "e",
-                "start": 1249,
-                "end": 1250
+                "start": 1269,
+                "end": 1270
               }
             },
             "cases": [
@@ -892,8 +902,8 @@
                   "string": "a",
                   "span": {
                     "str": "a",
-                    "start": 1257,
-                    "end": 1258
+                    "start": 1277,
+                    "end": 1278
                   }
                 }
               },
@@ -903,8 +913,8 @@
                   "string": "b",
                   "span": {
                     "str": "b",
-                    "start": 1264,
-                    "end": 1265
+                    "start": 1284,
+                    "end": 1285
                   }
                 }
               },
@@ -914,8 +924,8 @@
                   "string": "c",
                   "span": {
                     "str": "c",
-                    "start": 1271,
-                    "end": 1272
+                    "start": 1291,
+                    "end": 1292
                   }
                 }
               }
@@ -933,8 +943,8 @@
                 "comment": "Type aliases",
                 "span": {
                   "str": "/// Type aliases",
-                  "start": 1277,
-                  "end": 1293
+                  "start": 1297,
+                  "end": 1313
                 }
               }
             ],
@@ -942,8 +952,8 @@
               "string": "t",
               "span": {
                 "str": "t",
-                "start": 1299,
-                "end": 1300
+                "start": 1319,
+                "end": 1320
               }
             },
             "kind": {
@@ -952,8 +962,8 @@
                   "string": "e",
                   "span": {
                     "str": "e",
-                    "start": 1303,
-                    "end": 1304
+                    "start": 1323,
+                    "end": 1324
                   }
                 }
               }
@@ -971,8 +981,8 @@
               "string": "t2",
               "span": {
                 "str": "t2",
-                "start": 1311,
-                "end": 1313
+                "start": 1331,
+                "end": 1333
               }
             },
             "kind": {
@@ -991,8 +1001,8 @@
               "string": "t3",
               "span": {
                 "str": "t3",
-                "start": 1329,
-                "end": 1331
+                "start": 1349,
+                "end": 1351
               }
             },
             "kind": {
@@ -1003,8 +1013,8 @@
                       "string": "a",
                       "span": {
                         "str": "a",
-                        "start": 1339,
-                        "end": 1340
+                        "start": 1359,
+                        "end": 1360
                       }
                     },
                     "ty": "u32"
@@ -1014,8 +1024,8 @@
                       "string": "b",
                       "span": {
                         "str": "b",
-                        "start": 1347,
-                        "end": 1348
+                        "start": 1367,
+                        "end": 1368
                       }
                     },
                     "ty": {
@@ -1023,8 +1033,8 @@
                         "string": "r",
                         "span": {
                           "str": "r",
-                          "start": 1350,
-                          "end": 1351
+                          "start": 1370,
+                          "end": 1371
                         }
                       }
                     }
@@ -1048,8 +1058,8 @@
               "string": "t4",
               "span": {
                 "str": "t4",
-                "start": 1366,
-                "end": 1368
+                "start": 1386,
+                "end": 1388
               }
             },
             "kind": {
@@ -1062,8 +1072,8 @@
                         "string": "a",
                         "span": {
                           "str": "a",
-                          "start": 1382,
-                          "end": 1383
+                          "start": 1402,
+                          "end": 1403
                         }
                       },
                       "ty": "u32"
@@ -1073,8 +1083,8 @@
                         "string": "b",
                         "span": {
                           "str": "b",
-                          "start": 1390,
-                          "end": 1391
+                          "start": 1410,
+                          "end": 1411
                         }
                       },
                       "ty": "string"

@@ -1,7 +1,7 @@
 mismatched instantiation argument `x`
-    --> tests/resolution/fail/variant-case-typed.wac:9:23
+    --> tests/resolution/fail/variant-case-typed.wac:11:23
      |
-   9 | let i = new foo:bar { x };
+  11 | let i = new foo:bar { x };
      |                       ^
 
 Caused by:

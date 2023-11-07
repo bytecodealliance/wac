@@ -1,5 +1,5 @@
 flags must contain at least one flag
-    --> tests/parser/fail/empty-flags.wac:1:10
+    --> tests/parser/fail/empty-flags.wac:3:10
      |
-   1 | flags f {}
+   3 | flags f {}
      |          ^

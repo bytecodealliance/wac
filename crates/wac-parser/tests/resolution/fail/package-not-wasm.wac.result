@@ -1,7 +1,7 @@
 failed to parse package `foo:bar`
-    --> tests/resolution/fail/package-not-wasm.wac:1:13
+    --> tests/resolution/fail/package-not-wasm.wac:3:13
      |
-   1 | import foo: foo:bar/qux;
+   3 | import foo: foo:bar/qux;
      |             ^-----^
 
 Caused by:

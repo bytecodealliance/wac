@@ -1,14 +1,16 @@
+package test:comp;
+
 /// Instantiate without args
 let a = new foo:bar {};
 
 /// Instantiation with import-propagation.
-let b = new foo:bar { ... };
+let b = new foo:bar@1.0.0 { ... };
 
 /// Instantiation with arguments
-let c = new foo:bar { a, b, "c": c, };
+let c = new foo:bar@2.0.0 { a, b, "c": c, };
 
 /// Instantiation with arguments and import-propagation.
-let d = new foo:bar { a, "b": (new foo:bar { }), c: c, ... };
+let d = new foo:bar@3.0.0 { a, "b": (new foo:bar { }), c: c, ... };
 
 /// Nested expression
 let e = (b);

@@ -1,0 +1,5 @@
+expected `package` keyword, found `import` keyword
+    --> tests/parser/fail/missing-package-decl.wac:1:1
+     |
+   1 | import f: func();
+     | ^----^

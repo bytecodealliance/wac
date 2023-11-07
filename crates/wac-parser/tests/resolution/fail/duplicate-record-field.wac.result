@@ -1,5 +1,5 @@
 duplicate field `b` for record type `r`
-    --> tests/resolution/fail/duplicate-record-field.wac:7:5
+    --> tests/resolution/fail/duplicate-record-field.wac:9:5
      |
-   7 |     b: string,
+   9 |     b: string,
      |     ^
