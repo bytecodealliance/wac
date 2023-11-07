@@ -1,3 +1,5 @@
-resource x {
-    constructor(a: u32, a: string);
+interface foo {
+    resource x {
+        constructor(a: u32, a: string);
+    }
 }

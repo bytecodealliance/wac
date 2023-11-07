@@ -1,4 +1,6 @@
-resource x {
-    x: func();
-    x: static func();
+world foo {
+    resource x {
+        x: func();
+        x: static func();
+    }
 }

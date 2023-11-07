@@ -1,24 +1,12 @@
 use super::{
-    display,
-    keywords::{
-        self, As, Bool, Enum, Export, Flags, Float32, Float64, Func, Import, Include, Interface,
-        Record, Resource, Static, Use, Variant, With, World, S16, S32, S64, S8, U16, U32, U64, U8,
-    },
-    symbols::{
-        Arrow, CloseAngle, CloseBrace, CloseParen, Colon, Dot, Equals, OpenAngle, OpenBrace,
-        OpenParen, Semicolon, Underscore,
-    },
-    AstDisplay, DocComment, Ident, Indenter, PackagePath,
+    display, parse_delimited, parse_optional, parse_token, DocComment, Error, Ident, Lookahead,
+    PackagePath, Parse, ParseResult, Peek,
 };
-use crate::parser::Rule;
-use pest::Span;
-use pest_ast::FromPest;
+use crate::lexer::{Lexer, Span, Token};
 use serde::Serialize;
-use std::fmt;
 
 /// Represents a type statement in the AST.
-#[derive(Debug, Clone, Serialize, FromPest)]
-#[pest_ast(rule(Rule::TypeStatement))]
+#[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum TypeStatement<'a> {
     /// The statement is for an interface declaration.
@@ -29,25 +17,793 @@ pub enum TypeStatement<'a> {
     Type(TypeDecl<'a>),
 }
 
-impl AstDisplay for TypeStatement<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>, indenter: &mut Indenter) -> fmt::Result {
-        write!(f, "{indenter}")?;
-
-        match self {
-            Self::Interface(interface) => interface.fmt(f, indenter),
-            Self::World(world) => world.fmt(f, indenter),
-            Self::Type(ty) => ty.fmt(f, indenter),
+impl<'a> Parse<'a> for TypeStatement<'a> {
+    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<'a, Self> {
+        let mut lookahead = Lookahead::new(lexer);
+        if InterfaceDecl::peek(&mut lookahead) {
+            Ok(Self::Interface(Parse::parse(lexer)?))
+        } else if WorldDecl::peek(&mut lookahead) {
+            Ok(Self::World(Parse::parse(lexer)?))
+        } else if TypeDecl::peek(&mut lookahead) {
+            Ok(Self::Type(Parse::parse(lexer)?))
+        } else {
+            Err(lookahead.error())
         }
     }
 }
 
-display!(TypeStatement);
+impl Peek for TypeStatement<'_> {
+    fn peek(lookahead: &mut Lookahead) -> bool {
+        lookahead.peek(Token::InterfaceKeyword)
+            || lookahead.peek(Token::WorldKeyword)
+            || TypeDecl::peek(lookahead)
+    }
+}
 
-/// Represents a type declaration in the AST.
-#[derive(Debug, Clone, Serialize, FromPest)]
-#[pest_ast(rule(Rule::TypeDecl))]
+display!(TypeStatement, type_statement);
+
+/// Represents a top-level type declaration in the AST.
+///
+/// Unlike tin interfaces and worlds, resources cannot
+/// be declared at the top-level.
+#[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum TypeDecl<'a> {
+    /// The declaration is for a variant.
+    Variant(VariantDecl<'a>),
+    /// The declaration is for a record.
+    Record(RecordDecl<'a>),
+    /// The declaration is for a flags.
+    Flags(FlagsDecl<'a>),
+    /// The declaration is for an enum.
+    Enum(EnumDecl<'a>),
+    /// The declaration is for a type alias.
+    Alias(TypeAlias<'a>),
+}
+
+impl<'a> Parse<'a> for TypeDecl<'a> {
+    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<'a, Self> {
+        let mut lookahead = Lookahead::new(lexer);
+        if lookahead.peek(Token::VariantKeyword) {
+            Ok(Self::Variant(Parse::parse(lexer)?))
+        } else if lookahead.peek(Token::RecordKeyword) {
+            Ok(Self::Record(Parse::parse(lexer)?))
+        } else if lookahead.peek(Token::FlagsKeyword) {
+            Ok(Self::Flags(Parse::parse(lexer)?))
+        } else if lookahead.peek(Token::EnumKeyword) {
+            Ok(Self::Enum(Parse::parse(lexer)?))
+        } else if lookahead.peek(Token::TypeKeyword) {
+            Ok(Self::Alias(Parse::parse(lexer)?))
+        } else {
+            Err(lookahead.error())
+        }
+    }
+}
+
+impl Peek for TypeDecl<'_> {
+    fn peek(lookahead: &mut Lookahead) -> bool {
+        lookahead.peek(Token::VariantKeyword)
+            || lookahead.peek(Token::RecordKeyword)
+            || lookahead.peek(Token::FlagsKeyword)
+            || lookahead.peek(Token::EnumKeyword)
+            || lookahead.peek(Token::TypeKeyword)
+    }
+}
+
+/// Represents a resource declaration in the AST.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ResourceDecl<'a> {
+    /// The doc comments for the resource.
+    pub docs: Vec<DocComment<'a>>,
+    /// The identifier of the resource.
+    pub id: Ident<'a>,
+    /// The methods of the resource.
+    pub methods: Vec<ResourceMethod<'a>>,
+}
+
+impl<'a> Parse<'a> for ResourceDecl<'a> {
+    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<'a, Self> {
+        let docs = Parse::parse(lexer)?;
+        parse_token(lexer, Token::ResourceKeyword)?;
+        let id = Ident::parse(lexer)?;
+        let mut lookahead = Lookahead::new(lexer);
+        let methods = if lookahead.peek(Token::Semicolon) {
+            lexer.next();
+            Default::default()
+        } else if lookahead.peek(Token::OpenBrace) {
+            parse_token(lexer, Token::OpenBrace)?;
+            let methods = parse_delimited(lexer, &[Token::CloseBrace], false)?;
+            parse_token(lexer, Token::CloseBrace)?;
+            methods
+        } else {
+            return Err(lookahead.error());
+        };
+
+        Ok(Self { docs, id, methods })
+    }
+}
+
+/// Represents a variant declaration in the AST.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VariantDecl<'a> {
+    /// The doc comments for the variant.
+    pub docs: Vec<DocComment<'a>>,
+    /// The identifier of the variant.
+    pub id: Ident<'a>,
+    /// The cases of the variant.
+    pub cases: Vec<VariantCase<'a>>,
+}
+
+impl<'a> Parse<'a> for VariantDecl<'a> {
+    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<'a, Self> {
+        let docs = Parse::parse(lexer)?;
+        parse_token(lexer, Token::VariantKeyword)?;
+        let id = Ident::parse(lexer)?;
+        parse_token(lexer, Token::OpenBrace)?;
+        let cases = parse_delimited(lexer, &[Token::CloseBrace], true)?;
+        let close = parse_token(lexer, Token::CloseBrace)?;
+
+        if cases.is_empty() {
+            return Err(Error::EmptyType {
+                ty: "variant",
+                kind: "case",
+                span: close,
+            });
+        }
+
+        Ok(Self { docs, id, cases })
+    }
+}
+
+/// Represents a variant case in the AST.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VariantCase<'a> {
+    /// The doc comments for the case.
+    pub docs: Vec<DocComment<'a>>,
+    /// The identifier of the case.
+    pub id: Ident<'a>,
+    /// The type of the case.
+    pub ty: Option<Type<'a>>,
+}
+
+impl<'a> Parse<'a> for VariantCase<'a> {
+    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<'a, Self> {
+        let docs = Parse::parse(lexer)?;
+        let id = Ident::parse(lexer)?;
+        let ty = parse_optional(lexer, Token::OpenParen, |lexer| {
+            let ty = Parse::parse(lexer)?;
+            parse_token(lexer, Token::CloseParen)?;
+            Ok(ty)
+        })?;
+        Ok(Self { docs, id, ty })
+    }
+}
+
+impl Peek for VariantCase<'_> {
+    fn peek(lookahead: &mut Lookahead) -> bool {
+        lookahead.peek(Token::Ident)
+    }
+}
+
+/// Represents a record declaration in the AST.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RecordDecl<'a> {
+    /// The doc comments for the record.
+    pub docs: Vec<DocComment<'a>>,
+    /// The identifier of the record.
+    pub id: Ident<'a>,
+    /// The fields of the record.
+    pub fields: Vec<Field<'a>>,
+}
+
+impl<'a> Parse<'a> for RecordDecl<'a> {
+    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<'a, Self> {
+        let docs = Parse::parse(lexer)?;
+        parse_token(lexer, Token::RecordKeyword)?;
+        let id = Ident::parse(lexer)?;
+        parse_token(lexer, Token::OpenBrace)?;
+        let fields = parse_delimited(lexer, &[Token::CloseBrace], true)?;
+        let close = parse_token(lexer, Token::CloseBrace)?;
+
+        if fields.is_empty() {
+            return Err(Error::EmptyType {
+                ty: "record",
+                kind: "field",
+                span: close,
+            });
+        }
+
+        Ok(Self { docs, id, fields })
+    }
+}
+
+/// Represents a record field in the AST.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Field<'a> {
+    /// The docs for the field.
+    pub docs: Vec<DocComment<'a>>,
+    /// The identifier of the field.
+    pub id: Ident<'a>,
+    /// The type of the field.
+    pub ty: Type<'a>,
+}
+
+impl<'a> Parse<'a> for Field<'a> {
+    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<'a, Self> {
+        let docs = Parse::parse(lexer)?;
+        let named: NamedType = Parse::parse(lexer)?;
+        Ok(Self {
+            docs,
+            id: named.id,
+            ty: named.ty,
+        })
+    }
+}
+
+impl Peek for Field<'_> {
+    fn peek(lookahead: &mut Lookahead) -> bool {
+        NamedType::peek(lookahead)
+    }
+}
+
+/// Represents a flags declaration in the AST.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FlagsDecl<'a> {
+    /// The doc comments for the flags.
+    pub docs: Vec<DocComment<'a>>,
+    /// The identifier of the flags.
+    pub id: Ident<'a>,
+    /// The flag values.
+    pub flags: Vec<Flag<'a>>,
+}
+
+impl<'a> Parse<'a> for FlagsDecl<'a> {
+    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<'a, Self> {
+        let docs = Parse::parse(lexer)?;
+        parse_token(lexer, Token::FlagsKeyword)?;
+        let id = Ident::parse(lexer)?;
+        parse_token(lexer, Token::OpenBrace)?;
+        let flags = parse_delimited(lexer, &[Token::CloseBrace], true)?;
+        let close = parse_token(lexer, Token::CloseBrace)?;
+
+        if flags.is_empty() {
+            return Err(Error::EmptyType {
+                ty: "flags",
+                kind: "flag",
+                span: close,
+            });
+        }
+
+        Ok(Self { docs, id, flags })
+    }
+}
+
+/// Represents a flag in the AST.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Flag<'a> {
+    /// The doc comments for the flag.
+    pub docs: Vec<DocComment<'a>>,
+    /// The identifier of the flag.
+    pub id: Ident<'a>,
+}
+
+impl<'a> Parse<'a> for Flag<'a> {
+    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<'a, Self> {
+        let docs = Parse::parse(lexer)?;
+        let id = Ident::parse(lexer)?;
+        Ok(Self { docs, id })
+    }
+}
+
+impl Peek for Flag<'_> {
+    fn peek(lookahead: &mut Lookahead) -> bool {
+        lookahead.peek(Token::Ident)
+    }
+}
+
+/// Represents an enum declaration in the AST.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EnumDecl<'a> {
+    /// The doc comments for the enum.
+    pub docs: Vec<DocComment<'a>>,
+    /// The identifier of the enum.
+    pub id: Ident<'a>,
+    /// The cases of the enum.
+    pub cases: Vec<EnumCase<'a>>,
+}
+
+impl<'a> Parse<'a> for EnumDecl<'a> {
+    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<'a, Self> {
+        let docs = Parse::parse(lexer)?;
+        parse_token(lexer, Token::EnumKeyword)?;
+        let id = Ident::parse(lexer)?;
+        parse_token(lexer, Token::OpenBrace)?;
+        let cases = parse_delimited(lexer, &[Token::CloseBrace], true)?;
+        let close = parse_token(lexer, Token::CloseBrace)?;
+
+        if cases.is_empty() {
+            return Err(Error::EmptyType {
+                ty: "enum",
+                kind: "case",
+                span: close,
+            });
+        }
+
+        Ok(Self { docs, id, cases })
+    }
+}
+
+/// Represents an enum case in the AST.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EnumCase<'a> {
+    /// The doc comments for the enum case.
+    pub docs: Vec<DocComment<'a>>,
+    /// The identifier of the enum case.
+    pub id: Ident<'a>,
+}
+
+impl<'a> Parse<'a> for EnumCase<'a> {
+    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<'a, Self> {
+        let docs = Parse::parse(lexer)?;
+        let id = Ident::parse(lexer)?;
+        Ok(Self { docs, id })
+    }
+}
+
+impl Peek for EnumCase<'_> {
+    fn peek(lookahead: &mut Lookahead) -> bool {
+        lookahead.peek(Token::Ident)
+    }
+}
+
+/// Represents a resource method in the AST.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum ResourceMethod<'a> {
+    /// The method is a constructor.
+    Constructor(Constructor<'a>),
+    /// The method is a instance or static method.
+    Method(Method<'a>),
+}
+
+impl<'a> Parse<'a> for ResourceMethod<'a> {
+    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<'a, Self> {
+        let mut lookahead = Lookahead::new(lexer);
+        if lookahead.peek(Token::ConstructorKeyword) {
+            Ok(Self::Constructor(Parse::parse(lexer)?))
+        } else if Ident::peek(&mut lookahead) {
+            Ok(Self::Method(Parse::parse(lexer)?))
+        } else {
+            Err(lookahead.error())
+        }
+    }
+}
+
+impl Peek for ResourceMethod<'_> {
+    fn peek(lookahead: &mut Lookahead) -> bool {
+        lookahead.peek(Token::ConstructorKeyword) || Ident::peek(lookahead)
+    }
+}
+
+/// Represents a resource constructor in the AST.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Constructor<'a> {
+    /// The doc comments for the constructor.
+    pub docs: Vec<DocComment<'a>>,
+    /// The span of the constructor keyword.
+    pub span: Span<'a>,
+    /// The parameters of the constructor.
+    pub params: Vec<NamedType<'a>>,
+}
+
+impl<'a> Parse<'a> for Constructor<'a> {
+    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<'a, Self> {
+        let docs = Parse::parse(lexer)?;
+        let span = parse_token(lexer, Token::ConstructorKeyword)?;
+        parse_token(lexer, Token::OpenParen)?;
+        let params = parse_delimited(lexer, &[Token::CloseParen], true)?;
+        parse_token(lexer, Token::CloseParen)?;
+        parse_token(lexer, Token::Semicolon)?;
+        Ok(Self { docs, span, params })
+    }
+}
+
+/// Represents a resource method in the AST.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Method<'a> {
+    /// The doc comments for the method.
+    pub docs: Vec<DocComment<'a>>,
+    /// The identifier of the method.
+    pub id: Ident<'a>,
+    /// Wether or not the method is static.
+    pub is_static: bool,
+    /// The function type reference.
+    pub ty: FuncTypeRef<'a>,
+}
+
+impl<'a> Parse<'a> for Method<'a> {
+    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<'a, Self> {
+        let docs = Parse::parse(lexer)?;
+        let id = Ident::parse(lexer)?;
+        parse_token(lexer, Token::Colon)?;
+        let is_static = lexer
+            .peek()
+            .map(|(r, _)| matches!(r, Ok(Token::StaticKeyword)))
+            .unwrap_or(false);
+
+        if is_static {
+            lexer.next();
+        }
+
+        let ty = Parse::parse(lexer)?;
+        parse_token(lexer, Token::Semicolon)?;
+        Ok(Self {
+            docs,
+            id,
+            is_static,
+            ty,
+        })
+    }
+}
+
+/// Represents a function type reference in the AST.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum FuncTypeRef<'a> {
+    /// The reference is a function type.
+    Func(FuncType<'a>),
+    /// The reference is an identifier to a function type.
+    Ident(Ident<'a>),
+}
+
+impl<'a> Parse<'a> for FuncTypeRef<'a> {
+    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<'a, Self> {
+        let mut lookahead = Lookahead::new(lexer);
+        if lookahead.peek(Token::FuncKeyword) {
+            Ok(Self::Func(Parse::parse(lexer)?))
+        } else if Ident::peek(&mut lookahead) {
+            Ok(Self::Ident(Parse::parse(lexer)?))
+        } else {
+            Err(lookahead.error())
+        }
+    }
+}
+
+/// Represents a function type in the AST.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FuncType<'a> {
+    /// The parameters of the function.
+    pub params: Vec<NamedType<'a>>,
+    /// The results of the function.
+    pub results: ResultList<'a>,
+}
+
+impl<'a> Parse<'a> for FuncType<'a> {
+    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<'a, Self> {
+        parse_token(lexer, Token::FuncKeyword)?;
+        parse_token(lexer, Token::OpenParen)?;
+        let params = parse_delimited(lexer, &[Token::CloseParen], true)?;
+        parse_token(lexer, Token::CloseParen)?;
+        let results =
+            parse_optional(lexer, Token::Arrow, Parse::parse)?.unwrap_or(ResultList::Empty);
+
+        Ok(Self { params, results })
+    }
+}
+
+impl Peek for FuncType<'_> {
+    fn peek(lookahead: &mut Lookahead) -> bool {
+        lookahead.peek(Token::FuncKeyword)
+    }
+}
+
+/// Represents a result list in the AST.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum ResultList<'a> {
+    /// The function has no results.
+    Empty,
+    /// The function returns a scalar value.
+    Scalar(Type<'a>),
+    /// The function has named results.
+    Named(Vec<NamedType<'a>>),
+}
+
+impl<'a> Parse<'a> for ResultList<'a> {
+    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<'a, Self> {
+        let mut lookahead = Lookahead::new(lexer);
+        if lookahead.peek(Token::OpenParen) {
+            parse_token(lexer, Token::OpenParen)?;
+            let results = parse_delimited(lexer, &[Token::CloseParen], true)?;
+            parse_token(lexer, Token::CloseParen)?;
+            Ok(Self::Named(results))
+        } else if Type::peek(&mut lookahead) {
+            Ok(Self::Scalar(Parse::parse(lexer)?))
+        } else {
+            Ok(Self::Empty)
+        }
+    }
+}
+
+/// Represents a name and an associated type in the AST.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NamedType<'a> {
+    /// The identifier of the type.
+    pub id: Ident<'a>,
+    /// The type.
+    pub ty: Type<'a>,
+}
+
+impl<'a> Parse<'a> for NamedType<'a> {
+    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<'a, Self> {
+        let id = Ident::parse(lexer)?;
+        parse_token(lexer, Token::Colon)?;
+        let ty = Parse::parse(lexer)?;
+        Ok(Self { id, ty })
+    }
+}
+
+impl Peek for NamedType<'_> {
+    fn peek(lookahead: &mut Lookahead) -> bool {
+        Ident::peek(lookahead)
+    }
+}
+
+/// Represents a type alias in the AST.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TypeAlias<'a> {
+    /// The docs for the type alias.
+    pub docs: Vec<DocComment<'a>>,
+    /// The identifier of the type alias.
+    pub id: Ident<'a>,
+    /// The kind of type alias.
+    pub kind: TypeAliasKind<'a>,
+}
+
+impl<'a> Parse<'a> for TypeAlias<'a> {
+    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<'a, Self> {
+        let docs = Parse::parse(lexer)?;
+        parse_token(lexer, Token::TypeKeyword)?;
+        let id = Ident::parse(lexer)?;
+        parse_token(lexer, Token::Equals)?;
+        let kind = Parse::parse(lexer)?;
+        parse_token(lexer, Token::Semicolon)?;
+        Ok(Self { docs, id, kind })
+    }
+}
+
+/// Represents a type alias kind in the AST.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum TypeAliasKind<'a> {
+    /// The alias is to a function type.
+    Func(FuncType<'a>),
+    /// The alias is to another type.
+    Type(Type<'a>),
+}
+
+impl<'a> Parse<'a> for TypeAliasKind<'a> {
+    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<'a, Self> {
+        let mut lookahead = Lookahead::new(lexer);
+        if lookahead.peek(Token::FuncKeyword) {
+            Ok(Self::Func(Parse::parse(lexer)?))
+        } else if Type::peek(&mut lookahead) {
+            Ok(Self::Type(Parse::parse(lexer)?))
+        } else {
+            Err(lookahead.error())
+        }
+    }
+}
+
+/// Represents a type in the AST.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum Type<'a> {
+    /// A `u8` type.
+    U8,
+    /// A `s8` type.
+    S8,
+    /// A `u16` type.
+    U16,
+    /// A `s16` type.
+    S16,
+    /// A `u32` type.
+    U32,
+    /// A `s32` type.
+    S32,
+    /// A `u64` type.
+    U64,
+    /// A `s64` type.
+    S64,
+    /// A `float32` type.
+    Float32,
+    /// A `float64` type.
+    Float64,
+    /// A `char` type.
+    Char,
+    /// A `bool` type.
+    Bool,
+    /// A `string` type.
+    String,
+    /// A tuple type.
+    Tuple(Vec<Type<'a>>),
+    /// A list type.
+    List(Box<Type<'a>>),
+    /// An option type.
+    Option(Box<Type<'a>>),
+    /// A result type.
+    Result {
+        /// The `ok` of the result type.
+        ok: Option<Box<Type<'a>>>,
+        /// The `err` of the result type.
+        err: Option<Box<Type<'a>>>,
+    },
+    /// A borrow type.
+    Borrow(Ident<'a>),
+    /// An identifier to a value type.
+    Ident(Ident<'a>),
+}
+
+impl<'a> Parse<'a> for Type<'a> {
+    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<'a, Self> {
+        let mut lookahead = Lookahead::new(lexer);
+        if lookahead.peek(Token::U8Keyword) {
+            lexer.next();
+            Ok(Self::U8)
+        } else if lookahead.peek(Token::S8Keyword) {
+            lexer.next();
+            Ok(Self::S8)
+        } else if lookahead.peek(Token::U16Keyword) {
+            lexer.next();
+            Ok(Self::U16)
+        } else if lookahead.peek(Token::S16Keyword) {
+            lexer.next();
+            Ok(Self::S16)
+        } else if lookahead.peek(Token::U32Keyword) {
+            lexer.next();
+            Ok(Self::U32)
+        } else if lookahead.peek(Token::S32Keyword) {
+            lexer.next();
+            Ok(Self::S32)
+        } else if lookahead.peek(Token::U64Keyword) {
+            lexer.next();
+            Ok(Self::U64)
+        } else if lookahead.peek(Token::S64Keyword) {
+            lexer.next();
+            Ok(Self::S64)
+        } else if lookahead.peek(Token::Float32Keyword) {
+            lexer.next();
+            Ok(Self::Float32)
+        } else if lookahead.peek(Token::Float64Keyword) {
+            lexer.next();
+            Ok(Self::Float64)
+        } else if lookahead.peek(Token::CharKeyword) {
+            lexer.next();
+            Ok(Self::Char)
+        } else if lookahead.peek(Token::BoolKeyword) {
+            lexer.next();
+            Ok(Self::Bool)
+        } else if lookahead.peek(Token::StringKeyword) {
+            lexer.next();
+            Ok(Self::String)
+        } else if lookahead.peek(Token::TupleKeyword) {
+            lexer.next();
+            parse_token(lexer, Token::OpenAngle)?;
+
+            // There must be at least one type in the tuple.
+            let mut lookahead = Lookahead::new(lexer);
+            if !Type::peek(&mut lookahead) {
+                return Err(lookahead.error());
+            }
+
+            let types = parse_delimited(lexer, &[Token::CloseAngle], true)?;
+            assert!(!types.is_empty());
+            parse_token(lexer, Token::CloseAngle)?;
+            Ok(Self::Tuple(types))
+        } else if lookahead.peek(Token::ListKeyword) {
+            lexer.next();
+            parse_token(lexer, Token::OpenAngle)?;
+            let ty = Box::new(Parse::parse(lexer)?);
+            parse_token(lexer, Token::CloseAngle)?;
+            Ok(Self::List(ty))
+        } else if lookahead.peek(Token::OptionKeyword) {
+            lexer.next();
+            parse_token(lexer, Token::OpenAngle)?;
+            let ty = Box::new(Parse::parse(lexer)?);
+            parse_token(lexer, Token::CloseAngle)?;
+            Ok(Self::Option(ty))
+        } else if lookahead.peek(Token::ResultKeyword) {
+            lexer.next();
+            let (ok, err) = match parse_optional(lexer, Token::OpenAngle, |lexer| {
+                let mut lookahead = Lookahead::new(lexer);
+                let ok = if lookahead.peek(Token::Underscore) {
+                    lexer.next();
+                    None
+                } else if Type::peek(&mut lookahead) {
+                    Some(Box::new(Parse::parse(lexer)?))
+                } else {
+                    return Err(lookahead.error());
+                };
+
+                let err = parse_optional(lexer, Token::Comma, |lexer| {
+                    let mut lookahead = Lookahead::new(lexer);
+                    if lookahead.peek(Token::Underscore) {
+                        lexer.next();
+                        Ok(None)
+                    } else if Type::peek(&mut lookahead) {
+                        Ok(Some(Box::new(Parse::parse(lexer)?)))
+                    } else {
+                        return Err(lookahead.error());
+                    }
+                })?
+                .unwrap_or(None);
+
+                parse_token(lexer, Token::CloseAngle)?;
+                Ok((ok, err))
+            })? {
+                Some((ok, err)) => (ok, err),
+                None => (None, None),
+            };
+            Ok(Self::Result { ok, err })
+        } else if lookahead.peek(Token::BorrowKeyword) {
+            lexer.next();
+            parse_token(lexer, Token::OpenAngle)?;
+            let id = Parse::parse(lexer)?;
+            parse_token(lexer, Token::CloseAngle)?;
+            Ok(Self::Borrow(id))
+        } else if Ident::peek(&mut lookahead) {
+            Ok(Self::Ident(Parse::parse(lexer)?))
+        } else {
+            Err(lookahead.error())
+        }
+    }
+}
+
+impl Peek for Type<'_> {
+    fn peek(lookahead: &mut Lookahead) -> bool {
+        lookahead.peek(Token::U8Keyword)
+            || lookahead.peek(Token::S8Keyword)
+            || lookahead.peek(Token::U16Keyword)
+            || lookahead.peek(Token::S16Keyword)
+            || lookahead.peek(Token::U32Keyword)
+            || lookahead.peek(Token::S32Keyword)
+            || lookahead.peek(Token::U64Keyword)
+            || lookahead.peek(Token::S64Keyword)
+            || lookahead.peek(Token::Float32Keyword)
+            || lookahead.peek(Token::Float64Keyword)
+            || lookahead.peek(Token::CharKeyword)
+            || lookahead.peek(Token::BoolKeyword)
+            || lookahead.peek(Token::StringKeyword)
+            || lookahead.peek(Token::TupleKeyword)
+            || lookahead.peek(Token::ListKeyword)
+            || lookahead.peek(Token::OptionKeyword)
+            || lookahead.peek(Token::ResultKeyword)
+            || lookahead.peek(Token::BorrowKeyword)
+            || Ident::peek(lookahead)
+    }
+}
+
+/// Represents an interface or world type declaration in the AST.
+///
+/// Unlike top-level type declarations, interfaces and worlds can
+/// also declare resources.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum ItemTypeDecl<'a> {
     /// The declaration is for a resource.
     Resource(ResourceDecl<'a>),
     /// The declaration is for a variant.
@@ -62,1158 +818,151 @@ pub enum TypeDecl<'a> {
     Alias(TypeAlias<'a>),
 }
 
-impl TypeDecl<'_> {
+impl<'a> Parse<'a> for ItemTypeDecl<'a> {
+    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<'a, Self> {
+        let mut lookahead = Lookahead::new(lexer);
+        if lookahead.peek(Token::ResourceKeyword) {
+            Ok(Self::Resource(Parse::parse(lexer)?))
+        } else if lookahead.peek(Token::VariantKeyword) {
+            Ok(Self::Variant(Parse::parse(lexer)?))
+        } else if lookahead.peek(Token::RecordKeyword) {
+            Ok(Self::Record(Parse::parse(lexer)?))
+        } else if lookahead.peek(Token::FlagsKeyword) {
+            Ok(Self::Flags(Parse::parse(lexer)?))
+        } else if lookahead.peek(Token::EnumKeyword) {
+            Ok(Self::Enum(Parse::parse(lexer)?))
+        } else if lookahead.peek(Token::TypeKeyword) {
+            Ok(Self::Alias(Parse::parse(lexer)?))
+        } else {
+            Err(lookahead.error())
+        }
+    }
+}
+
+impl Peek for ItemTypeDecl<'_> {
+    fn peek(lookahead: &mut Lookahead) -> bool {
+        lookahead.peek(Token::ResourceKeyword)
+            || lookahead.peek(Token::VariantKeyword)
+            || lookahead.peek(Token::RecordKeyword)
+            || lookahead.peek(Token::FlagsKeyword)
+            || lookahead.peek(Token::EnumKeyword)
+            || lookahead.peek(Token::TypeKeyword)
+    }
+}
+
+impl ItemTypeDecl<'_> {
     /// Gets the identifier of the type being declared.
-    pub fn id(&self) -> Ident {
+    pub fn id(&self) -> &Ident {
         match self {
-            Self::Resource(resource) => resource.id,
-            Self::Variant(variant) => variant.id,
-            Self::Record(record) => record.id,
-            Self::Flags(flags) => flags.id,
-            Self::Enum(e) => e.id,
-            Self::Alias(alias) => alias.id,
+            Self::Resource(resource) => &resource.id,
+            Self::Variant(variant) => &variant.id,
+            Self::Record(record) => &record.id,
+            Self::Flags(flags) => &flags.id,
+            Self::Enum(e) => &e.id,
+            Self::Alias(alias) => &alias.id,
         }
     }
 }
-
-impl AstDisplay for TypeDecl<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>, indenter: &mut Indenter) -> fmt::Result {
-        write!(f, "{indenter}")?;
-
-        match self {
-            Self::Resource(resource) => resource.fmt(f, indenter),
-            Self::Variant(variant) => variant.fmt(f, indenter),
-            Self::Record(record) => record.fmt(f, indenter),
-            Self::Flags(flags) => flags.fmt(f, indenter),
-            Self::Enum(e) => e.fmt(f, indenter),
-            Self::Alias(alias) => alias.fmt(f, indenter),
-        }
-    }
-}
-
-display!(TypeDecl);
-
-/// Represents a resource declaration in the AST.
-#[derive(Debug, Clone, Serialize, FromPest)]
-#[pest_ast(rule(Rule::ResourceDecl))]
-#[serde(rename_all = "camelCase")]
-pub struct ResourceDecl<'a> {
-    /// The `resource` keyword in the declaration.
-    pub keyword: Resource<'a>,
-    /// The identifier of the resource.
-    pub id: Ident<'a>,
-    /// The body of the resource.
-    pub body: ResourceBody<'a>,
-}
-
-impl AstDisplay for ResourceDecl<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>, indenter: &mut Indenter) -> fmt::Result {
-        write!(f, "{keyword} ", keyword = self.keyword)?;
-        self.id.fmt(f, indenter)?;
-        self.body.fmt(f, indenter)
-    }
-}
-
-display!(ResourceDecl);
-
-/// Represents a resource body in the AST.
-#[derive(Debug, Clone, Serialize, FromPest)]
-#[pest_ast(rule(Rule::ResourceBody))]
-#[serde(rename_all = "camelCase")]
-pub enum ResourceBody<'a> {
-    /// The resource body is empty.
-    Empty(Semicolon<'a>),
-    /// The methods of the resource body.
-    Methods {
-        /// The opening brace of the resource body.
-        open: OpenBrace<'a>,
-        /// The methods of the resource body.
-        methods: Vec<(ResourceMethod<'a>, Semicolon<'a>)>,
-        /// The closing brace of the resource body.
-        close: CloseBrace<'a>,
-    },
-}
-
-impl AstDisplay for ResourceBody<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>, indenter: &mut Indenter) -> fmt::Result {
-        match self {
-            Self::Empty(semicolon) => write!(f, "{semicolon}"),
-            Self::Methods {
-                open,
-                methods,
-                close,
-            } => {
-                writeln!(f, " {open}")?;
-
-                indenter.indent();
-                for (method, semicolon) in methods {
-                    write!(f, "{indenter}")?;
-                    method.fmt(f, indenter)?;
-                    writeln!(f, "{semicolon}")?;
-                }
-
-                indenter.dedent();
-                write!(f, "{indenter}{close}")
-            }
-        }
-    }
-}
-
-display!(ResourceBody);
-
-/// Represents a variant declaration in the AST.
-#[derive(Debug, Clone, Serialize, FromPest)]
-#[pest_ast(rule(Rule::VariantDecl))]
-#[serde(rename_all = "camelCase")]
-pub struct VariantDecl<'a> {
-    /// The `variant` keyword in the declaration.
-    pub keyword: Variant<'a>,
-    /// The identifier of the variant.
-    pub id: Ident<'a>,
-    /// The body of the variant.
-    pub body: VariantBody<'a>,
-}
-
-impl AstDisplay for VariantDecl<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>, indenter: &mut Indenter) -> fmt::Result {
-        write!(f, "{keyword} ", keyword = self.keyword)?;
-        self.id.fmt(f, indenter)?;
-        self.body.fmt(f, indenter)
-    }
-}
-
-display!(VariantDecl);
-
-/// Represents a variant body in the AST.
-#[derive(Debug, Clone, Serialize, FromPest)]
-#[pest_ast(rule(Rule::VariantBody))]
-#[serde(rename_all = "camelCase")]
-pub struct VariantBody<'a> {
-    /// The opening brace of the variant body.
-    pub open: OpenBrace<'a>,
-    /// The cases of the variant body.
-    pub cases: Vec<VariantCase<'a>>,
-    /// The closing brace of the variant body.
-    pub close: CloseBrace<'a>,
-}
-
-impl AstDisplay for VariantBody<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>, indenter: &mut Indenter) -> fmt::Result {
-        writeln!(f, " {open}", open = self.open)?;
-
-        indenter.indent();
-        for case in &self.cases {
-            write!(f, "{indenter}")?;
-            case.fmt(f, indenter)?;
-            writeln!(f, ",")?;
-        }
-
-        indenter.dedent();
-        write!(f, "{indenter}{close}", close = self.close)
-    }
-}
-
-display!(VariantBody);
-
-/// Represents a variant case in the AST.
-#[derive(Debug, Clone, Serialize, FromPest)]
-#[pest_ast(rule(Rule::VariantCase))]
-#[serde(rename_all = "camelCase")]
-pub struct VariantCase<'a> {
-    /// The identifier of the case.
-    pub id: Ident<'a>,
-    /// The type of the case.
-    pub ty: std::option::Option<VariantType<'a>>,
-}
-
-impl AstDisplay for VariantCase<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>, indenter: &mut Indenter) -> fmt::Result {
-        self.id.fmt(f, indenter)?;
-        if let Some(ty) = &self.ty {
-            ty.fmt(f, indenter)?;
-        }
-
-        Ok(())
-    }
-}
-
-display!(VariantCase);
-
-/// Represents a variant type in the AST.
-#[derive(Debug, Clone, Serialize, FromPest)]
-#[pest_ast(rule(Rule::VariantType))]
-#[serde(rename_all = "camelCase")]
-pub struct VariantType<'a> {
-    /// The opening parenthesis of the variant type.
-    pub open: OpenParen<'a>,
-    /// The type of the variant.
-    pub ty: Type<'a>,
-    /// The closing parenthesis of the variant type.
-    pub close: CloseParen<'a>,
-}
-
-impl AstDisplay for VariantType<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>, indenter: &mut Indenter) -> fmt::Result {
-        write!(f, "{open}", open = self.open)?;
-        self.ty.fmt(f, indenter)?;
-        write!(f, "{close}", close = self.close)
-    }
-}
-
-display!(VariantType);
-
-/// Represents a record declaration in the AST.
-#[derive(Debug, Clone, Serialize, FromPest)]
-#[pest_ast(rule(Rule::RecordDecl))]
-#[serde(rename_all = "camelCase")]
-pub struct RecordDecl<'a> {
-    /// The `record` keyword in the declaration.
-    pub keyword: Record<'a>,
-    /// The identifier of the record.
-    pub id: Ident<'a>,
-    /// The body of the record.
-    pub body: RecordBody<'a>,
-}
-
-impl AstDisplay for RecordDecl<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>, indenter: &mut Indenter) -> fmt::Result {
-        write!(f, "{keyword} ", keyword = self.keyword)?;
-        self.id.fmt(f, indenter)?;
-        self.body.fmt(f, indenter)
-    }
-}
-
-display!(RecordDecl);
-
-/// Represents a record body in the AST.
-#[derive(Debug, Clone, Serialize, FromPest)]
-#[pest_ast(rule(Rule::RecordBody))]
-#[serde(rename_all = "camelCase")]
-pub struct RecordBody<'a> {
-    /// The opening brace of the record body.
-    pub open: OpenBrace<'a>,
-    /// The fields of the record body.
-    pub fields: Vec<NamedType<'a>>,
-    /// The closing brace of the record body.
-    pub close: CloseBrace<'a>,
-}
-
-impl AstDisplay for RecordBody<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>, indenter: &mut Indenter) -> fmt::Result {
-        writeln!(f, " {open}", open = self.open)?;
-
-        indenter.indent();
-        for field in &self.fields {
-            write!(f, "{indenter}")?;
-            field.fmt(f, indenter)?;
-            writeln!(f, ",")?;
-        }
-
-        indenter.dedent();
-        write!(f, "{indenter}{close}", close = self.close)
-    }
-}
-
-display!(RecordBody);
-
-/// Represents a flags declaration in the AST.
-#[derive(Debug, Clone, Serialize, FromPest)]
-#[pest_ast(rule(Rule::FlagsDecl))]
-#[serde(rename_all = "camelCase")]
-pub struct FlagsDecl<'a> {
-    /// The `flags` keyword in the declaration.
-    pub keyword: Flags<'a>,
-    /// The identifier of the flags.
-    pub id: Ident<'a>,
-    /// The body of the flags.
-    pub body: FlagsBody<'a>,
-}
-
-impl AstDisplay for FlagsDecl<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>, indenter: &mut Indenter) -> fmt::Result {
-        write!(f, "{keyword} ", keyword = self.keyword)?;
-        self.id.fmt(f, indenter)?;
-        self.body.fmt(f, indenter)
-    }
-}
-
-display!(FlagsDecl);
-
-/// Represents a flags body in the AST.
-#[derive(Debug, Clone, Serialize, FromPest)]
-#[pest_ast(rule(Rule::FlagsBody))]
-#[serde(rename_all = "camelCase")]
-pub struct FlagsBody<'a> {
-    /// The opening brace of the flags body.
-    pub open: OpenBrace<'a>,
-    /// The flags of the body.
-    pub flags: Vec<Ident<'a>>,
-    /// The closing brace of the flags body.
-    pub close: CloseBrace<'a>,
-}
-
-impl AstDisplay for FlagsBody<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>, indenter: &mut Indenter) -> fmt::Result {
-        writeln!(f, " {open}", open = self.open)?;
-
-        indenter.indent();
-        for flag in &self.flags {
-            write!(f, "{indenter}")?;
-            flag.fmt(f, indenter)?;
-            writeln!(f, ",")?;
-        }
-
-        indenter.dedent();
-        write!(f, "{indenter}{close}", close = self.close)
-    }
-}
-
-display!(FlagsBody);
-
-/// Represents an enum declaration in the AST.
-#[derive(Debug, Clone, Serialize, FromPest)]
-#[pest_ast(rule(Rule::EnumDecl))]
-#[serde(rename_all = "camelCase")]
-pub struct EnumDecl<'a> {
-    /// The `enum` keyword in the declaration.
-    pub keyword: Enum<'a>,
-    /// The identifier of the enum.
-    pub id: Ident<'a>,
-    /// The body of the enum.
-    pub body: EnumBody<'a>,
-}
-
-impl AstDisplay for EnumDecl<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>, indenter: &mut Indenter) -> fmt::Result {
-        write!(f, "{keyword} ", keyword = self.keyword)?;
-        self.id.fmt(f, indenter)?;
-        self.body.fmt(f, indenter)
-    }
-}
-
-display!(EnumDecl);
-
-/// Represents an enum body in the AST.
-#[derive(Debug, Clone, Serialize, FromPest)]
-#[pest_ast(rule(Rule::EnumBody))]
-#[serde(rename_all = "camelCase")]
-pub struct EnumBody<'a> {
-    /// The opening brace of the enum body.
-    pub open: OpenBrace<'a>,
-    /// The enum cases of the body.
-    pub cases: Vec<Ident<'a>>,
-    /// The closing brace of the enum body.
-    pub close: CloseBrace<'a>,
-}
-
-impl AstDisplay for EnumBody<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>, indenter: &mut Indenter) -> fmt::Result {
-        writeln!(f, " {open}", open = self.open)?;
-
-        indenter.indent();
-        for case in &self.cases {
-            write!(f, "{indenter}")?;
-            case.fmt(f, indenter)?;
-            writeln!(f, ",")?;
-        }
-
-        indenter.dedent();
-        write!(f, "{indenter}{close}", close = self.close)
-    }
-}
-
-display!(EnumBody);
-
-/// Represents a resource method in the AST.
-#[derive(Debug, Clone, Serialize, FromPest)]
-#[pest_ast(rule(Rule::ResourceMethod))]
-#[serde(rename_all = "camelCase")]
-pub enum ResourceMethod<'a> {
-    /// The method is a constructor.
-    Constructor(Constructor<'a>),
-    /// The method is a instance or static method.
-    Method(Method<'a>),
-}
-
-impl AstDisplay for ResourceMethod<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>, indenter: &mut Indenter) -> fmt::Result {
-        match self {
-            Self::Constructor(constructor) => constructor.fmt(f, indenter),
-            Self::Method(method) => method.fmt(f, indenter),
-        }
-    }
-}
-
-display!(ResourceMethod);
-
-/// Represents a resource constructor in the AST.
-#[derive(Debug, Clone, Serialize, FromPest)]
-#[pest_ast(rule(Rule::Constructor))]
-#[serde(rename_all = "camelCase")]
-pub struct Constructor<'a> {
-    /// The `constructor` keyword.
-    pub keyword: keywords::Constructor<'a>,
-    /// The parameters of the constructor.
-    pub params: ParamList<'a>,
-}
-
-impl AstDisplay for Constructor<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>, indenter: &mut Indenter) -> fmt::Result {
-        write!(f, "{keyword}", keyword = self.keyword)?;
-        self.params.fmt(f, indenter)
-    }
-}
-
-display!(Constructor);
-
-/// Represents a resource method in the AST.
-#[derive(Debug, Clone, Serialize, FromPest)]
-#[pest_ast(rule(Rule::Method))]
-#[serde(rename_all = "camelCase")]
-pub struct Method<'a> {
-    /// The identifier of the method.
-    pub id: Ident<'a>,
-    /// The colon between the identifier and the type.
-    pub colon: Colon<'a>,
-    /// The static keyword that is present for static methods.
-    pub keyword: std::option::Option<Static<'a>>,
-    /// The function type reference.
-    pub func: FuncTypeRef<'a>,
-}
-
-impl AstDisplay for Method<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>, indenter: &mut Indenter) -> fmt::Result {
-        self.id.fmt(f, indenter)?;
-        write!(f, "{colon} ", colon = self.colon)?;
-
-        if let Some(keyword) = &self.keyword {
-            write!(f, "{keyword} ")?;
-        }
-
-        self.func.fmt(f, indenter)
-    }
-}
-
-display!(Method);
-
-/// Represents a function type reference in the AST.
-#[derive(Debug, Clone, Serialize, FromPest)]
-#[pest_ast(rule(Rule::FuncTypeRef))]
-#[serde(rename_all = "camelCase")]
-pub enum FuncTypeRef<'a> {
-    /// The reference is a function type.
-    Func(FuncType<'a>),
-    /// The reference is an identifier to a function type.
-    Ident(Ident<'a>),
-}
-
-impl AstDisplay for FuncTypeRef<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>, indenter: &mut Indenter) -> fmt::Result {
-        match self {
-            Self::Ident(ident) => ident.fmt(f, indenter),
-            Self::Func(func) => func.fmt(f, indenter),
-        }
-    }
-}
-
-display!(FuncTypeRef);
-
-/// Represents a function type in the AST.
-#[derive(Debug, Clone, Serialize, FromPest)]
-#[pest_ast(rule(Rule::FuncType))]
-#[serde(rename_all = "camelCase")]
-pub struct FuncType<'a> {
-    /// The `func` keyword.
-    pub keyword: Func<'a>,
-    /// The parameters of the function.
-    pub params: ParamList<'a>,
-    /// The results of the function.
-    pub results: std::option::Option<ResultList<'a>>,
-}
-
-impl AstDisplay for FuncType<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>, indenter: &mut Indenter) -> fmt::Result {
-        write!(f, "{keyword}", keyword = self.keyword)?;
-
-        self.params.fmt(f, indenter)?;
-
-        if let Some(results) = &self.results {
-            write!(f, " ")?;
-            results.fmt(f, indenter)?;
-        }
-
-        Ok(())
-    }
-}
-
-display!(FuncType);
-
-/// Represents a parameter list in the AST.
-#[derive(Debug, Clone, Serialize, FromPest)]
-#[pest_ast(rule(Rule::ParamList))]
-#[serde(rename_all = "camelCase")]
-pub struct ParamList<'a> {
-    /// The opening parenthesis of the parameter list.
-    pub open: OpenParen<'a>,
-    /// The parameters of the function.
-    pub list: Vec<NamedType<'a>>,
-    /// The closing parenthesis of the parameter list.
-    pub close: CloseParen<'a>,
-}
-
-impl AstDisplay for ParamList<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>, indenter: &mut Indenter) -> fmt::Result {
-        write!(f, "{open}", open = self.open)?;
-
-        for (i, param) in self.list.iter().enumerate() {
-            if i > 0 {
-                write!(f, ", ")?;
-            }
-
-            param.fmt(f, indenter)?;
-        }
-
-        write!(f, "{close}", close = self.close)
-    }
-}
-
-display!(ParamList);
-
-/// Represents a result list in the AST.
-#[derive(Debug, Clone, Serialize, FromPest)]
-#[pest_ast(rule(Rule::ResultList))]
-#[serde(rename_all = "camelCase")]
-pub enum ResultList<'a> {
-    /// The function has named results.
-    Named {
-        /// The arrow between the parameters and the results.
-        arrow: Arrow<'a>,
-        /// The results of the function.
-        results: NamedResultList<'a>,
-    },
-    /// The function has a single result type.
-    Single {
-        /// The arrow between the parameters and the results.
-        arrow: Arrow<'a>,
-        /// The result type.
-        ty: Type<'a>,
-    },
-}
-
-impl AstDisplay for ResultList<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>, indenter: &mut Indenter) -> fmt::Result {
-        match self {
-            Self::Single { arrow, ty } => {
-                write!(f, "{arrow} ")?;
-                ty.fmt(f, indenter)
-            }
-            Self::Named { arrow, results } => {
-                write!(f, "{arrow} ")?;
-                results.fmt(f, indenter)
-            }
-        }
-    }
-}
-
-display!(ResultList);
-
-/// Represents a named result list in the AST.
-#[derive(Debug, Clone, Serialize, FromPest)]
-#[pest_ast(rule(Rule::NamedResultList))]
-#[serde(rename_all = "camelCase")]
-pub struct NamedResultList<'a> {
-    /// The opening parenthesis of the result list.
-    pub open: OpenParen<'a>,
-    /// The results of the function.
-    pub list: Vec<NamedType<'a>>,
-    /// The closing parenthesis of the result list.
-    pub close: CloseParen<'a>,
-}
-
-impl AstDisplay for NamedResultList<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>, indenter: &mut Indenter) -> fmt::Result {
-        write!(f, "{open}", open = self.open)?;
-
-        for (i, result) in self.list.iter().enumerate() {
-            if i > 0 {
-                write!(f, ", ")?;
-            }
-
-            result.fmt(f, indenter)?;
-        }
-
-        write!(f, "{close}", close = self.close)
-    }
-}
-
-display!(NamedResultList);
-
-/// Represents a name and an associated type in the AST.
-#[derive(Debug, Clone, Serialize, FromPest)]
-#[pest_ast(rule(Rule::NamedType))]
-#[serde(rename_all = "camelCase")]
-pub struct NamedType<'a> {
-    /// The identifier of the type.
-    pub id: Ident<'a>,
-    /// The colon between the identifier and the type.
-    pub colon: Colon<'a>,
-    /// The type.
-    pub ty: Type<'a>,
-}
-
-impl AstDisplay for NamedType<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>, indenter: &mut Indenter) -> fmt::Result {
-        self.id.fmt(f, indenter)?;
-        write!(f, "{colon} ", colon = self.colon)?;
-        self.ty.fmt(f, indenter)
-    }
-}
-
-display!(NamedType);
-
-/// Represents a type alias in the AST.
-#[derive(Debug, Clone, Serialize, FromPest)]
-#[pest_ast(rule(Rule::TypeAlias))]
-#[serde(rename_all = "camelCase")]
-pub struct TypeAlias<'a> {
-    /// The `type` keyword.
-    pub keyword: keywords::Type<'a>,
-    /// The identifier of the type alias.
-    pub id: Ident<'a>,
-    /// The equals sign between the identifier and the type.
-    pub equals: Equals<'a>,
-    /// The kind of type alias.
-    pub kind: TypeAliasKind<'a>,
-    /// The semicolon at the end of the type alias.
-    pub semicolon: Semicolon<'a>,
-}
-
-impl AstDisplay for TypeAlias<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>, indenter: &mut Indenter) -> fmt::Result {
-        write!(f, "{keyword} ", keyword = self.keyword,)?;
-        self.id.fmt(f, indenter)?;
-        write!(f, " {equals} ", equals = self.equals)?;
-        self.kind.fmt(f, indenter)?;
-        write!(f, "{semi}", semi = self.semicolon)
-    }
-}
-
-display!(TypeAlias);
-
-/// Represents a type alias kind in the AST.
-#[derive(Debug, Clone, Serialize, FromPest)]
-#[pest_ast(rule(Rule::TypeAliasKind))]
-#[serde(rename_all = "camelCase")]
-pub enum TypeAliasKind<'a> {
-    /// The alias is to a function type.
-    Func(FuncType<'a>),
-    /// The alias is to another type.
-    Type(Type<'a>),
-}
-
-impl AstDisplay for TypeAliasKind<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>, indenter: &mut Indenter) -> fmt::Result {
-        match self {
-            Self::Func(func) => func.fmt(f, indenter),
-            Self::Type(ty) => ty.fmt(f, indenter),
-        }
-    }
-}
-
-display!(TypeAliasKind);
-
-/// Represents a type in the AST.
-#[derive(Debug, Clone, Serialize, FromPest)]
-#[pest_ast(rule(Rule::Type))]
-#[serde(rename_all = "camelCase")]
-pub enum Type<'a> {
-    /// A `u8` type.
-    U8(U8<'a>),
-    /// A `s8` type.
-    S8(S8<'a>),
-    /// A `u16` type.
-    U16(U16<'a>),
-    /// A `s16` type.
-    S16(S16<'a>),
-    /// A `u32` type.
-    U32(U32<'a>),
-    /// A `s32` type.
-    S32(S32<'a>),
-    /// A `u64` type.
-    U64(U64<'a>),
-    /// A `s64` type.
-    S64(S64<'a>),
-    /// A `float32` type.
-    Float32(Float32<'a>),
-    /// A `float64` type.
-    Float64(Float64<'a>),
-    /// A `char` type.
-    Char(super::keywords::Char<'a>),
-    /// A `bool` type.
-    Bool(Bool<'a>),
-    /// A `string` type.
-    String(super::keywords::String<'a>),
-    /// A tuple type.
-    Tuple(Tuple<'a>),
-    /// A list type.
-    List(List<'a>),
-    /// An option type.
-    Option(Option<'a>),
-    /// A result type.
-    Result(Result<'a>),
-    /// A borrow type.
-    Borrow(Borrow<'a>),
-    /// An identifier to a value type.
-    Ident(Ident<'a>),
-}
-
-impl AstDisplay for Type<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>, indenter: &mut Indenter) -> fmt::Result {
-        match self {
-            Self::U8(v) => write!(f, "{v}"),
-            Self::S8(v) => write!(f, "{v}"),
-            Self::U16(v) => write!(f, "{v}"),
-            Self::S16(v) => write!(f, "{v}"),
-            Self::U32(v) => write!(f, "{v}"),
-            Self::S32(v) => write!(f, "{v}"),
-            Self::U64(v) => write!(f, "{v}"),
-            Self::S64(v) => write!(f, "{v}"),
-            Self::Float32(v) => write!(f, "{v}"),
-            Self::Float64(v) => write!(f, "{v}"),
-            Self::Char(v) => write!(f, "{v}"),
-            Self::Bool(v) => write!(f, "{v}"),
-            Self::String(v) => write!(f, "{v}"),
-            Self::Tuple(tuple) => tuple.fmt(f, indenter),
-            Self::List(list) => list.fmt(f, indenter),
-            Self::Option(option) => option.fmt(f, indenter),
-            Self::Result(result) => result.fmt(f, indenter),
-            Self::Borrow(borrow) => borrow.fmt(f, indenter),
-            Self::Ident(ident) => ident.fmt(f, indenter),
-        }
-    }
-}
-
-display!(Type);
-
-/// Represents a tuple type in the AST.
-#[derive(Debug, Clone, Serialize, FromPest)]
-#[pest_ast(rule(Rule::Tuple))]
-#[serde(rename_all = "camelCase")]
-pub struct Tuple<'a> {
-    /// The `tuple` keyword.
-    pub keyword: keywords::Tuple<'a>,
-    /// The opening angle bracket of the tuple.
-    pub open: OpenAngle<'a>,
-    /// The types in the tuple.
-    pub types: Vec<Type<'a>>,
-    /// The closing angle bracket of the tuple.
-    pub close: CloseAngle<'a>,
-}
-
-impl AstDisplay for Tuple<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>, indenter: &mut Indenter) -> fmt::Result {
-        write!(
-            f,
-            "{keyword}{open}",
-            keyword = self.keyword,
-            open = self.open
-        )?;
-
-        for (i, ty) in self.types.iter().enumerate() {
-            if i > 0 {
-                write!(f, ", ")?;
-            }
-
-            ty.fmt(f, indenter)?;
-        }
-
-        write!(f, "{close}", close = self.close)
-    }
-}
-
-display!(Tuple);
-
-/// Represents a list type in the AST.
-#[derive(Debug, Clone, Serialize, FromPest)]
-#[pest_ast(rule(Rule::List))]
-#[serde(rename_all = "camelCase")]
-pub struct List<'a> {
-    /// The `list` keyword.
-    pub keyword: keywords::List<'a>,
-    /// The opening angle bracket of the list.
-    pub open: OpenAngle<'a>,
-    /// The type of the list.
-    pub ty: Box<Type<'a>>,
-    /// The closing angle bracket of the list.
-    pub close: CloseAngle<'a>,
-}
-
-impl AstDisplay for List<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>, indenter: &mut Indenter) -> fmt::Result {
-        write!(
-            f,
-            "{keyword}{open}",
-            keyword = self.keyword,
-            open = self.open
-        )?;
-        self.ty.fmt(f, indenter)?;
-        write!(f, "{close}", close = self.close)
-    }
-}
-
-display!(List);
-
-/// Represents an option type in the AST.
-#[derive(Debug, Clone, Serialize, FromPest)]
-#[pest_ast(rule(Rule::Option))]
-#[serde(rename_all = "camelCase")]
-pub struct Option<'a> {
-    /// The `option` keyword.
-    pub keyword: keywords::Option<'a>,
-    /// The opening angle bracket of the option.
-    pub open: OpenAngle<'a>,
-    /// The type of the option.
-    pub ty: Box<Type<'a>>,
-    /// The closing angle bracket of the option.
-    pub close: CloseAngle<'a>,
-}
-
-impl AstDisplay for Option<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>, indenter: &mut Indenter) -> fmt::Result {
-        write!(
-            f,
-            "{keyword}{open}",
-            keyword = self.keyword,
-            open = self.open
-        )?;
-        self.ty.fmt(f, indenter)?;
-        write!(f, "{close}", close = self.close)
-    }
-}
-
-display!(Option);
-
-/// Represents a result type in the AST.
-#[derive(Debug, Clone, Serialize, FromPest)]
-#[pest_ast(rule(Rule::Result))]
-#[serde(rename_all = "camelCase")]
-pub struct Result<'a> {
-    /// The `result` keyword.
-    pub keyword: keywords::Result<'a>,
-    /// The specified result type.
-    pub specified: std::option::Option<SpecifiedResult<'a>>,
-}
-
-impl AstDisplay for Result<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>, indenter: &mut Indenter) -> fmt::Result {
-        write!(f, "{keyword}", keyword = self.keyword)?;
-
-        if let Some(specified) = &self.specified {
-            specified.fmt(f, indenter)?;
-        }
-
-        Ok(())
-    }
-}
-
-display!(Result);
-
-/// Represents a specified result in the AST.
-#[derive(Debug, Clone, Serialize, FromPest)]
-#[pest_ast(rule(Rule::SpecifiedResult))]
-#[serde(rename_all = "camelCase")]
-pub struct SpecifiedResult<'a> {
-    /// The opening angle bracket of the result.
-    pub open: OpenAngle<'a>,
-    /// The ok type of the result.
-    pub ok: OmitType<'a>,
-    /// The error type of the result.
-    pub err: std::option::Option<Box<Type<'a>>>,
-    /// The closing angle bracket of the result.
-    pub close: CloseAngle<'a>,
-}
-
-impl AstDisplay for SpecifiedResult<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>, indenter: &mut Indenter) -> fmt::Result {
-        write!(f, "{open}", open = self.open)?;
-
-        self.ok.fmt(f, indenter)?;
-
-        if let Some(err) = &self.err {
-            write!(f, ", ")?;
-            err.fmt(f, indenter)?;
-        }
-
-        write!(f, "{close}", close = self.close)
-    }
-}
-
-display!(SpecifiedResult);
-
-/// Represents a possibly omitted type in the AST.
-#[derive(Debug, Clone, Serialize, FromPest)]
-#[pest_ast(rule(Rule::OmitType))]
-#[serde(rename_all = "camelCase")]
-pub enum OmitType<'a> {
-    /// The type was omitted with `_`.
-    Omitted(Underscore<'a>),
-    /// The type was specified.
-    Type(Box<Type<'a>>),
-}
-
-impl AstDisplay for OmitType<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>, indenter: &mut Indenter) -> fmt::Result {
-        match self {
-            Self::Type(ty) => ty.fmt(f, indenter),
-            Self::Omitted(u) => write!(f, "{u}"),
-        }
-    }
-}
-
-display!(OmitType);
-
-/// Represents a borrow type in the AST.
-#[derive(Debug, Clone, Serialize, FromPest)]
-#[pest_ast(rule(Rule::Borrow))]
-#[serde(rename_all = "camelCase")]
-pub struct Borrow<'a> {
-    /// The `borrow` keyword.
-    pub keyword: keywords::Borrow<'a>,
-    /// The opening angle bracket of the borrow.
-    pub open: OpenAngle<'a>,
-    /// The identifier of the borrowed resource type.
-    pub id: Ident<'a>,
-    /// The closing angle bracket of the borrow.
-    pub close: CloseAngle<'a>,
-}
-
-impl AstDisplay for Borrow<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>, indenter: &mut Indenter) -> fmt::Result {
-        write!(
-            f,
-            "{keyword}{open}",
-            keyword = self.keyword,
-            open = self.open
-        )?;
-        self.id.fmt(f, indenter)?;
-        write!(f, "{close}", close = self.close)
-    }
-}
-
-display!(Borrow);
 
 /// Represents an interface declaration in the AST.
-#[derive(Debug, Clone, Serialize, FromPest)]
-#[pest_ast(rule(Rule::InterfaceDecl))]
+#[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct InterfaceDecl<'a> {
-    /// The `interface` keyword.
-    pub keyword: Interface<'a>,
+    /// The doc comments for the interface.
+    pub docs: Vec<DocComment<'a>>,
     /// The identifier of the interface.
     pub id: Ident<'a>,
-    /// The body of the interface.
-    pub body: InterfaceBody<'a>,
-}
-
-impl AstDisplay for InterfaceDecl<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>, indenter: &mut Indenter) -> fmt::Result {
-        write!(f, "{indenter}{keyword} ", keyword = self.keyword)?;
-        self.id.fmt(f, indenter)?;
-        self.body.fmt(f, indenter)
-    }
-}
-
-display!(InterfaceDecl);
-
-/// Represents an interface body in the AST.
-#[derive(Debug, Clone, Serialize, FromPest)]
-#[pest_ast(rule(Rule::InterfaceBody))]
-#[serde(rename_all = "camelCase")]
-pub struct InterfaceBody<'a> {
-    /// The opening brace of the interface body.
-    pub open: OpenBrace<'a>,
-    /// The items of the interface body.
+    /// The items of the interface.
     pub items: Vec<InterfaceItem<'a>>,
-    /// The closing brace of the interface body.
-    pub close: CloseBrace<'a>,
 }
 
-impl AstDisplay for InterfaceBody<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>, indenter: &mut Indenter) -> fmt::Result {
-        writeln!(f, " {open}", open = self.open)?;
-        indenter.indent();
-
-        for (i, item) in self.items.iter().enumerate() {
-            if i > 0 {
-                writeln!(f)?;
-            }
-
-            item.fmt(f, indenter)?;
-            writeln!(f)?;
-        }
-
-        indenter.dedent();
-        write!(f, "{indenter}{close}", close = self.close)
+impl<'a> Parse<'a> for InterfaceDecl<'a> {
+    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<'a, Self> {
+        let docs = Parse::parse(lexer)?;
+        parse_token(lexer, Token::InterfaceKeyword)?;
+        let id = Ident::parse(lexer)?;
+        parse_token(lexer, Token::OpenBrace)?;
+        let items = parse_delimited(lexer, &[Token::CloseBrace], false)?;
+        parse_token(lexer, Token::CloseBrace)?;
+        Ok(Self { docs, id, items })
     }
 }
 
-display!(InterfaceBody);
+impl Peek for InterfaceDecl<'_> {
+    fn peek(lookahead: &mut Lookahead) -> bool {
+        lookahead.peek(Token::InterfaceKeyword)
+    }
+}
+
+display!(InterfaceDecl, interface_decl);
 
 /// Represents an interface item in the AST.
-#[derive(Debug, Clone, Serialize, FromPest)]
-#[pest_ast(rule(Rule::InterfaceItem))]
+#[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct InterfaceItem<'a> {
-    /// The doc comments for the interface item.
-    pub docs: Vec<DocComment<'a>>,
-    /// The interface item statement.
-    pub stmt: InterfaceItemStatement<'a>,
-}
-
-impl AstDisplay for InterfaceItem<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>, indenter: &mut Indenter) -> fmt::Result {
-        for doc in &self.docs {
-            doc.fmt(f, indenter)?;
-        }
-
-        self.stmt.fmt(f, indenter)
-    }
-}
-
-display!(InterfaceItem);
-
-/// Represents an interface item statement in the AST.
-#[derive(Debug, Clone, Serialize, FromPest)]
-#[pest_ast(rule(Rule::InterfaceItemStatement))]
-#[serde(rename_all = "camelCase")]
-pub enum InterfaceItemStatement<'a> {
-    /// The item is a use statement.
-    Use(Box<UseStatement<'a>>),
+pub enum InterfaceItem<'a> {
+    /// The item is a use of other types.
+    Use(Box<Use<'a>>),
     /// The item is a type declaration.
-    Type(TypeDecl<'a>),
-    /// The item is an interface export statement.
-    Export(InterfaceExportStatement<'a>),
+    Type(ItemTypeDecl<'a>),
+    /// The item is an interface export.
+    Export(InterfaceExport<'a>),
 }
 
-impl AstDisplay for InterfaceItemStatement<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>, indenter: &mut Indenter) -> fmt::Result {
-        match self {
-            Self::Use(u) => u.fmt(f, indenter),
-            Self::Type(ty) => ty.fmt(f, indenter),
-            Self::Export(e) => e.fmt(f, indenter),
+impl<'a> Parse<'a> for InterfaceItem<'a> {
+    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<'a, Self> {
+        let mut lookahead = Lookahead::new(lexer);
+        if Use::peek(&mut lookahead) {
+            Ok(Self::Use(Box::new(Parse::parse(lexer)?)))
+        } else if InterfaceExport::peek(&mut lookahead) {
+            Ok(Self::Export(Parse::parse(lexer)?))
+        } else if ItemTypeDecl::peek(&mut lookahead) {
+            Ok(Self::Type(Parse::parse(lexer)?))
+        } else {
+            Err(lookahead.error())
         }
     }
 }
 
-display!(InterfaceItemStatement);
-
-/// Represents a use statement in the AST.
-#[derive(Debug, Clone, Serialize, FromPest)]
-#[pest_ast(rule(Rule::UseStatement))]
-#[serde(rename_all = "camelCase")]
-pub struct UseStatement<'a> {
-    /// The use keyword in the statement.
-    pub keyword: Use<'a>,
-    /// The items being used.
-    pub items: UseItems<'a>,
-    /// The semicolon of the export statement.
-    pub semicolon: Semicolon<'a>,
-}
-
-impl AstDisplay for UseStatement<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>, indenter: &mut Indenter) -> fmt::Result {
-        write!(f, "{indenter}{keyword} ", keyword = self.keyword)?;
-        self.items.fmt(f, indenter)?;
-        write!(f, "{semi}", semi = self.semicolon)
+impl Peek for InterfaceItem<'_> {
+    fn peek(lookahead: &mut Lookahead) -> bool {
+        Use::peek(lookahead) || InterfaceExport::peek(lookahead) || ItemTypeDecl::peek(lookahead)
     }
 }
 
-display!(UseStatement);
-
-/// Represents the items being used in a use statement in the AST.
-#[derive(Debug, Clone, Serialize, FromPest)]
-#[pest_ast(rule(Rule::UseItems))]
+/// Represents a "use" in the AST.
+#[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct UseItems<'a> {
+pub struct Use<'a> {
+    /// The doc comments for the use.
+    pub docs: Vec<DocComment<'a>>,
     /// The path to the interface or world being used.
     pub path: UsePath<'a>,
-    /// The dot in the statement.
-    pub dot: Dot<'a>,
-    /// The opening brace of the statement.
-    pub open: OpenBrace<'a>,
     /// The items being used.
-    pub list: Vec<UseItem<'a>>,
-    /// The closing brace of the use items.
-    pub close: CloseBrace<'a>,
+    pub items: Vec<UseItem<'a>>,
 }
 
-impl AstDisplay for UseItems<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>, indenter: &mut Indenter) -> fmt::Result {
-        self.path.fmt(f, indenter)?;
-        write!(f, "{dot}{open} ", dot = self.dot, open = self.open)?;
-
-        for (i, item) in self.list.iter().enumerate() {
-            if i > 0 {
-                write!(f, ", ")?;
-            }
-
-            item.fmt(f, indenter)?;
-        }
-
-        write!(f, " {close}", close = self.close)
+impl<'a> Parse<'a> for Use<'a> {
+    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<'a, Self> {
+        let docs = Parse::parse(lexer)?;
+        parse_token(lexer, Token::UseKeyword)?;
+        let path = Parse::parse(lexer)?;
+        parse_token(lexer, Token::Dot)?;
+        parse_token(lexer, Token::OpenBrace)?;
+        let items = parse_delimited(lexer, &[Token::CloseBrace], true)?;
+        parse_token(lexer, Token::CloseBrace)?;
+        parse_token(lexer, Token::Semicolon)?;
+        Ok(Self { docs, path, items })
     }
 }
 
-display!(UseItems);
-
-/// Represents an item being used in a use statement in the AST.
-#[derive(Debug, Clone, Serialize, FromPest)]
-#[pest_ast(rule(Rule::UseItem))]
-#[serde(rename_all = "camelCase")]
-pub struct UseItem<'a> {
-    /// The identifier of the item.
-    pub id: Ident<'a>,
-    /// The optional as clause of the item.
-    pub as_clause: std::option::Option<UseAsClause<'a>>,
-}
-
-impl AstDisplay for UseItem<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>, indenter: &mut Indenter) -> fmt::Result {
-        self.id.fmt(f, indenter)?;
-
-        if let Some(as_clause) = &self.as_clause {
-            write!(f, " {as_clause}")?;
-        }
-
-        Ok(())
+impl Peek for Use<'_> {
+    fn peek(lookahead: &mut Lookahead) -> bool {
+        lookahead.peek(Token::UseKeyword)
     }
 }
-
-display!(UseItem);
-
-/// Represents an as clause in a use statement in the AST.
-#[derive(Debug, Clone, Serialize, FromPest)]
-#[pest_ast(rule(Rule::UseAsClause))]
-#[serde(rename_all = "camelCase")]
-pub struct UseAsClause<'a> {
-    /// The `as` keyword.
-    pub keyword: As<'a>,
-    /// The identifier of the as clause.
-    pub id: Ident<'a>,
-}
-
-impl AstDisplay for UseAsClause<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>, indenter: &mut Indenter) -> fmt::Result {
-        write!(f, "{keyword} ", keyword = self.keyword)?;
-        self.id.fmt(f, indenter)
-    }
-}
-
-display!(UseAsClause);
 
 /// Represents a use path in the AST.
-#[derive(Debug, Clone, Serialize, FromPest)]
-#[pest_ast(rule(Rule::UsePath))]
+#[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum UsePath<'a> {
     /// The path is a package path.
@@ -1222,271 +971,258 @@ pub enum UsePath<'a> {
     Ident(Ident<'a>),
 }
 
-impl AstDisplay for UsePath<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>, indenter: &mut Indenter) -> fmt::Result {
-        match self {
-            Self::Package(pkg) => pkg.fmt(f, indenter),
-            Self::Ident(id) => id.fmt(f, indenter),
+impl<'a> Parse<'a> for UsePath<'a> {
+    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<'a, Self> {
+        let mut lookahead: Lookahead<'_> = Lookahead::new(lexer);
+        if PackagePath::peek(&mut lookahead) {
+            Ok(Self::Package(Parse::parse(lexer)?))
+        } else if Ident::peek(&mut lookahead) {
+            Ok(Self::Ident(Parse::parse(lexer)?))
+        } else {
+            Err(lookahead.error())
         }
     }
 }
 
-display!(UsePath);
+impl Peek for UsePath<'_> {
+    fn peek(lookahead: &mut Lookahead) -> bool {
+        PackagePath::peek(lookahead) | Ident::peek(lookahead)
+    }
+}
 
-/// Represents an interface export statement in the AST.
-#[derive(Debug, Clone, Serialize, FromPest)]
-#[pest_ast(rule(Rule::InterfaceExportStatement))]
+/// Represents a use item in the AST.
+#[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct InterfaceExportStatement<'a> {
+pub struct UseItem<'a> {
+    /// The identifier of the item.
+    pub id: Ident<'a>,
+    /// The optional `as` identifier of the item.
+    pub as_id: Option<Ident<'a>>,
+}
+
+impl<'a> Parse<'a> for UseItem<'a> {
+    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<'a, Self> {
+        let id = Ident::parse(lexer)?;
+        let as_id = parse_optional(lexer, Token::AsKeyword, Ident::parse)?;
+        Ok(Self { id, as_id })
+    }
+}
+
+impl Peek for UseItem<'_> {
+    fn peek(lookahead: &mut Lookahead) -> bool {
+        Ident::peek(lookahead)
+    }
+}
+
+/// Represents an interface export in the AST.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct InterfaceExport<'a> {
+    /// The doc comments for the export.
+    pub docs: Vec<DocComment<'a>>,
     /// The identifier of the export.
     pub id: Ident<'a>,
-    /// The colon of the export statement.
-    pub colon: Colon<'a>,
     /// The type of the export.
     pub ty: FuncTypeRef<'a>,
-    /// The semicolon of the export statement.
-    pub semicolon: Semicolon<'a>,
 }
 
-impl AstDisplay for InterfaceExportStatement<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>, indenter: &mut Indenter) -> fmt::Result {
-        write!(f, "{indenter}")?;
-        self.id.fmt(f, indenter)?;
-        write!(f, "{colon} ", colon = self.colon)?;
-        self.ty.fmt(f, indenter)?;
-        write!(f, "{semi}", semi = self.semicolon)
+impl<'a> Parse<'a> for InterfaceExport<'a> {
+    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<'a, Self> {
+        let docs = Parse::parse(lexer)?;
+        let id = Ident::parse(lexer)?;
+        parse_token(lexer, Token::Colon)?;
+        let ty = Parse::parse(lexer)?;
+        parse_token(lexer, Token::Semicolon)?;
+        Ok(Self { docs, id, ty })
     }
 }
 
-display!(InterfaceExportStatement);
+impl Peek for InterfaceExport<'_> {
+    fn peek(lookahead: &mut Lookahead) -> bool {
+        Ident::peek(lookahead)
+    }
+}
 
 /// Represents a world declaration in the AST.
-#[derive(Debug, Clone, Serialize, FromPest)]
-#[pest_ast(rule(Rule::WorldDecl))]
+#[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct WorldDecl<'a> {
-    /// The `world` keyword.
-    pub keyword: World<'a>,
+    /// The doc comments for the world.
+    pub docs: Vec<DocComment<'a>>,
     /// The identifier of the world.
     pub id: Ident<'a>,
-    /// The body of the world.
-    pub body: WorldBody<'a>,
-}
-
-impl AstDisplay for WorldDecl<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>, indenter: &mut Indenter) -> fmt::Result {
-        write!(f, "{indenter}{keyword} ", keyword = self.keyword)?;
-        self.id.fmt(f, indenter)?;
-        self.body.fmt(f, indenter)
-    }
-}
-
-display!(WorldDecl);
-
-/// Represents a world body in the AST.
-#[derive(Debug, Clone, Serialize, FromPest)]
-#[pest_ast(rule(Rule::WorldBody))]
-#[serde(rename_all = "camelCase")]
-pub struct WorldBody<'a> {
-    /// The opening brace of the world body.
-    pub open: OpenBrace<'a>,
-    /// The items of the world body.
+    /// The items of the world.
     pub items: Vec<WorldItem<'a>>,
-    /// The closing brace of the world body.
-    pub close: CloseBrace<'a>,
 }
 
-impl AstDisplay for WorldBody<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>, indenter: &mut Indenter) -> fmt::Result {
-        writeln!(f, " {open}", open = self.open)?;
-        indenter.indent();
-
-        for (i, item) in self.items.iter().enumerate() {
-            if i > 0 {
-                writeln!(f)?;
-            }
-
-            item.fmt(f, indenter)?;
-            writeln!(f)?;
-        }
-
-        indenter.dedent();
-        write!(f, "{indenter}{close}", close = self.close)
+impl<'a> Parse<'a> for WorldDecl<'a> {
+    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<'a, Self> {
+        let docs = Parse::parse(lexer)?;
+        parse_token(lexer, Token::WorldKeyword)?;
+        let id = Ident::parse(lexer)?;
+        parse_token(lexer, Token::OpenBrace)?;
+        let items = parse_delimited(lexer, &[Token::CloseBrace], false)?;
+        parse_token(lexer, Token::CloseBrace)?;
+        Ok(Self { docs, id, items })
     }
 }
 
-display!(WorldBody);
+impl Peek for WorldDecl<'_> {
+    fn peek(lookahead: &mut Lookahead) -> bool {
+        lookahead.peek(Token::WorldKeyword)
+    }
+}
+
+display!(WorldDecl, world_decl);
 
 /// Represents a world item in the AST.
-#[derive(Debug, Clone, Serialize, FromPest)]
-#[pest_ast(rule(Rule::WorldItem))]
+#[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct WorldItem<'a> {
-    /// The doc comments for the world item.
-    pub docs: Vec<DocComment<'a>>,
-    /// The world item statement.
-    pub stmt: WorldItemStatement<'a>,
-}
-
-impl AstDisplay for WorldItem<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>, indenter: &mut Indenter) -> fmt::Result {
-        for doc in &self.docs {
-            doc.fmt(f, indenter)?;
-        }
-
-        self.stmt.fmt(f, indenter)
-    }
-}
-
-display!(WorldItem);
-
-/// Represents a world item statement in the AST.
-#[derive(Debug, Clone, Serialize, FromPest)]
-#[pest_ast(rule(Rule::WorldItemStatement))]
-#[serde(rename_all = "camelCase")]
-pub enum WorldItemStatement<'a> {
-    /// The item is a use statement.
-    Use(Box<UseStatement<'a>>),
+pub enum WorldItem<'a> {
+    /// The item is a use.
+    Use(Use<'a>),
     /// The item is a type declaration.
-    Type(TypeDecl<'a>),
-    /// The item is a world export statement.
-    Import(WorldImportStatement<'a>),
-    /// The item is a world export statement.
-    Export(WorldExportStatement<'a>),
-    /// The item is a world include statement.
-    Include(Box<WorldIncludeStatement<'a>>),
+    Type(ItemTypeDecl<'a>),
+    /// The item is a world export.
+    Import(WorldImport<'a>),
+    /// The item is a world export.
+    Export(WorldExport<'a>),
+    /// The item is a world include.
+    Include(WorldInclude<'a>),
 }
 
-impl AstDisplay for WorldItemStatement<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>, indenter: &mut Indenter) -> fmt::Result {
-        match self {
-            Self::Use(u) => u.fmt(f, indenter),
-            Self::Type(ty) => ty.fmt(f, indenter),
-            Self::Import(i) => i.fmt(f, indenter),
-            Self::Export(e) => e.fmt(f, indenter),
-            Self::Include(i) => i.fmt(f, indenter),
+impl<'a> Parse<'a> for WorldItem<'a> {
+    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<'a, Self> {
+        let mut lookahead = Lookahead::new(lexer);
+        if Use::peek(&mut lookahead) {
+            Ok(Self::Use(Parse::parse(lexer)?))
+        } else if WorldImport::peek(&mut lookahead) {
+            Ok(Self::Import(Parse::parse(lexer)?))
+        } else if WorldExport::peek(&mut lookahead) {
+            Ok(Self::Export(Parse::parse(lexer)?))
+        } else if WorldInclude::peek(&mut lookahead) {
+            Ok(Self::Include(Parse::parse(lexer)?))
+        } else if ItemTypeDecl::peek(&mut lookahead) {
+            Ok(Self::Type(Parse::parse(lexer)?))
+        } else {
+            Err(lookahead.error())
         }
     }
 }
 
-display!(WorldItemStatement);
-
-/// Represents a world import statement in the AST.
-#[derive(Debug, Clone, Serialize, FromPest)]
-#[pest_ast(rule(Rule::WorldImportStatement))]
-#[serde(rename_all = "camelCase")]
-pub struct WorldImportStatement<'a> {
-    /// The `import` keyword in the statement.
-    pub keyword: Import<'a>,
-    /// The declaration of the imported item.
-    pub decl: WorldItemDecl<'a>,
-    /// The semicolon of the import statement.
-    pub semicolon: Semicolon<'a>,
-}
-
-impl AstDisplay for WorldImportStatement<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>, indenter: &mut Indenter) -> fmt::Result {
-        write!(f, "{indenter}{keyword} ", keyword = self.keyword)?;
-        self.decl.fmt(f, indenter)?;
-        write!(f, "{semi}", semi = self.semicolon)
+impl Peek for WorldItem<'_> {
+    fn peek(lookahead: &mut Lookahead) -> bool {
+        Use::peek(lookahead)
+            || WorldImport::peek(lookahead)
+            || WorldExport::peek(lookahead)
+            || WorldInclude::peek(lookahead)
+            || ItemTypeDecl::peek(lookahead)
     }
 }
 
-display!(WorldImportStatement);
-
-/// Represents a world export statement in the AST.
-#[derive(Debug, Clone, Serialize, FromPest)]
-#[pest_ast(rule(Rule::WorldExportStatement))]
+/// Represents a world import in the AST.
+#[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct WorldExportStatement<'a> {
-    /// The `export` keyword in the statement.
-    pub keyword: Export<'a>,
-    /// The declaration of the exported item.
-    pub decl: WorldItemDecl<'a>,
-    /// The semicolon of the export statement.
-    pub semicolon: Semicolon<'a>,
+pub struct WorldImport<'a> {
+    /// The doc comments for the world import.
+    pub docs: Vec<DocComment<'a>>,
+    /// The path of the imported item.
+    pub path: WorldItemPath<'a>,
 }
 
-impl AstDisplay for WorldExportStatement<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>, indenter: &mut Indenter) -> fmt::Result {
-        write!(f, "{indenter}{keyword} ", keyword = self.keyword)?;
-        self.decl.fmt(f, indenter)?;
-        write!(f, "{semi}", semi = self.semicolon)
+impl<'a> Parse<'a> for WorldImport<'a> {
+    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<'a, Self> {
+        let docs = Parse::parse(lexer)?;
+        parse_token(lexer, Token::ImportKeyword)?;
+        let path = Parse::parse(lexer)?;
+        parse_token(lexer, Token::Semicolon)?;
+        Ok(Self { docs, path })
     }
 }
 
-display!(WorldExportStatement);
-
-/// Represents a world item declaration in the AST.
-#[derive(Debug, Clone, Serialize, FromPest)]
-#[pest_ast(rule(Rule::WorldItemDecl))]
-#[serde(rename_all = "camelCase")]
-pub enum WorldItemDecl<'a> {
-    /// The declaration is by name.
-    Named(WorldNamedItem<'a>),
-    /// The declaration is by a reference to an interface.
-    Interface(InterfaceRef<'a>),
+impl Peek for WorldImport<'_> {
+    fn peek(lookahead: &mut Lookahead) -> bool {
+        lookahead.peek(Token::ImportKeyword)
+    }
 }
 
-impl AstDisplay for WorldItemDecl<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>, indenter: &mut Indenter) -> fmt::Result {
-        match self {
-            Self::Named(n) => n.fmt(f, indenter),
-            Self::Interface(i) => i.fmt(f, indenter),
+/// Represents a world export in the AST.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WorldExport<'a> {
+    /// The doc comments for the world export.
+    pub docs: Vec<DocComment<'a>>,
+    /// The path of the exported item.
+    pub path: WorldItemPath<'a>,
+}
+
+impl<'a> Parse<'a> for WorldExport<'a> {
+    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<'a, Self> {
+        let docs = Parse::parse(lexer)?;
+        parse_token(lexer, Token::ExportKeyword)?;
+        let path = Parse::parse(lexer)?;
+        parse_token(lexer, Token::Semicolon)?;
+        Ok(Self { docs, path })
+    }
+}
+
+impl Peek for WorldExport<'_> {
+    fn peek(lookahead: &mut Lookahead) -> bool {
+        lookahead.peek(Token::ExportKeyword)
+    }
+}
+
+/// Represents a world item path in the AST.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum WorldItemPath<'a> {
+    /// The path is by name.
+    Named(NamedWorldItem<'a>),
+    /// The path is by a package path.
+    Package(PackagePath<'a>),
+    /// The path is by identifier.
+    Ident(Ident<'a>),
+}
+
+impl<'a> Parse<'a> for WorldItemPath<'a> {
+    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<'a, Self> {
+        let mut lookahead = Lookahead::new(lexer);
+        if PackagePath::peek(&mut lookahead) {
+            Ok(Self::Package(Parse::parse(lexer)?))
+        } else if Ident::peek(&mut lookahead) {
+            // Peek again to see if this is a named item or an interface reference
+            if let Some((Ok(Token::Colon), _)) = lexer.peek2() {
+                Ok(Self::Named(Parse::parse(lexer)?))
+            } else {
+                Ok(Self::Ident(Parse::parse(lexer)?))
+            }
+        } else {
+            Err(lookahead.error())
         }
     }
 }
 
-display!(WorldItemDecl);
-
-/// Represents a world named item in the AST.
-#[derive(Debug, Clone, Serialize, FromPest)]
-#[pest_ast(rule(Rule::WorldNamedItem))]
+/// Represents a named world item in the AST.
+#[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct WorldNamedItem<'a> {
+pub struct NamedWorldItem<'a> {
     /// The identifier of the item being imported or exported.
     pub id: Ident<'a>,
-    /// The colon between the identifier and the extern type.
-    pub colon: Colon<'a>,
     /// The extern type of the item.
     pub ty: ExternType<'a>,
 }
 
-impl AstDisplay for WorldNamedItem<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>, indenter: &mut Indenter) -> fmt::Result {
-        self.id.fmt(f, indenter)?;
-        write!(f, "{colon} ", colon = self.colon)?;
-        self.ty.fmt(f, indenter)
+impl<'a> Parse<'a> for NamedWorldItem<'a> {
+    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<'a, Self> {
+        let id = Ident::parse(lexer)?;
+        parse_token(lexer, Token::Colon)?;
+        let ty = Parse::parse(lexer)?;
+        Ok(Self { id, ty })
     }
 }
-
-display!(WorldNamedItem);
-
-/// Represents a reference to an interface in the AST.
-#[derive(Debug, Clone, Serialize, FromPest)]
-#[pest_ast(rule(Rule::InterfaceRef))]
-#[serde(rename_all = "camelCase")]
-pub enum InterfaceRef<'a> {
-    /// The reference is by identifier.
-    Ident(Ident<'a>),
-    /// The reference is by package path.
-    Path(PackagePath<'a>),
-}
-
-impl AstDisplay for InterfaceRef<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>, indenter: &mut Indenter) -> fmt::Result {
-        match self {
-            Self::Ident(id) => id.fmt(f, indenter),
-            Self::Path(path) => path.fmt(f, indenter),
-        }
-    }
-}
-
-display!(InterfaceRef);
 
 /// Represents the external type of a world item in the AST.
-#[derive(Debug, Clone, Serialize, FromPest)]
-#[pest_ast(rule(Rule::ExternType))]
+#[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum ExternType<'a> {
     /// The type is by identifier.
@@ -1497,183 +1233,183 @@ pub enum ExternType<'a> {
     Interface(InlineInterface<'a>),
 }
 
-impl AstDisplay for ExternType<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>, indenter: &mut Indenter) -> fmt::Result {
-        match self {
-            Self::Ident(id) => id.fmt(f, indenter),
-            Self::Func(func) => func.fmt(f, indenter),
-            Self::Interface(interface) => interface.fmt(f, indenter),
+impl<'a> Parse<'a> for ExternType<'a> {
+    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<'a, Self> {
+        let mut lookahead = Lookahead::new(lexer);
+        if Ident::peek(&mut lookahead) {
+            Ok(Self::Ident(Parse::parse(lexer)?))
+        } else if FuncType::peek(&mut lookahead) {
+            Ok(Self::Func(Parse::parse(lexer)?))
+        } else if InlineInterface::peek(&mut lookahead) {
+            Ok(Self::Interface(Parse::parse(lexer)?))
+        } else {
+            Err(lookahead.error())
         }
     }
 }
-
-display!(ExternType);
 
 /// Represents an inline interface in the AST.
-#[derive(Debug, Clone, Serialize, FromPest)]
-#[pest_ast(rule(Rule::InlineInterface))]
+#[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct InlineInterface<'a> {
-    /// The `interface` keyword in the inline interface.
-    pub keyword: Interface<'a>,
-    /// The body of the interface.
-    pub body: InterfaceBody<'a>,
+    /// The items of the interface.
+    pub items: Vec<InterfaceItem<'a>>,
 }
 
-impl AstDisplay for InlineInterface<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>, indenter: &mut Indenter) -> fmt::Result {
-        write!(f, "{keyword}", keyword = self.keyword)?;
-        self.body.fmt(f, indenter)
+impl<'a> Parse<'a> for InlineInterface<'a> {
+    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<'a, Self> {
+        parse_token(lexer, Token::InterfaceKeyword)?;
+        parse_token(lexer, Token::OpenBrace)?;
+        let items = parse_delimited(lexer, &[Token::CloseBrace], false)?;
+        parse_token(lexer, Token::CloseBrace)?;
+        Ok(Self { items })
     }
 }
 
-display!(InlineInterface);
+impl Peek for InlineInterface<'_> {
+    fn peek(lookahead: &mut Lookahead) -> bool {
+        lookahead.peek(Token::InterfaceKeyword)
+    }
+}
 
-/// Represents a world include statement in the AST.
-#[derive(Debug, Clone, Serialize, FromPest)]
-#[pest_ast(rule(Rule::WorldIncludeStatement))]
+/// Represents a world include in the AST.
+#[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct WorldIncludeStatement<'a> {
-    /// The `include` keyword in the statement.
-    pub keyword: Include<'a>,
+pub struct WorldInclude<'a> {
+    /// The doc comments for the world include.
+    pub docs: Vec<DocComment<'a>>,
     /// The reference to the world to include.
     pub world: WorldRef<'a>,
-    /// The optional include-with clause.
-    pub with: std::option::Option<WorldIncludeWithClause<'a>>,
-    /// The semicolon of the include statement.
-    pub semicolon: Semicolon<'a>,
+    /// The optional include-with items.
+    pub with: Vec<WorldIncludeItem<'a>>,
 }
 
-impl AstDisplay for WorldIncludeStatement<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>, indenter: &mut Indenter) -> fmt::Result {
-        write!(f, "{indenter}{keyword} ", keyword = self.keyword)?;
-        self.world.fmt(f, indenter)?;
-        if let Some(with) = &self.with {
-            with.fmt(f, indenter)?;
-        }
-        write!(f, "{semi}", semi = self.semicolon)
+impl<'a> Parse<'a> for WorldInclude<'a> {
+    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<'a, Self> {
+        let docs = Parse::parse(lexer)?;
+        parse_token(lexer, Token::IncludeKeyword)?;
+        let world = Parse::parse(lexer)?;
+        let with = parse_optional(lexer, Token::WithKeyword, |lexer| {
+            parse_token(lexer, Token::OpenBrace)?;
+            let items = parse_delimited(lexer, &[Token::CloseBrace], true)?;
+            parse_token(lexer, Token::CloseBrace)?;
+            Ok(items)
+        })?
+        .unwrap_or_default();
+        parse_token(lexer, Token::Semicolon)?;
+        Ok(Self { docs, world, with })
     }
 }
 
-display!(WorldIncludeStatement);
+impl Peek for WorldInclude<'_> {
+    fn peek(lookahead: &mut Lookahead) -> bool {
+        lookahead.peek(Token::IncludeKeyword)
+    }
+}
 
 /// Represents a reference to a world in the AST (local or foreign).
-#[derive(Debug, Clone, Serialize, FromPest)]
-#[pest_ast(rule(Rule::WorldRef))]
+#[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum WorldRef<'a> {
     /// The reference is by identifier.
     Ident(Ident<'a>),
     /// The reference is by package path.
-    Path(PackagePath<'a>),
+    Package(PackagePath<'a>),
 }
 
 impl<'a> WorldRef<'a> {
     /// Gets the name of the world being referred to.
-    pub fn name(&self) -> &str {
+    pub fn name(&self) -> &'a str {
         match self {
-            Self::Ident(id) => id.as_str(),
-            Self::Path(path) => path.as_str(),
+            Self::Ident(id) => id.string,
+            Self::Package(path) => path.span.as_str(),
         }
     }
 
     /// Gets the span of the world reference.
-    pub fn span(&self) -> Span {
+    pub fn span(&self) -> Span<'a> {
         match self {
-            Self::Ident(id) => id.0,
-            Self::Path(path) => path.span(),
+            Self::Ident(id) => id.span,
+            Self::Package(path) => path.span,
         }
     }
 }
 
-impl AstDisplay for WorldRef<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>, indenter: &mut Indenter) -> fmt::Result {
-        match self {
-            Self::Ident(id) => id.fmt(f, indenter),
-            Self::Path(path) => path.fmt(f, indenter),
+impl<'a> Parse<'a> for WorldRef<'a> {
+    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<'a, Self> {
+        let mut lookahead = Lookahead::new(lexer);
+        if PackagePath::peek(&mut lookahead) {
+            Ok(Self::Package(Parse::parse(lexer)?))
+        } else if Ident::peek(&mut lookahead) {
+            Ok(Self::Ident(Parse::parse(lexer)?))
+        } else {
+            Err(lookahead.error())
         }
     }
 }
-
-display!(WorldRef);
-
-/// Represents the `with` clause of the `include` statement.
-#[derive(Debug, Clone, Serialize, FromPest)]
-#[pest_ast(rule(Rule::WorldIncludeWithClause))]
-#[serde(rename_all = "camelCase")]
-pub struct WorldIncludeWithClause<'a> {
-    /// The `with` keyword in the clause.
-    pub keyword: With<'a>,
-    /// The opening brace of the body.
-    pub open: OpenBrace<'a>,
-    /// The list of names to be included.
-    pub names: Vec<WorldIncludeItem<'a>>,
-    /// The closing brace of the body.
-    pub close: CloseBrace<'a>,
-}
-
-impl AstDisplay for WorldIncludeWithClause<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>, indenter: &mut Indenter) -> fmt::Result {
-        write!(f, " {keyword} ", keyword = self.keyword)?;
-        writeln!(f, "{open}", open = self.open)?;
-        indenter.indent();
-        for name in &self.names {
-            write!(f, "{indenter}")?;
-            name.fmt(f, indenter)?;
-            writeln!(f, ",")?;
-        }
-        indenter.dedent();
-        write!(f, "{indenter}{close}", close = self.close)
-    }
-}
-
-display!(WorldIncludeWithClause);
 
 /// Represents a renaming of an included name.
-#[derive(Debug, Clone, Serialize, FromPest)]
-#[pest_ast(rule(Rule::WorldIncludeItem))]
+#[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct WorldIncludeItem<'a> {
-    /// The source name include from a world.
-    pub name: Ident<'a>,
-    /// The `as` keyword.
-    pub keyword: As<'a>,
-    /// The new name given to the included name.
-    pub other: Ident<'a>,
+    /// The `from` name for the included item.
+    pub from: Ident<'a>,
+    /// The `to` name for the included item.
+    pub to: Ident<'a>,
 }
 
-impl AstDisplay for WorldIncludeItem<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>, indenter: &mut Indenter) -> fmt::Result {
-        self.name.fmt(f, indenter)?;
-        write!(f, " {keyword} ", keyword = self.keyword)?;
-        self.other.fmt(f, indenter)
+impl<'a> Parse<'a> for WorldIncludeItem<'a> {
+    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<'a, Self> {
+        let from = Ident::parse(lexer)?;
+        parse_token(lexer, Token::AsKeyword)?;
+        let to = Ident::parse(lexer)?;
+        Ok(Self { from, to })
     }
 }
 
-display!(WorldIncludeItem);
+impl Peek for WorldIncludeItem<'_> {
+    fn peek(lookahead: &mut Lookahead) -> bool {
+        Ident::peek(lookahead)
+    }
+}
 
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::{ast::test::roundtrip, parser::Rule};
+    use crate::ast::test::roundtrip;
 
     #[test]
     fn resource_roundtrip() {
         roundtrip::<TypeStatement>(
-            Rule::TypeStatement,
-            r#"resource foo-bar {
+            r#"interface i { resource foo-bar {
+    /** A constructor */
     constructor(foo: u8, bar: u8);
+    /// A method
     foo: func() -> string;
+    /// A method
     set-foo: func(foo: string);
+    /// A static method
     id: static func() -> u32;
+    /// A method
     baz: x;
-}"#,
-            r#"resource foo-bar {
-  constructor(foo: u8, bar: u8);
-  foo: func() -> string;
-  set-foo: func(foo: string);
-  id: static func() -> u32;
-  baz: x;
+}}"#,
+            r#"interface i {
+    resource foo-bar {
+        /// A constructor
+        constructor(foo: u8, bar: u8);
+
+        /// A method
+        foo: func() -> string;
+
+        /// A method
+        set-foo: func(foo: string);
+
+        /// A static method
+        id: static func() -> u32;
+
+        /// A method
+        baz: x;
+    }
 }"#,
         )
         .unwrap();
@@ -1682,18 +1418,17 @@ mod test {
     #[test]
     fn variant_roundtrip() {
         roundtrip::<TypeStatement>(
-            Rule::TypeStatement,
+            r#"variant foo {
+    foo,
+    bar(u32),
+    baz(bar),
+    qux(tuple<u8, u16, u32>)
+}"#,
             r#"variant foo {
     foo,
     bar(u32),
     baz(bar),
     qux(tuple<u8, u16, u32>),
-}"#,
-            r#"variant foo {
-  foo,
-  bar(u32),
-  baz(bar),
-  qux(tuple<u8, u16, u32>),
 }"#,
         )
         .unwrap();
@@ -1702,7 +1437,6 @@ mod test {
     #[test]
     fn record_roundtrip() {
         roundtrip::<TypeStatement>(
-            Rule::TypeStatement,
             r#"record foo-bar2-baz {
     foo: foo,
     bar-qux: list<string>,
@@ -1710,9 +1444,9 @@ mod test {
     jam: borrow<foo>,
 }"#,
             r#"record foo-bar2-baz {
-  foo: foo,
-  bar-qux: list<string>,
-  jam: borrow<foo>,
+    foo: foo,
+    bar-qux: list<string>,
+    jam: borrow<foo>,
 }"#,
         )
         .unwrap();
@@ -1721,14 +1455,13 @@ mod test {
     #[test]
     fn flags_roundtrip() {
         roundtrip::<TypeStatement>(
-            Rule::TypeStatement,
             r#"flags %flags {
     foo, bar, baz
 }"#,
             r#"flags %flags {
-  foo,
-  bar,
-  baz,
+    foo,
+    bar,
+    baz,
 }"#,
         )
         .unwrap();
@@ -1737,14 +1470,13 @@ mod test {
     #[test]
     fn enum_roundtrip() {
         roundtrip::<TypeStatement>(
-            Rule::TypeStatement,
             r#"enum foo {
     foo, bar, baz
 }"#,
             r#"enum foo {
-  foo,
-  bar,
-  baz,
+    foo,
+    bar,
+    baz,
 }"#,
         )
         .unwrap();
@@ -1753,7 +1485,6 @@ mod test {
     #[test]
     fn func_type_alias_roundtrip() {
         roundtrip::<TypeStatement>(
-            Rule::TypeStatement,
             r#"type x = func(a: /* comment */ string) -> string;"#,
             r#"type x = func(a: string) -> string;"#,
         )
@@ -1763,7 +1494,6 @@ mod test {
     #[test]
     fn type_alias_roundtrip() {
         roundtrip::<TypeStatement>(
-            Rule::TypeStatement,
             r#"type x = tuple<u8, s8, u16, s16, u32, s32, u64, s64, float32, float64, char, bool, string, tuple<string, list<u8>>, option<list<bool>>, result, result<string>, result<_, string>, result<u8, u8>, borrow<y>, y>;"#,
             r#"type x = tuple<u8, s8, u16, s16, u32, s32, u64, s64, float32, float64, char, bool, string, tuple<string, list<u8>>, option<list<bool>>, result, result<string>, result<_, string>, result<u8, u8>, borrow<y>, y>;"#,
         )
@@ -1773,11 +1503,11 @@ mod test {
     #[test]
     fn interface_roundtrip() {
         roundtrip::<InterfaceDecl>(
-            Rule::InterfaceDecl,
             r#"interface foo {
             /// Type t
             type t = list<string>;
 
+            /// Use x and y
             use foo.{ x, y, };
 
             /// Function a
@@ -1785,24 +1515,25 @@ mod test {
 
             // not a doc comment
             type x = func() -> list<string>;
-            
+
             /// Function b
             b: x;
 }
             "#,
             r#"interface foo {
-  /// Type t
-  type t = list<string>;
+    /// Type t
+    type t = list<string>;
 
-  use foo.{ x, y };
+    /// Use x and y
+    use foo.{ x, y };
 
-  /// Function a
-  a: func(a: string, b: string) -> string;
+    /// Function a
+    a: func(a: string, b: string) -> string;
 
-  type x = func() -> list<string>;
+    type x = func() -> list<string>;
 
-  /// Function b
-  b: x;
+    /// Function b
+    b: x;
 }"#,
         )
         .unwrap();
@@ -1811,7 +1542,6 @@ mod test {
     #[test]
     fn world_roundtrip() {
         roundtrip::<WorldDecl>(
-            Rule::WorldDecl,
             r#"world foo {
             /// Type t
             type t = list<string>;
@@ -1873,76 +1603,76 @@ mod test {
             include foo-bar with { foo as bar };
 };
 
-include myworld;
+include my-world;
 }
             "#,
             r#"world foo {
-  /// Type t
-  type t = list<string>;
+    /// Type t
+    type t = list<string>;
 
-  type x = func() -> list<string>;
+    type x = func() -> list<string>;
 
-  use foo.{ y };
+    use foo.{ y };
 
-  /// Import with function type.
-  import a: func(a: string, b: string) -> string;
+    /// Import with function type.
+    import a: func(a: string, b: string) -> string;
 
-  /// Import with identifier.
-  import b: x;
+    /// Import with identifier.
+    import b: x;
 
-  /// Import with inline interface.
-  import c: interface {
-    /// Function a
-    a: func(a: string, b: string) -> string;
-  };
+    /// Import with inline interface.
+    import c: interface {
+        /// Function a
+        a: func(a: string, b: string) -> string;
+    };
 
-  /// Import with package path
-  import foo:bar/baz@1.0.0;
+    /// Import with package path
+    import foo:bar/baz@1.0.0;
 
-  /// Export with function type.
-  export a: func(a: string, b: string) -> string;
+    /// Export with function type.
+    export a: func(a: string, b: string) -> string;
 
-  /// Export with identifier.
-  export b: x;
+    /// Export with identifier.
+    export b: x;
 
-  /// Export with inline interface.
-  export c: interface {
-    /// Function a
-    a: func(a: string, b: string) -> string;
-  };
+    /// Export with inline interface.
+    export c: interface {
+        /// Function a
+        a: func(a: string, b: string) -> string;
+    };
 
-  /// Export with package path
-  export foo:bar/baz@1.0.0;
+    /// Export with package path
+    export foo:bar/baz@1.0.0;
 
-  /// Include world from package path with 2 renames.
-  include foo:bar/baz with {
-    a as a1,
-    b as b1,
-  };
+    /// Include world from package path with 2 renames.
+    include foo:bar/baz with {
+        a as a1,
+        b as b1,
+    };
 
-  /// Include world from package path with 1 rename.
-  include foo:bar/baz with {
-    foo as foo1,
-  };
+    /// Include world from package path with 1 rename.
+    include foo:bar/baz with {
+        foo as foo1,
+    };
 
-  /// Include world from package path (spacing).
-  include foo:bar/baz with {
-    foo as foo1,
-  };
+    /// Include world from package path (spacing).
+    include foo:bar/baz with {
+        foo as foo1,
+    };
 
-  /// Include world from package path newline delimited renaming.
-  include foo:bar/baz with {
-    foo as foo1,
-    bar as bar1,
-  };
+    /// Include world from package path newline delimited renaming.
+    include foo:bar/baz with {
+        foo as foo1,
+        bar as bar1,
+    };
 
-  /// Include local world.
-  include foo-bar;
+    /// Include local world.
+    include foo-bar;
 
-  /// Include local world with renaming.
-  include foo-bar with {
-    foo as bar,
-  };
+    /// Include local world with renaming.
+    include foo-bar with {
+        foo as bar,
+    };
 }"#,
         )
         .unwrap();

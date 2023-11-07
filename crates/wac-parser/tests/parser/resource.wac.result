@@ -1,334 +1,458 @@
 {
   "statements": [
     {
-      "docs": [
-        {
-          "str": "/// Resource without methods\n",
-          "start": 0,
-          "end": 29
-        }
-      ],
-      "stmt": {
-        "type": {
-          "type": {
-            "resource": {
-              "keyword": {
-                "str": "resource",
-                "start": 29,
-                "end": 37
-              },
-              "id": {
-                "str": "r1",
-                "start": 38,
-                "end": 40
-              },
-              "body": {
-                "empty": {
-                  "str": ";",
-                  "start": 40,
-                  "end": 41
+      "Type": {
+        "interface": {
+          "docs": [],
+          "id": {
+            "string": "foo",
+            "span": {
+              "str": "foo",
+              "start": 10,
+              "end": 13
+            }
+          },
+          "items": [
+            {
+              "type": {
+                "resource": {
+                  "docs": [
+                    {
+                      "comment": "Resource without methods",
+                      "span": {
+                        "str": "/// Resource without methods",
+                        "start": 20,
+                        "end": 48
+                      }
+                    }
+                  ],
+                  "id": {
+                    "string": "r1",
+                    "span": {
+                      "str": "r1",
+                      "start": 62,
+                      "end": 64
+                    }
+                  },
+                  "methods": []
                 }
               }
-            }
-          }
-        }
-      }
-    },
-    {
-      "docs": [
-        {
-          "str": "/// Resource with only constructor\n",
-          "start": 43,
-          "end": 78
-        }
-      ],
-      "stmt": {
-        "type": {
-          "type": {
-            "resource": {
-              "keyword": {
-                "str": "resource",
-                "start": 78,
-                "end": 86
-              },
-              "id": {
-                "str": "r2",
-                "start": 87,
-                "end": 89
-              },
-              "body": {
-                "methods": {
-                  "open": {
-                    "str": "{",
-                    "start": 90,
-                    "end": 91
+            },
+            {
+              "type": {
+                "resource": {
+                  "docs": [
+                    {
+                      "comment": "Resource with only constructor",
+                      "span": {
+                        "str": "/// Resource with only constructor",
+                        "start": 71,
+                        "end": 105
+                      }
+                    }
+                  ],
+                  "id": {
+                    "string": "r2",
+                    "span": {
+                      "str": "r2",
+                      "start": 119,
+                      "end": 121
+                    }
                   },
                   "methods": [
-                    [
-                      {
-                        "constructor": {
-                          "keyword": {
-                            "str": "constructor",
-                            "start": 96,
-                            "end": 107
-                          },
-                          "params": {
-                            "open": {
-                              "str": "(",
-                              "start": 107,
-                              "end": 108
-                            },
-                            "list": [],
-                            "close": {
-                              "str": ")",
-                              "start": 108,
-                              "end": 109
+                    {
+                      "constructor": {
+                        "docs": [
+                          {
+                            "comment": "Constructor",
+                            "span": {
+                              "str": "/// Constructor",
+                              "start": 132,
+                              "end": 147
                             }
                           }
-                        }
-                      },
-                      {
-                        "str": ";",
-                        "start": 109,
-                        "end": 110
+                        ],
+                        "span": {
+                          "str": "constructor",
+                          "start": 156,
+                          "end": 167
+                        },
+                        "params": []
                       }
-                    ]
-                  ],
-                  "close": {
-                    "str": "}",
-                    "start": 111,
-                    "end": 112
-                  }
+                    }
+                  ]
                 }
               }
-            }
-          }
-        }
-      }
-    },
-    {
-      "docs": [
-        {
-          "str": "/// Resource with constructor, instance method, and static method\n",
-          "start": 114,
-          "end": 180
-        }
-      ],
-      "stmt": {
-        "type": {
-          "type": {
-            "resource": {
-              "keyword": {
-                "str": "resource",
-                "start": 180,
-                "end": 188
-              },
-              "id": {
-                "str": "r3",
-                "start": 189,
-                "end": 191
-              },
-              "body": {
-                "methods": {
-                  "open": {
-                    "str": "{",
-                    "start": 192,
-                    "end": 193
+            },
+            {
+              "type": {
+                "resource": {
+                  "docs": [
+                    {
+                      "comment": "Resource with constructor, instance method, and static method",
+                      "span": {
+                        "str": "/// Resource with constructor, instance method, and static method",
+                        "start": 182,
+                        "end": 247
+                      }
+                    }
+                  ],
+                  "id": {
+                    "string": "r3",
+                    "span": {
+                      "str": "r3",
+                      "start": 261,
+                      "end": 263
+                    }
                   },
                   "methods": [
-                    [
-                      {
-                        "constructor": {
-                          "keyword": {
-                            "str": "constructor",
-                            "start": 198,
-                            "end": 209
-                          },
-                          "params": {
-                            "open": {
-                              "str": "(",
-                              "start": 209,
-                              "end": 210
+                    {
+                      "constructor": {
+                        "docs": [
+                          {
+                            "comment": "Constructor",
+                            "span": {
+                              "str": "/// Constructor",
+                              "start": 274,
+                              "end": 289
+                            }
+                          }
+                        ],
+                        "span": {
+                          "str": "constructor",
+                          "start": 298,
+                          "end": 309
+                        },
+                        "params": [
+                          {
+                            "id": {
+                              "string": "a",
+                              "span": {
+                                "str": "a",
+                                "start": 310,
+                                "end": 311
+                              }
                             },
-                            "list": [
+                            "ty": "u32"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "method": {
+                        "docs": [
+                          {
+                            "comment": "Method",
+                            "span": {
+                              "str": "/// Method",
+                              "start": 327,
+                              "end": 337
+                            }
+                          }
+                        ],
+                        "id": {
+                          "string": "a",
+                          "span": {
+                            "str": "a",
+                            "start": 346,
+                            "end": 347
+                          }
+                        },
+                        "isStatic": false,
+                        "ty": {
+                          "func": {
+                            "params": [
                               {
                                 "id": {
-                                  "str": "a",
-                                  "start": 210,
-                                  "end": 211
-                                },
-                                "colon": {
-                                  "str": ":",
-                                  "start": 211,
-                                  "end": 212
-                                },
-                                "ty": {
-                                  "u32": {
-                                    "str": "u32",
-                                    "start": 213,
-                                    "end": 216
+                                  "string": "b",
+                                  "span": {
+                                    "str": "b",
+                                    "start": 354,
+                                    "end": 355
                                   }
-                                }
+                                },
+                                "ty": "u32"
                               }
                             ],
-                            "close": {
-                              "str": ")",
-                              "start": 216,
-                              "end": 217
-                            }
+                            "results": "empty"
                           }
                         }
-                      },
-                      {
-                        "str": ";",
-                        "start": 217,
-                        "end": 218
                       }
-                    ],
-                    [
-                      {
-                        "method": {
-                          "id": {
-                            "str": "a",
-                            "start": 223,
-                            "end": 224
-                          },
-                          "colon": {
-                            "str": ":",
-                            "start": 224,
-                            "end": 225
-                          },
-                          "keyword": null,
-                          "func": {
-                            "func": {
-                              "keyword": {
-                                "str": "func",
-                                "start": 226,
-                                "end": 230
-                              },
-                              "params": {
-                                "open": {
-                                  "str": "(",
-                                  "start": 230,
-                                  "end": 231
-                                },
-                                "list": [
-                                  {
-                                    "id": {
-                                      "str": "b",
-                                      "start": 231,
-                                      "end": 232
-                                    },
-                                    "colon": {
-                                      "str": ":",
-                                      "start": 232,
-                                      "end": 233
-                                    },
-                                    "ty": {
-                                      "u32": {
-                                        "str": "u32",
-                                        "start": 234,
-                                        "end": 237
-                                      }
-                                    }
-                                  }
-                                ],
-                                "close": {
-                                  "str": ")",
-                                  "start": 237,
-                                  "end": 238
-                                }
-                              },
-                              "results": null
+                    },
+                    {
+                      "method": {
+                        "docs": [
+                          {
+                            "comment": "Static method",
+                            "span": {
+                              "str": "/// Static method",
+                              "start": 371,
+                              "end": 388
                             }
                           }
-                        }
-                      },
-                      {
-                        "str": ";",
-                        "start": 238,
-                        "end": 239
-                      }
-                    ],
-                    [
-                      {
-                        "method": {
-                          "id": {
+                        ],
+                        "id": {
+                          "string": "b",
+                          "span": {
                             "str": "b",
-                            "start": 244,
-                            "end": 245
-                          },
-                          "colon": {
-                            "str": ":",
-                            "start": 245,
-                            "end": 246
-                          },
-                          "keyword": {
-                            "str": "static",
-                            "start": 247,
-                            "end": 253
-                          },
+                            "start": 397,
+                            "end": 398
+                          }
+                        },
+                        "isStatic": true,
+                        "ty": {
                           "func": {
-                            "func": {
-                              "keyword": {
-                                "str": "func",
-                                "start": 254,
-                                "end": 258
-                              },
-                              "params": {
-                                "open": {
-                                  "str": "(",
-                                  "start": 258,
-                                  "end": 259
-                                },
-                                "list": [
-                                  {
-                                    "id": {
-                                      "str": "c",
-                                      "start": 259,
-                                      "end": 260
-                                    },
-                                    "colon": {
-                                      "str": ":",
-                                      "start": 260,
-                                      "end": 261
-                                    },
-                                    "ty": {
-                                      "u32": {
-                                        "str": "u32",
-                                        "start": 262,
-                                        "end": 265
-                                      }
-                                    }
+                            "params": [
+                              {
+                                "id": {
+                                  "string": "c",
+                                  "span": {
+                                    "str": "c",
+                                    "start": 412,
+                                    "end": 413
                                   }
-                                ],
-                                "close": {
-                                  "str": ")",
-                                  "start": 265,
-                                  "end": 266
-                                }
-                              },
-                              "results": null
-                            }
+                                },
+                                "ty": "u32"
+                              }
+                            ],
+                            "results": "empty"
                           }
                         }
-                      },
-                      {
-                        "str": ";",
-                        "start": 266,
-                        "end": 267
                       }
-                    ]
-                  ],
-                  "close": {
-                    "str": "}",
-                    "start": 268,
-                    "end": 269
-                  }
+                    }
+                  ]
                 }
               }
             }
-          }
+          ]
+        }
+      }
+    },
+    {
+      "Type": {
+        "world": {
+          "docs": [],
+          "id": {
+            "string": "bar",
+            "span": {
+              "str": "bar",
+              "start": 436,
+              "end": 439
+            }
+          },
+          "items": [
+            {
+              "type": {
+                "resource": {
+                  "docs": [
+                    {
+                      "comment": "Resource without methods",
+                      "span": {
+                        "str": "/// Resource without methods",
+                        "start": 446,
+                        "end": 474
+                      }
+                    }
+                  ],
+                  "id": {
+                    "string": "r1",
+                    "span": {
+                      "str": "r1",
+                      "start": 488,
+                      "end": 490
+                    }
+                  },
+                  "methods": []
+                }
+              }
+            },
+            {
+              "type": {
+                "resource": {
+                  "docs": [
+                    {
+                      "comment": "Resource with only constructor",
+                      "span": {
+                        "str": "/// Resource with only constructor",
+                        "start": 497,
+                        "end": 531
+                      }
+                    }
+                  ],
+                  "id": {
+                    "string": "r2",
+                    "span": {
+                      "str": "r2",
+                      "start": 545,
+                      "end": 547
+                    }
+                  },
+                  "methods": [
+                    {
+                      "constructor": {
+                        "docs": [
+                          {
+                            "comment": "Constructor",
+                            "span": {
+                              "str": "/// Constructor",
+                              "start": 558,
+                              "end": 573
+                            }
+                          }
+                        ],
+                        "span": {
+                          "str": "constructor",
+                          "start": 582,
+                          "end": 593
+                        },
+                        "params": []
+                      }
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "type": {
+                "resource": {
+                  "docs": [
+                    {
+                      "comment": "Resource with constructor, instance method, and static method",
+                      "span": {
+                        "str": "/// Resource with constructor, instance method, and static method",
+                        "start": 608,
+                        "end": 673
+                      }
+                    }
+                  ],
+                  "id": {
+                    "string": "r3",
+                    "span": {
+                      "str": "r3",
+                      "start": 687,
+                      "end": 689
+                    }
+                  },
+                  "methods": [
+                    {
+                      "constructor": {
+                        "docs": [
+                          {
+                            "comment": "Constructor",
+                            "span": {
+                              "str": "/// Constructor",
+                              "start": 700,
+                              "end": 715
+                            }
+                          }
+                        ],
+                        "span": {
+                          "str": "constructor",
+                          "start": 724,
+                          "end": 735
+                        },
+                        "params": [
+                          {
+                            "id": {
+                              "string": "a",
+                              "span": {
+                                "str": "a",
+                                "start": 736,
+                                "end": 737
+                              }
+                            },
+                            "ty": "u32"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "method": {
+                        "docs": [
+                          {
+                            "comment": "Method",
+                            "span": {
+                              "str": "/// Method",
+                              "start": 753,
+                              "end": 763
+                            }
+                          }
+                        ],
+                        "id": {
+                          "string": "a",
+                          "span": {
+                            "str": "a",
+                            "start": 772,
+                            "end": 773
+                          }
+                        },
+                        "isStatic": false,
+                        "ty": {
+                          "func": {
+                            "params": [
+                              {
+                                "id": {
+                                  "string": "b",
+                                  "span": {
+                                    "str": "b",
+                                    "start": 780,
+                                    "end": 781
+                                  }
+                                },
+                                "ty": "u32"
+                              }
+                            ],
+                            "results": "empty"
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "method": {
+                        "docs": [
+                          {
+                            "comment": "Static method",
+                            "span": {
+                              "str": "/// Static method",
+                              "start": 797,
+                              "end": 814
+                            }
+                          }
+                        ],
+                        "id": {
+                          "string": "b",
+                          "span": {
+                            "str": "b",
+                            "start": 823,
+                            "end": 824
+                          }
+                        },
+                        "isStatic": true,
+                        "ty": {
+                          "func": {
+                            "params": [
+                              {
+                                "id": {
+                                  "string": "c",
+                                  "span": {
+                                    "str": "c",
+                                    "start": 838,
+                                    "end": 839
+                                  }
+                                },
+                                "ty": "u32"
+                              }
+                            ],
+                            "results": "empty"
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          ]
         }
       }
     }

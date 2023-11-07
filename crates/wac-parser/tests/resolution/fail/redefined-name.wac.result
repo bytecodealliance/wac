@@ -1,8 +1,5 @@
-tests/resolution/fail/redefined-name.wac:2:6: `x` was previously defined at tests/resolution/fail/redefined-name.wac:1:6
-
- --> tests/resolution/fail/redefined-name.wac:2:6
-  |
-2 | type x = string;
-  |      ^
-  |
-  = `x` was previously defined at tests/resolution/fail/redefined-name.wac:1:6
+`x` was previously defined at tests/resolution/fail/redefined-name.wac:1:6
+    --> tests/resolution/fail/redefined-name.wac:2:6
+     |
+   2 | type x = string;
+     |      ^

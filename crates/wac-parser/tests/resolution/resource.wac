@@ -1,3 +1,5 @@
-resource x;
-
-type f = func(x: borrow<x>);
+interface foo {
+    resource x;
+    type f = func(x: borrow<x>);
+    f2: f;
+}

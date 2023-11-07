@@ -1,8 +1,5 @@
-tests/resolution/fail/missing-world-include-name.wac:6:23: world `w1` does not have an import or export with kebab-name `a`
-
- --> tests/resolution/fail/missing-world-include-name.wac:6:23
-  |
-6 |     include w1 with { a as b };
-  |                       ^
-  |
-  = world `w1` does not have an import or export with kebab-name `a`
+world `w1` does not have an import or export named `a`
+    --> tests/resolution/fail/missing-world-include-name.wac:6:23
+     |
+   6 |     include w1 with { a as b };
+     |                       ^

@@ -319,6 +319,13 @@
           }
         },
         "exports": {
+          "res": {
+            "kind": {
+              "type": {
+                "value": 2
+              }
+            }
+          },
           "d": {
             "kind": {
               "type": {
@@ -426,7 +433,7 @@
     {
       "kind": {
         "type": {
-          "world": 5
+          "value": 2
         }
       },
       "source": "definition"
@@ -434,7 +441,7 @@
     {
       "kind": {
         "type": {
-          "value": 2
+          "world": 5
         }
       },
       "source": "definition"
@@ -521,8 +528,7 @@
         "c": 6,
         "f": 7,
         "w1": 9,
-        "w2": 10,
-        "res": 11,
+        "w2": 11,
         "x": 12,
         "v": 13,
         "r": 14,
@@ -560,7 +566,9 @@
     },
     {
       "parent": 0,
-      "items": {}
+      "items": {
+        "res": 10
+      }
     }
   ]
 }

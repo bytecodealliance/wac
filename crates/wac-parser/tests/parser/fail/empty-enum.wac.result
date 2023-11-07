@@ -1,9 +1,5 @@
-expected identifier
-
-Caused by:
-     --> tests/parser/fail/empty-enum.wac:1:9
-      |
-    1 | enum e {}
-      |         ^---
-      |
-      = expected identifier
+enum must contain at least one case
+    --> tests/parser/fail/empty-enum.wac:1:9
+     |
+   1 | enum e {}
+     |         ^

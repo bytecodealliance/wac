@@ -1,0 +1,5 @@
+expected `}` or identifier, found end of input
+    --> tests/parser/fail/expected-two.wac:2:1
+     |
+   2 | 
+     | ^

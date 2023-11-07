@@ -1,10 +1,11 @@
-use anyhow::{Context, Result};
+use anyhow::{anyhow, Context, Result};
 use clap::Args;
 use serde::Serialize;
-use std::{fs, path::PathBuf};
+use std::{fs, io::IsTerminal, path::PathBuf};
 use wac_parser::{
     ast::Document,
     resolution::{FileSystemPackageResolver, ResolvedDocument},
+    ErrorFormatter,
 };
 
 fn parse<T, U>(s: &str) -> Result<(T, U)>
@@ -57,7 +58,12 @@ impl ParseCommand {
         let contents = fs::read_to_string(&self.path)
             .with_context(|| format!("failed to read file `{path}`", path = self.path.display()))?;
 
-        let document = Document::parse(&contents, &self.path)?;
+        let document = Document::parse(&contents, &self.path).map_err(|e| {
+            anyhow!(
+                "{e}",
+                e = ErrorFormatter::new(&self.path, e, std::io::stderr().is_terminal())
+            )
+        })?;
         let resolved = ResolvedDocument::new(
             &document,
             self.package,
@@ -65,7 +71,13 @@ impl ParseCommand {
                 self.deps_dir,
                 self.deps.into_iter().collect(),
             ))),
-        )?;
+        )
+        .map_err(|e| {
+            anyhow!(
+                "{e}",
+                e = ErrorFormatter::new(&self.path, e, std::io::stderr().is_terminal())
+            )
+        })?;
 
         serde_json::to_writer_pretty(
             std::io::stdout(),

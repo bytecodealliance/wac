@@ -1,9 +1,5 @@
-expected `;`
-
-Caused by:
-     --> tests/parser/fail/missing-semi.wac:1:13
-      |
-    1 | type x = u32
-      |             ^---
-      |
-      = expected `;`
+expected `;`, found end of input
+    --> tests/parser/fail/missing-semi.wac:1:13
+     |
+   1 | type x = u32
+     |             ^

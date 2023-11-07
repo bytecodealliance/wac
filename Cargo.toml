@@ -40,17 +40,15 @@ wasmparser = "0.115.0"
 wit-component = "0.16.0"
 anyhow = "1.0.75"
 clap = { version = "4.4.6", features = ["derive"] }
-pest = "2.7.4"
-pest_derive = "2.7.4"
-from-pest = "0.3.2"
-pest-ast = "0.3.4"
 semver = "1.0.20"
 pretty_env_logger = "0.5.0"
 log = "0.4.20"
 tokio = { version = "1.33.0", default-features = false, features = ["macros", "rt-multi-thread"] }
-owo-colors = "3.5.0"
+owo-colors = { version = "3.5.0", features = ["supports-colors"] }
 indexmap = { version = "2.0.2", features = ["serde"] }
 id-arena = "2.2.1"
 serde = { version = "1.0.189", features = ["derive"] }
 serde_json = "1.0.107"
 wat = "1.0.77"
+logos = "0.13.0"
+thiserror = "1.0.50"

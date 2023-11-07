@@ -1,634 +1,441 @@
 {
   "statements": [
     {
-      "docs": [
-        {
-          "str": "/// Instantiate without args\n",
-          "start": 0,
-          "end": 29
-        }
-      ],
-      "stmt": {
-        "let": {
-          "keyword": {
-            "str": "let",
-            "start": 29,
-            "end": 32
-          },
-          "id": {
+      "Let": {
+        "docs": [
+          {
+            "comment": "Instantiate without args",
+            "span": {
+              "str": "/// Instantiate without args",
+              "start": 0,
+              "end": 28
+            }
+          }
+        ],
+        "id": {
+          "string": "a",
+          "span": {
             "str": "a",
             "start": 33,
             "end": 34
-          },
-          "equals": {
-            "str": "=",
-            "start": 35,
-            "end": 36
-          },
-          "expr": {
-            "primary": {
-              "new": {
-                "keyword": {
-                  "str": "new",
-                  "start": 37,
-                  "end": 40
-                },
-                "packageName": {
-                  "parts": [
-                    {
-                      "str": "foo",
-                      "start": 41,
-                      "end": 44
-                    },
-                    {
-                      "str": "bar",
-                      "start": 45,
-                      "end": 48
-                    }
-                  ]
-                },
-                "body": {
-                  "open": {
-                    "str": "{",
-                    "start": 49,
-                    "end": 50
-                  },
-                  "arguments": [],
-                  "ellipsis": null,
-                  "close": {
-                    "str": "}",
-                    "start": 50,
-                    "end": 51
-                  }
-                }
-              }
-            },
-            "postfix": []
-          },
-          "semicolon": {
-            "str": ";",
-            "start": 51,
-            "end": 52
           }
+        },
+        "expr": {
+          "primary": {
+            "new": {
+              "package": {
+                "name": "foo:bar",
+                "span": {
+                  "str": "foo:bar",
+                  "start": 41,
+                  "end": 48
+                }
+              },
+              "arguments": [],
+              "ellipsis": false
+            }
+          },
+          "postfix": []
         }
       }
     },
     {
-      "docs": [
-        {
-          "str": "/// Instantiation with import-propagation.\n",
-          "start": 54,
-          "end": 97
-        }
-      ],
-      "stmt": {
-        "let": {
-          "keyword": {
-            "str": "let",
-            "start": 97,
-            "end": 100
-          },
-          "id": {
+      "Let": {
+        "docs": [
+          {
+            "comment": "Instantiation with import-propagation.",
+            "span": {
+              "str": "/// Instantiation with import-propagation.",
+              "start": 54,
+              "end": 96
+            }
+          }
+        ],
+        "id": {
+          "string": "b",
+          "span": {
             "str": "b",
             "start": 101,
             "end": 102
-          },
-          "equals": {
-            "str": "=",
-            "start": 103,
-            "end": 104
-          },
-          "expr": {
-            "primary": {
-              "new": {
-                "keyword": {
-                  "str": "new",
-                  "start": 105,
-                  "end": 108
-                },
-                "packageName": {
-                  "parts": [
-                    {
-                      "str": "foo",
-                      "start": 109,
-                      "end": 112
-                    },
-                    {
-                      "str": "bar",
-                      "start": 113,
-                      "end": 116
-                    }
-                  ]
-                },
-                "body": {
-                  "open": {
-                    "str": "{",
-                    "start": 117,
-                    "end": 118
-                  },
-                  "arguments": [],
-                  "ellipsis": {
-                    "str": "...",
-                    "start": 119,
-                    "end": 122
-                  },
-                  "close": {
-                    "str": "}",
-                    "start": 123,
-                    "end": 124
-                  }
-                }
-              }
-            },
-            "postfix": []
-          },
-          "semicolon": {
-            "str": ";",
-            "start": 124,
-            "end": 125
           }
+        },
+        "expr": {
+          "primary": {
+            "new": {
+              "package": {
+                "name": "foo:bar",
+                "span": {
+                  "str": "foo:bar",
+                  "start": 109,
+                  "end": 116
+                }
+              },
+              "arguments": [],
+              "ellipsis": true
+            }
+          },
+          "postfix": []
         }
       }
     },
     {
-      "docs": [
-        {
-          "str": "/// Instantiation with arguments\n",
-          "start": 127,
-          "end": 160
-        }
-      ],
-      "stmt": {
-        "let": {
-          "keyword": {
-            "str": "let",
-            "start": 160,
-            "end": 163
-          },
-          "id": {
+      "Let": {
+        "docs": [
+          {
+            "comment": "Instantiation with arguments",
+            "span": {
+              "str": "/// Instantiation with arguments",
+              "start": 127,
+              "end": 159
+            }
+          }
+        ],
+        "id": {
+          "string": "c",
+          "span": {
             "str": "c",
             "start": 164,
             "end": 165
-          },
-          "equals": {
-            "str": "=",
-            "start": 166,
-            "end": 167
-          },
-          "expr": {
-            "primary": {
-              "new": {
-                "keyword": {
-                  "str": "new",
-                  "start": 168,
-                  "end": 171
-                },
-                "packageName": {
-                  "parts": [
-                    {
-                      "str": "foo",
-                      "start": 172,
-                      "end": 175
-                    },
-                    {
-                      "str": "bar",
-                      "start": 176,
-                      "end": 179
+          }
+        },
+        "expr": {
+          "primary": {
+            "new": {
+              "package": {
+                "name": "foo:bar",
+                "span": {
+                  "str": "foo:bar",
+                  "start": 172,
+                  "end": 179
+                }
+              },
+              "arguments": [
+                {
+                  "ident": {
+                    "string": "a",
+                    "span": {
+                      "str": "a",
+                      "start": 182,
+                      "end": 183
                     }
-                  ]
+                  }
                 },
-                "body": {
-                  "open": {
-                    "str": "{",
-                    "start": 180,
-                    "end": 181
-                  },
-                  "arguments": [
-                    {
-                      "ident": {
-                        "str": "a",
-                        "start": 182,
-                        "end": 183
-                      }
-                    },
-                    {
-                      "ident": {
-                        "str": "b",
-                        "start": 185,
-                        "end": 186
-                      }
-                    },
-                    {
-                      "named": {
-                        "name": {
-                          "string": {
-                            "str": "\"c\"",
-                            "start": 188,
-                            "end": 191
-                          }
-                        },
-                        "colon": {
-                          "str": ":",
-                          "start": 191,
-                          "end": 192
-                        },
-                        "expr": {
-                          "primary": {
-                            "ident": {
-                              "str": "c",
-                              "start": 193,
-                              "end": 194
-                            }
-                          },
-                          "postfix": []
+                {
+                  "ident": {
+                    "string": "b",
+                    "span": {
+                      "str": "b",
+                      "start": 185,
+                      "end": 186
+                    }
+                  }
+                },
+                {
+                  "named": {
+                    "name": {
+                      "string": {
+                        "value": "c",
+                        "span": {
+                          "str": "\"c\"",
+                          "start": 188,
+                          "end": 191
                         }
                       }
+                    },
+                    "expr": {
+                      "primary": {
+                        "ident": {
+                          "string": "c",
+                          "span": {
+                            "str": "c",
+                            "start": 193,
+                            "end": 194
+                          }
+                        }
+                      },
+                      "postfix": []
                     }
-                  ],
-                  "ellipsis": null,
-                  "close": {
-                    "str": "}",
-                    "start": 196,
-                    "end": 197
                   }
                 }
-              }
-            },
-            "postfix": []
+              ],
+              "ellipsis": false
+            }
           },
-          "semicolon": {
-            "str": ";",
-            "start": 197,
-            "end": 198
-          }
+          "postfix": []
         }
       }
     },
     {
-      "docs": [
-        {
-          "str": "/// Instantiation with arguments and import-propagation.\n",
-          "start": 200,
-          "end": 257
-        }
-      ],
-      "stmt": {
-        "let": {
-          "keyword": {
-            "str": "let",
-            "start": 257,
-            "end": 260
-          },
-          "id": {
+      "Let": {
+        "docs": [
+          {
+            "comment": "Instantiation with arguments and import-propagation.",
+            "span": {
+              "str": "/// Instantiation with arguments and import-propagation.",
+              "start": 200,
+              "end": 256
+            }
+          }
+        ],
+        "id": {
+          "string": "d",
+          "span": {
             "str": "d",
             "start": 261,
             "end": 262
-          },
-          "equals": {
-            "str": "=",
-            "start": 263,
-            "end": 264
-          },
-          "expr": {
-            "primary": {
-              "new": {
-                "keyword": {
-                  "str": "new",
-                  "start": 265,
-                  "end": 268
-                },
-                "packageName": {
-                  "parts": [
-                    {
-                      "str": "foo",
-                      "start": 269,
-                      "end": 272
-                    },
-                    {
-                      "str": "bar",
-                      "start": 273,
-                      "end": 276
+          }
+        },
+        "expr": {
+          "primary": {
+            "new": {
+              "package": {
+                "name": "foo:bar",
+                "span": {
+                  "str": "foo:bar",
+                  "start": 269,
+                  "end": 276
+                }
+              },
+              "arguments": [
+                {
+                  "ident": {
+                    "string": "a",
+                    "span": {
+                      "str": "a",
+                      "start": 279,
+                      "end": 280
                     }
-                  ]
+                  }
                 },
-                "body": {
-                  "open": {
-                    "str": "{",
-                    "start": 277,
-                    "end": 278
-                  },
-                  "arguments": [
-                    {
+                {
+                  "named": {
+                    "name": {
+                      "string": {
+                        "value": "b",
+                        "span": {
+                          "str": "\"b\"",
+                          "start": 282,
+                          "end": 285
+                        }
+                      }
+                    },
+                    "expr": {
+                      "primary": {
+                        "nested": {
+                          "primary": {
+                            "new": {
+                              "package": {
+                                "name": "foo:bar",
+                                "span": {
+                                  "str": "foo:bar",
+                                  "start": 292,
+                                  "end": 299
+                                }
+                              },
+                              "arguments": [],
+                              "ellipsis": false
+                            }
+                          },
+                          "postfix": []
+                        }
+                      },
+                      "postfix": []
+                    }
+                  }
+                },
+                {
+                  "named": {
+                    "name": {
                       "ident": {
-                        "str": "a",
-                        "start": 279,
-                        "end": 280
-                      }
-                    },
-                    {
-                      "named": {
-                        "name": {
-                          "string": {
-                            "str": "\"b\"",
-                            "start": 282,
-                            "end": 285
-                          }
-                        },
-                        "colon": {
-                          "str": ":",
-                          "start": 285,
-                          "end": 286
-                        },
-                        "expr": {
-                          "primary": {
-                            "nested": {
-                              "open": {
-                                "str": "(",
-                                "start": 287,
-                                "end": 288
-                              },
-                              "expr": {
-                                "primary": {
-                                  "new": {
-                                    "keyword": {
-                                      "str": "new",
-                                      "start": 288,
-                                      "end": 291
-                                    },
-                                    "packageName": {
-                                      "parts": [
-                                        {
-                                          "str": "foo",
-                                          "start": 292,
-                                          "end": 295
-                                        },
-                                        {
-                                          "str": "bar",
-                                          "start": 296,
-                                          "end": 299
-                                        }
-                                      ]
-                                    },
-                                    "body": {
-                                      "open": {
-                                        "str": "{",
-                                        "start": 300,
-                                        "end": 301
-                                      },
-                                      "arguments": [],
-                                      "ellipsis": null,
-                                      "close": {
-                                        "str": "}",
-                                        "start": 302,
-                                        "end": 303
-                                      }
-                                    }
-                                  }
-                                },
-                                "postfix": []
-                              },
-                              "close": {
-                                "str": ")",
-                                "start": 303,
-                                "end": 304
-                              }
-                            }
-                          },
-                          "postfix": []
+                        "string": "c",
+                        "span": {
+                          "str": "c",
+                          "start": 306,
+                          "end": 307
                         }
                       }
                     },
-                    {
-                      "named": {
-                        "name": {
-                          "ident": {
+                    "expr": {
+                      "primary": {
+                        "ident": {
+                          "string": "c",
+                          "span": {
                             "str": "c",
-                            "start": 306,
-                            "end": 307
+                            "start": 309,
+                            "end": 310
                           }
-                        },
-                        "colon": {
-                          "str": ":",
-                          "start": 307,
-                          "end": 308
-                        },
-                        "expr": {
-                          "primary": {
-                            "ident": {
-                              "str": "c",
-                              "start": 309,
-                              "end": 310
-                            }
-                          },
-                          "postfix": []
                         }
-                      }
+                      },
+                      "postfix": []
                     }
-                  ],
-                  "ellipsis": {
-                    "str": "...",
-                    "start": 312,
-                    "end": 315
-                  },
-                  "close": {
-                    "str": "}",
-                    "start": 316,
-                    "end": 317
                   }
                 }
-              }
-            },
-            "postfix": []
+              ],
+              "ellipsis": true
+            }
           },
-          "semicolon": {
-            "str": ";",
-            "start": 317,
-            "end": 318
-          }
+          "postfix": []
         }
       }
     },
     {
-      "docs": [
-        {
-          "str": "/// Nested expression\n",
-          "start": 320,
-          "end": 342
-        }
-      ],
-      "stmt": {
-        "let": {
-          "keyword": {
-            "str": "let",
-            "start": 342,
-            "end": 345
-          },
-          "id": {
+      "Let": {
+        "docs": [
+          {
+            "comment": "Nested expression",
+            "span": {
+              "str": "/// Nested expression",
+              "start": 320,
+              "end": 341
+            }
+          }
+        ],
+        "id": {
+          "string": "e",
+          "span": {
             "str": "e",
             "start": 346,
             "end": 347
-          },
-          "equals": {
-            "str": "=",
-            "start": 348,
-            "end": 349
-          },
-          "expr": {
-            "primary": {
-              "nested": {
-                "open": {
-                  "str": "(",
-                  "start": 350,
-                  "end": 351
-                },
-                "expr": {
-                  "primary": {
-                    "ident": {
-                      "str": "b",
-                      "start": 351,
-                      "end": 352
-                    }
-                  },
-                  "postfix": []
-                },
-                "close": {
-                  "str": ")",
-                  "start": 352,
-                  "end": 353
-                }
-              }
-            },
-            "postfix": []
-          },
-          "semicolon": {
-            "str": ";",
-            "start": 353,
-            "end": 354
           }
+        },
+        "expr": {
+          "primary": {
+            "nested": {
+              "primary": {
+                "ident": {
+                  "string": "b",
+                  "span": {
+                    "str": "b",
+                    "start": 351,
+                    "end": 352
+                  }
+                }
+              },
+              "postfix": []
+            }
+          },
+          "postfix": []
         }
       }
     },
     {
-      "docs": [
-        {
-          "str": "/// Access expression\n",
-          "start": 356,
-          "end": 378
-        }
-      ],
-      "stmt": {
-        "let": {
-          "keyword": {
-            "str": "let",
-            "start": 378,
-            "end": 381
-          },
-          "id": {
+      "Let": {
+        "docs": [
+          {
+            "comment": "Access expression",
+            "span": {
+              "str": "/// Access expression",
+              "start": 356,
+              "end": 377
+            }
+          }
+        ],
+        "id": {
+          "string": "f",
+          "span": {
             "str": "f",
             "start": 382,
             "end": 383
-          },
-          "equals": {
-            "str": "=",
-            "start": 384,
-            "end": 385
-          },
-          "expr": {
-            "primary": {
-              "ident": {
+          }
+        },
+        "expr": {
+          "primary": {
+            "ident": {
+              "string": "e",
+              "span": {
                 "str": "e",
                 "start": 386,
                 "end": 387
               }
-            },
-            "postfix": [
-              {
-                "namedAccess": {
-                  "open": {
-                    "str": "[",
-                    "start": 387,
-                    "end": 388
-                  },
-                  "string": {
+            }
+          },
+          "postfix": [
+            {
+              "namedAccess": {
+                "span": {
+                  "str": "[\"b-c\"]",
+                  "start": 387,
+                  "end": 394
+                },
+                "string": {
+                  "value": "b-c",
+                  "span": {
                     "str": "\"b-c\"",
                     "start": 388,
                     "end": 393
-                  },
-                  "close": {
-                    "str": "]",
-                    "start": 393,
-                    "end": 394
                   }
                 }
-              },
-              {
-                "access": {
-                  "dot": {
-                    "str": ".",
-                    "start": 394,
-                    "end": 395
-                  },
-                  "id": {
+              }
+            },
+            {
+              "access": {
+                "span": {
+                  "str": ".c",
+                  "start": 394,
+                  "end": 396
+                },
+                "id": {
+                  "string": "c",
+                  "span": {
                     "str": "c",
                     "start": 395,
                     "end": 396
                   }
                 }
-              },
-              {
-                "access": {
-                  "dot": {
-                    "str": ".",
-                    "start": 396,
-                    "end": 397
-                  },
-                  "id": {
+              }
+            },
+            {
+              "access": {
+                "span": {
+                  "str": ".d",
+                  "start": 396,
+                  "end": 398
+                },
+                "id": {
+                  "string": "d",
+                  "span": {
                     "str": "d",
                     "start": 397,
                     "end": 398
                   }
                 }
-              },
-              {
-                "namedAccess": {
-                  "open": {
-                    "str": "[",
-                    "start": 398,
-                    "end": 399
-                  },
-                  "string": {
+              }
+            },
+            {
+              "namedAccess": {
+                "span": {
+                  "str": "[\"foo:bar/baz\"]",
+                  "start": 398,
+                  "end": 413
+                },
+                "string": {
+                  "value": "foo:bar/baz",
+                  "span": {
                     "str": "\"foo:bar/baz\"",
                     "start": 399,
                     "end": 412
-                  },
-                  "close": {
-                    "str": "]",
-                    "start": 412,
-                    "end": 413
                   }
                 }
-              },
-              {
-                "access": {
-                  "dot": {
-                    "str": ".",
-                    "start": 413,
-                    "end": 414
-                  },
-                  "id": {
+              }
+            },
+            {
+              "access": {
+                "span": {
+                  "str": ".e",
+                  "start": 413,
+                  "end": 415
+                },
+                "id": {
+                  "string": "e",
+                  "span": {
                     "str": "e",
                     "start": 414,
                     "end": 415
                   }
                 }
               }
-            ]
-          },
-          "semicolon": {
-            "str": ";",
-            "start": 415,
-            "end": 416
-          }
+            }
+          ]
         }
       }
     }
