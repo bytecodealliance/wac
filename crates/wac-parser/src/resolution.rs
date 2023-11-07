@@ -9,6 +9,7 @@ use crate::{
 use anyhow::Context;
 use id_arena::{Arena, Id};
 use indexmap::{IndexMap, IndexSet};
+use semver::Version;
 use serde::{Serialize, Serializer};
 use std::{
     collections::{hash_map, HashMap},
@@ -594,7 +595,7 @@ pub trait PackageResolver {
     /// Resolves a package name to the package bytes.
     ///
     /// Returns `Ok(None)` if the package could not be found.
-    fn resolve(&self, name: &str) -> anyhow::Result<Option<Vec<u8>>>;
+    fn resolve(&self, name: &str, version: Option<&Version>) -> anyhow::Result<Option<Vec<u8>>>;
 }
 
 /// Used to resolve packages from the file system.
@@ -620,7 +621,7 @@ impl Default for FileSystemPackageResolver {
 }
 
 impl PackageResolver for FileSystemPackageResolver {
-    fn resolve(&self, name: &str) -> anyhow::Result<Option<Vec<u8>>> {
+    fn resolve(&self, name: &str, _version: Option<&Version>) -> anyhow::Result<Option<Vec<u8>>> {
         let path = if let Some(path) = self.overrides.get(name) {
             if !path.exists() {
                 anyhow::bail!(
@@ -840,6 +841,8 @@ impl fmt::Display for FuncKind {
 pub struct ResolvedDocument {
     /// The name of the package being resolved.
     pub package: String,
+    /// The version of the package being resolved.
+    pub version: Option<Version>,
     /// The definitions in the resolution.
     pub definitions: Definitions,
     /// The items in the resolution.
@@ -860,7 +863,6 @@ impl ResolvedDocument {
     /// Creates a new resolved document from the given document.
     pub fn new<'a>(
         document: &'a ast::Document<'a>,
-        package: impl Into<String>,
         resolver: Option<Box<dyn PackageResolver>>,
     ) -> ResolutionResult<'a, Self> {
         let mut scopes = Arena::new();
@@ -870,7 +872,8 @@ impl ResolvedDocument {
         });
 
         let mut resolution = ResolvedDocument {
-            package: package.into(),
+            package: document.package.name.to_owned(),
+            version: document.package.version.clone(),
             definitions: Default::default(),
             items: Default::default(),
             imports: Default::default(),
@@ -2069,6 +2072,7 @@ impl ResolvedDocument {
         &mut self,
         state: &'b mut ResolutionState<'a>,
         name: &'a str,
+        version: Option<&Version>,
         span: Span<'a>,
     ) -> ResolutionResult<'a, &'b Package> {
         match state.packages.entry(name.to_owned()) {
@@ -2078,7 +2082,7 @@ impl ResolvedDocument {
                 match state
                     .resolver
                     .as_deref()
-                    .and_then(|r| r.resolve(name).transpose())
+                    .and_then(|r| r.resolve(name, version).transpose())
                     .transpose()
                     .map_err(|e| Error::PackageResolutionFailure {
                         name,
@@ -2110,7 +2114,12 @@ impl ResolvedDocument {
             return self.resolve_local_export(state, path);
         }
 
-        let pkg = self.resolve_package(state, path.name, path.package_name_span())?;
+        let pkg = self.resolve_package(
+            state,
+            path.name,
+            path.version.as_ref(),
+            path.package_name_span(),
+        )?;
 
         let mut current = 0;
         let mut parent_ty = None;
@@ -2257,7 +2266,12 @@ impl ResolvedDocument {
         state: &mut ResolutionState<'a>,
         expr: &'a ast::NewExpr<'a>,
     ) -> ResolutionResult<'a, ItemId> {
-        let pkg = self.resolve_package(state, expr.package.name, expr.package.span)?;
+        let pkg = self.resolve_package(
+            state,
+            expr.package.name,
+            expr.package.version.as_ref(),
+            expr.package.span,
+        )?;
         let ty = pkg.ty;
         let require_all = !expr.ellipsis;
 

@@ -1,4 +1,14 @@
 {
+  "docs": [],
+  "package": {
+    "name": "test:comp",
+    "version": null,
+    "span": {
+      "str": "test:comp",
+      "start": 8,
+      "end": 17
+    }
+  },
   "statements": [
     {
       "Type": {
@@ -9,8 +19,8 @@
                 "comment": "u8",
                 "span": {
                   "str": "/// u8",
-                  "start": 0,
-                  "end": 6
+                  "start": 20,
+                  "end": 26
                 }
               }
             ],
@@ -18,8 +28,8 @@
               "string": "a",
               "span": {
                 "str": "a",
-                "start": 12,
-                "end": 13
+                "start": 32,
+                "end": 33
               }
             },
             "kind": {
@@ -38,8 +48,8 @@
                 "comment": "s8",
                 "span": {
                   "str": "/// s8",
-                  "start": 20,
-                  "end": 26
+                  "start": 40,
+                  "end": 46
                 }
               }
             ],
@@ -47,8 +57,8 @@
               "string": "b",
               "span": {
                 "str": "b",
-                "start": 32,
-                "end": 33
+                "start": 52,
+                "end": 53
               }
             },
             "kind": {
@@ -67,8 +77,8 @@
                 "comment": "u16",
                 "span": {
                   "str": "/// u16",
-                  "start": 40,
-                  "end": 47
+                  "start": 60,
+                  "end": 67
                 }
               }
             ],
@@ -76,8 +86,8 @@
               "string": "c",
               "span": {
                 "str": "c",
-                "start": 53,
-                "end": 54
+                "start": 73,
+                "end": 74
               }
             },
             "kind": {
@@ -96,8 +106,8 @@
                 "comment": "s16",
                 "span": {
                   "str": "/// s16",
-                  "start": 62,
-                  "end": 69
+                  "start": 82,
+                  "end": 89
                 }
               }
             ],
@@ -105,8 +115,8 @@
               "string": "d",
               "span": {
                 "str": "d",
-                "start": 75,
-                "end": 76
+                "start": 95,
+                "end": 96
               }
             },
             "kind": {
@@ -125,8 +135,8 @@
                 "comment": "u32",
                 "span": {
                   "str": "/// u32",
-                  "start": 84,
-                  "end": 91
+                  "start": 104,
+                  "end": 111
                 }
               }
             ],
@@ -134,8 +144,8 @@
               "string": "e",
               "span": {
                 "str": "e",
-                "start": 97,
-                "end": 98
+                "start": 117,
+                "end": 118
               }
             },
             "kind": {
@@ -154,8 +164,8 @@
                 "comment": "s32",
                 "span": {
                   "str": "/// s32",
-                  "start": 106,
-                  "end": 113
+                  "start": 126,
+                  "end": 133
                 }
               }
             ],
@@ -163,8 +173,8 @@
               "string": "f",
               "span": {
                 "str": "f",
-                "start": 119,
-                "end": 120
+                "start": 139,
+                "end": 140
               }
             },
             "kind": {
@@ -183,8 +193,8 @@
                 "comment": "u64",
                 "span": {
                   "str": "/// u64",
-                  "start": 128,
-                  "end": 135
+                  "start": 148,
+                  "end": 155
                 }
               }
             ],
@@ -192,8 +202,8 @@
               "string": "g",
               "span": {
                 "str": "g",
-                "start": 141,
-                "end": 142
+                "start": 161,
+                "end": 162
               }
             },
             "kind": {
@@ -212,8 +222,8 @@
                 "comment": "s64",
                 "span": {
                   "str": "/// s64",
-                  "start": 150,
-                  "end": 157
+                  "start": 170,
+                  "end": 177
                 }
               }
             ],
@@ -221,8 +231,8 @@
               "string": "h",
               "span": {
                 "str": "h",
-                "start": 163,
-                "end": 164
+                "start": 183,
+                "end": 184
               }
             },
             "kind": {
@@ -241,8 +251,8 @@
                 "comment": "float32",
                 "span": {
                   "str": "/// float32",
-                  "start": 172,
-                  "end": 183
+                  "start": 192,
+                  "end": 203
                 }
               }
             ],
@@ -250,8 +260,8 @@
               "string": "i",
               "span": {
                 "str": "i",
-                "start": 189,
-                "end": 190
+                "start": 209,
+                "end": 210
               }
             },
             "kind": {
@@ -270,8 +280,8 @@
                 "comment": "float64",
                 "span": {
                   "str": "/// float64",
-                  "start": 202,
-                  "end": 213
+                  "start": 222,
+                  "end": 233
                 }
               }
             ],
@@ -279,8 +289,8 @@
               "string": "j",
               "span": {
                 "str": "j",
-                "start": 219,
-                "end": 220
+                "start": 239,
+                "end": 240
               }
             },
             "kind": {
@@ -299,8 +309,8 @@
                 "comment": "bool",
                 "span": {
                   "str": "/// bool",
-                  "start": 232,
-                  "end": 240
+                  "start": 252,
+                  "end": 260
                 }
               }
             ],
@@ -308,8 +318,8 @@
               "string": "k",
               "span": {
                 "str": "k",
-                "start": 246,
-                "end": 247
+                "start": 266,
+                "end": 267
               }
             },
             "kind": {
@@ -328,8 +338,8 @@
                 "comment": "char",
                 "span": {
                   "str": "/// char",
-                  "start": 256,
-                  "end": 264
+                  "start": 276,
+                  "end": 284
                 }
               }
             ],
@@ -337,8 +347,8 @@
               "string": "l",
               "span": {
                 "str": "l",
-                "start": 270,
-                "end": 271
+                "start": 290,
+                "end": 291
               }
             },
             "kind": {
@@ -357,8 +367,8 @@
                 "comment": "string",
                 "span": {
                   "str": "/// string",
-                  "start": 280,
-                  "end": 290
+                  "start": 300,
+                  "end": 310
                 }
               }
             ],
@@ -366,8 +376,8 @@
               "string": "m",
               "span": {
                 "str": "m",
-                "start": 296,
-                "end": 297
+                "start": 316,
+                "end": 317
               }
             },
             "kind": {
@@ -386,8 +396,8 @@
                 "comment": "tuple<u8, s8>",
                 "span": {
                   "str": "/// tuple<u8, s8>",
-                  "start": 308,
-                  "end": 325
+                  "start": 328,
+                  "end": 345
                 }
               }
             ],
@@ -395,8 +405,8 @@
               "string": "n",
               "span": {
                 "str": "n",
-                "start": 331,
-                "end": 332
+                "start": 351,
+                "end": 352
               }
             },
             "kind": {
@@ -420,8 +430,8 @@
                 "comment": "list<tuple<u8>>",
                 "span": {
                   "str": "/// list<tuple<u8>>",
-                  "start": 350,
-                  "end": 369
+                  "start": 370,
+                  "end": 389
                 }
               }
             ],
@@ -429,8 +439,8 @@
               "string": "o",
               "span": {
                 "str": "o",
-                "start": 375,
-                "end": 376
+                "start": 395,
+                "end": 396
               }
             },
             "kind": {
@@ -455,8 +465,8 @@
                 "comment": "option<string>",
                 "span": {
                   "str": "/// option<string>",
-                  "start": 396,
-                  "end": 414
+                  "start": 416,
+                  "end": 434
                 }
               }
             ],
@@ -464,8 +474,8 @@
               "string": "p",
               "span": {
                 "str": "p",
-                "start": 420,
-                "end": 421
+                "start": 440,
+                "end": 441
               }
             },
             "kind": {
@@ -486,8 +496,8 @@
                 "comment": "result",
                 "span": {
                   "str": "/// result",
-                  "start": 440,
-                  "end": 450
+                  "start": 460,
+                  "end": 470
                 }
               }
             ],
@@ -495,8 +505,8 @@
               "string": "q",
               "span": {
                 "str": "q",
-                "start": 456,
-                "end": 457
+                "start": 476,
+                "end": 477
               }
             },
             "kind": {
@@ -520,8 +530,8 @@
                 "comment": "result<u8>",
                 "span": {
                   "str": "/// result<u8>",
-                  "start": 468,
-                  "end": 482
+                  "start": 488,
+                  "end": 502
                 }
               }
             ],
@@ -529,8 +539,8 @@
               "string": "r",
               "span": {
                 "str": "r",
-                "start": 488,
-                "end": 489
+                "start": 508,
+                "end": 509
               }
             },
             "kind": {
@@ -554,8 +564,8 @@
                 "comment": "result<_, s8>",
                 "span": {
                   "str": "/// result<_, s8>",
-                  "start": 504,
-                  "end": 521
+                  "start": 524,
+                  "end": 541
                 }
               }
             ],
@@ -563,8 +573,8 @@
               "string": "s",
               "span": {
                 "str": "s",
-                "start": 527,
-                "end": 528
+                "start": 547,
+                "end": 548
               }
             },
             "kind": {
@@ -588,8 +598,8 @@
                 "comment": "result<u8, string>",
                 "span": {
                   "str": "/// result<u8, string>",
-                  "start": 546,
-                  "end": 568
+                  "start": 566,
+                  "end": 588
                 }
               }
             ],
@@ -597,8 +607,8 @@
               "string": "t",
               "span": {
                 "str": "t",
-                "start": 574,
-                "end": 575
+                "start": 594,
+                "end": 595
               }
             },
             "kind": {
@@ -622,8 +632,8 @@
                 "comment": "borrow<x>",
                 "span": {
                   "str": "/// borrow<x>",
-                  "start": 598,
-                  "end": 611
+                  "start": 618,
+                  "end": 631
                 }
               }
             ],
@@ -631,8 +641,8 @@
               "string": "u",
               "span": {
                 "str": "u",
-                "start": 617,
-                "end": 618
+                "start": 637,
+                "end": 638
               }
             },
             "kind": {
@@ -641,8 +651,8 @@
                   "string": "x",
                   "span": {
                     "str": "x",
-                    "start": 628,
-                    "end": 629
+                    "start": 648,
+                    "end": 649
                   }
                 }
               }
@@ -660,8 +670,8 @@
                 "comment": "x",
                 "span": {
                   "str": "/// x",
-                  "start": 632,
-                  "end": 637
+                  "start": 652,
+                  "end": 657
                 }
               }
             ],
@@ -669,8 +679,8 @@
               "string": "v",
               "span": {
                 "str": "v",
-                "start": 643,
-                "end": 644
+                "start": 663,
+                "end": 664
               }
             },
             "kind": {
@@ -679,8 +689,8 @@
                   "string": "x",
                   "span": {
                     "str": "x",
-                    "start": 647,
-                    "end": 648
+                    "start": 667,
+                    "end": 668
                   }
                 }
               }
@@ -698,8 +708,8 @@
                 "comment": "keyword",
                 "span": {
                   "str": "/// keyword",
-                  "start": 650,
-                  "end": 661
+                  "start": 670,
+                  "end": 681
                 }
               }
             ],
@@ -707,8 +717,8 @@
               "string": "type",
               "span": {
                 "str": "%type",
-                "start": 667,
-                "end": 672
+                "start": 687,
+                "end": 692
               }
             },
             "kind": {
@@ -717,8 +727,8 @@
                   "string": "v",
                   "span": {
                     "str": "v",
-                    "start": 675,
-                    "end": 676
+                    "start": 695,
+                    "end": 696
                   }
                 }
               }

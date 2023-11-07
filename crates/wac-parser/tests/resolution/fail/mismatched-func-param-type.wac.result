@@ -1,7 +1,7 @@
 mismatched instantiation argument `x`
-    --> tests/resolution/fail/mismatched-func-param-type.wac:6:23
+    --> tests/resolution/fail/mismatched-func-param-type.wac:8:23
      |
-   6 | let i = new foo:bar { x };
+   8 | let i = new foo:bar { x };
      |                       ^
 
 Caused by:

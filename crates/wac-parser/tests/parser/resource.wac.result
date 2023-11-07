@@ -1,4 +1,14 @@
 {
+  "docs": [],
+  "package": {
+    "name": "test:comp",
+    "version": null,
+    "span": {
+      "str": "test:comp",
+      "start": 8,
+      "end": 17
+    }
+  },
   "statements": [
     {
       "Type": {
@@ -8,8 +18,8 @@
             "string": "foo",
             "span": {
               "str": "foo",
-              "start": 10,
-              "end": 13
+              "start": 30,
+              "end": 33
             }
           },
           "items": [
@@ -21,8 +31,8 @@
                       "comment": "Resource without methods",
                       "span": {
                         "str": "/// Resource without methods",
-                        "start": 20,
-                        "end": 48
+                        "start": 40,
+                        "end": 68
                       }
                     }
                   ],
@@ -30,8 +40,8 @@
                     "string": "r1",
                     "span": {
                       "str": "r1",
-                      "start": 62,
-                      "end": 64
+                      "start": 82,
+                      "end": 84
                     }
                   },
                   "methods": []
@@ -46,8 +56,8 @@
                       "comment": "Resource with only constructor",
                       "span": {
                         "str": "/// Resource with only constructor",
-                        "start": 71,
-                        "end": 105
+                        "start": 91,
+                        "end": 125
                       }
                     }
                   ],
@@ -55,8 +65,8 @@
                     "string": "r2",
                     "span": {
                       "str": "r2",
-                      "start": 119,
-                      "end": 121
+                      "start": 139,
+                      "end": 141
                     }
                   },
                   "methods": [
@@ -67,15 +77,15 @@
                             "comment": "Constructor",
                             "span": {
                               "str": "/// Constructor",
-                              "start": 132,
-                              "end": 147
+                              "start": 152,
+                              "end": 167
                             }
                           }
                         ],
                         "span": {
                           "str": "constructor",
-                          "start": 156,
-                          "end": 167
+                          "start": 176,
+                          "end": 187
                         },
                         "params": []
                       }
@@ -92,8 +102,8 @@
                       "comment": "Resource with constructor, instance method, and static method",
                       "span": {
                         "str": "/// Resource with constructor, instance method, and static method",
-                        "start": 182,
-                        "end": 247
+                        "start": 202,
+                        "end": 267
                       }
                     }
                   ],
@@ -101,8 +111,8 @@
                     "string": "r3",
                     "span": {
                       "str": "r3",
-                      "start": 261,
-                      "end": 263
+                      "start": 281,
+                      "end": 283
                     }
                   },
                   "methods": [
@@ -113,15 +123,15 @@
                             "comment": "Constructor",
                             "span": {
                               "str": "/// Constructor",
-                              "start": 274,
-                              "end": 289
+                              "start": 294,
+                              "end": 309
                             }
                           }
                         ],
                         "span": {
                           "str": "constructor",
-                          "start": 298,
-                          "end": 309
+                          "start": 318,
+                          "end": 329
                         },
                         "params": [
                           {
@@ -129,8 +139,8 @@
                               "string": "a",
                               "span": {
                                 "str": "a",
-                                "start": 310,
-                                "end": 311
+                                "start": 330,
+                                "end": 331
                               }
                             },
                             "ty": "u32"
@@ -145,8 +155,8 @@
                             "comment": "Method",
                             "span": {
                               "str": "/// Method",
-                              "start": 327,
-                              "end": 337
+                              "start": 347,
+                              "end": 357
                             }
                           }
                         ],
@@ -154,8 +164,8 @@
                           "string": "a",
                           "span": {
                             "str": "a",
-                            "start": 346,
-                            "end": 347
+                            "start": 366,
+                            "end": 367
                           }
                         },
                         "isStatic": false,
@@ -167,8 +177,8 @@
                                   "string": "b",
                                   "span": {
                                     "str": "b",
-                                    "start": 354,
-                                    "end": 355
+                                    "start": 374,
+                                    "end": 375
                                   }
                                 },
                                 "ty": "u32"
@@ -186,8 +196,8 @@
                             "comment": "Static method",
                             "span": {
                               "str": "/// Static method",
-                              "start": 371,
-                              "end": 388
+                              "start": 391,
+                              "end": 408
                             }
                           }
                         ],
@@ -195,8 +205,8 @@
                           "string": "b",
                           "span": {
                             "str": "b",
-                            "start": 397,
-                            "end": 398
+                            "start": 417,
+                            "end": 418
                           }
                         },
                         "isStatic": true,
@@ -208,8 +218,8 @@
                                   "string": "c",
                                   "span": {
                                     "str": "c",
-                                    "start": 412,
-                                    "end": 413
+                                    "start": 432,
+                                    "end": 433
                                   }
                                 },
                                 "ty": "u32"
@@ -236,8 +246,8 @@
             "string": "bar",
             "span": {
               "str": "bar",
-              "start": 436,
-              "end": 439
+              "start": 456,
+              "end": 459
             }
           },
           "items": [
@@ -249,8 +259,8 @@
                       "comment": "Resource without methods",
                       "span": {
                         "str": "/// Resource without methods",
-                        "start": 446,
-                        "end": 474
+                        "start": 466,
+                        "end": 494
                       }
                     }
                   ],
@@ -258,8 +268,8 @@
                     "string": "r1",
                     "span": {
                       "str": "r1",
-                      "start": 488,
-                      "end": 490
+                      "start": 508,
+                      "end": 510
                     }
                   },
                   "methods": []
@@ -274,8 +284,8 @@
                       "comment": "Resource with only constructor",
                       "span": {
                         "str": "/// Resource with only constructor",
-                        "start": 497,
-                        "end": 531
+                        "start": 517,
+                        "end": 551
                       }
                     }
                   ],
@@ -283,8 +293,8 @@
                     "string": "r2",
                     "span": {
                       "str": "r2",
-                      "start": 545,
-                      "end": 547
+                      "start": 565,
+                      "end": 567
                     }
                   },
                   "methods": [
@@ -295,15 +305,15 @@
                             "comment": "Constructor",
                             "span": {
                               "str": "/// Constructor",
-                              "start": 558,
-                              "end": 573
+                              "start": 578,
+                              "end": 593
                             }
                           }
                         ],
                         "span": {
                           "str": "constructor",
-                          "start": 582,
-                          "end": 593
+                          "start": 602,
+                          "end": 613
                         },
                         "params": []
                       }
@@ -320,8 +330,8 @@
                       "comment": "Resource with constructor, instance method, and static method",
                       "span": {
                         "str": "/// Resource with constructor, instance method, and static method",
-                        "start": 608,
-                        "end": 673
+                        "start": 628,
+                        "end": 693
                       }
                     }
                   ],
@@ -329,8 +339,8 @@
                     "string": "r3",
                     "span": {
                       "str": "r3",
-                      "start": 687,
-                      "end": 689
+                      "start": 707,
+                      "end": 709
                     }
                   },
                   "methods": [
@@ -341,15 +351,15 @@
                             "comment": "Constructor",
                             "span": {
                               "str": "/// Constructor",
-                              "start": 700,
-                              "end": 715
+                              "start": 720,
+                              "end": 735
                             }
                           }
                         ],
                         "span": {
                           "str": "constructor",
-                          "start": 724,
-                          "end": 735
+                          "start": 744,
+                          "end": 755
                         },
                         "params": [
                           {
@@ -357,8 +367,8 @@
                               "string": "a",
                               "span": {
                                 "str": "a",
-                                "start": 736,
-                                "end": 737
+                                "start": 756,
+                                "end": 757
                               }
                             },
                             "ty": "u32"
@@ -373,8 +383,8 @@
                             "comment": "Method",
                             "span": {
                               "str": "/// Method",
-                              "start": 753,
-                              "end": 763
+                              "start": 773,
+                              "end": 783
                             }
                           }
                         ],
@@ -382,8 +392,8 @@
                           "string": "a",
                           "span": {
                             "str": "a",
-                            "start": 772,
-                            "end": 773
+                            "start": 792,
+                            "end": 793
                           }
                         },
                         "isStatic": false,
@@ -395,8 +405,8 @@
                                   "string": "b",
                                   "span": {
                                     "str": "b",
-                                    "start": 780,
-                                    "end": 781
+                                    "start": 800,
+                                    "end": 801
                                   }
                                 },
                                 "ty": "u32"
@@ -414,8 +424,8 @@
                             "comment": "Static method",
                             "span": {
                               "str": "/// Static method",
-                              "start": 797,
-                              "end": 814
+                              "start": 817,
+                              "end": 834
                             }
                           }
                         ],
@@ -423,8 +433,8 @@
                           "string": "b",
                           "span": {
                             "str": "b",
-                            "start": 823,
-                            "end": 824
+                            "start": 843,
+                            "end": 844
                           }
                         },
                         "isStatic": true,
@@ -436,8 +446,8 @@
                                   "string": "c",
                                   "span": {
                                     "str": "c",
-                                    "start": 838,
-                                    "end": 839
+                                    "start": 858,
+                                    "end": 859
                                   }
                                 },
                                 "ty": "u32"

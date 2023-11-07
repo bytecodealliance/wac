@@ -1,7 +1,7 @@
 export name `integrity=<sha256-e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855>` is not valid
-    --> tests/resolution/fail/export-hash-name.wac:2:15
+    --> tests/resolution/fail/export-hash-name.wac:4:15
      |
-   2 | export f with "integrity=<sha256-e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855>";
+   4 | export f with "integrity=<sha256-e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855>";
      |               ^-----------------------------------------------------------------------------------^
 
 Caused by:

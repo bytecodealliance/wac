@@ -1,5 +1,5 @@
 duplicate import `foo`
-    --> tests/resolution/fail/import-duplicate-name.wac:2:15
+    --> tests/resolution/fail/import-duplicate-name.wac:4:15
      |
-   2 | import y with "foo": interface {};
+   4 | import y with "foo": interface {};
      |               ^---^

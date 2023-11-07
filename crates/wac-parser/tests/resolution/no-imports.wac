@@ -1,3 +1,5 @@
+package test:comp@0.3.0;
+
 let i = new foo:bar {};
 
 export i with "i";

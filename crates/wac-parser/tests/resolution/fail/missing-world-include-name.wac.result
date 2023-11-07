@@ -1,5 +1,5 @@
 world `w1` does not have an import or export named `a`
-    --> tests/resolution/fail/missing-world-include-name.wac:6:23
+    --> tests/resolution/fail/missing-world-include-name.wac:8:23
      |
-   6 |     include w1 with { a as b };
+   8 |     include w1 with { a as b };
      |                       ^

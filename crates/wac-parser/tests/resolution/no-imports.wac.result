@@ -1,5 +1,6 @@
 {
-  "package": "test:test",
+  "package": "test:comp",
+  "version": "0.3.0",
   "definitions": {
     "types": [],
     "resources": [],

@@ -3,17 +3,19 @@
 The current WAC grammar:
 
 ```ebnf
-document  ::= statement*
-statement ::= import-statement 
+document  ::= package-decl statement*
+statement ::= import-statement
             | type-statement
             | let-statement
             | export-statement
 
+package-decl ::= `package` package-name `;`
+package-name ::= id (':' id)+ ('@' version)?
+version      ::= <SEMVER>
+
 import-statement ::= 'import' id ('with' string)? ':' import-type ';'
 import-type      ::= package-path | func-type | inline-interface | id
-package-path     ::= package-name ('/' id)+ ('@' package-version)?
-package-name     ::= id (':' id)+
-package-version  ::= <SEMVER>
+package-path     ::= id (':' id)+ ('/' id)+ ('@' version)?
 
 type-statement      ::= interface-decl | world-decl | type-decl
 interface-decl      ::= 'interface' id '{' interface-item* '}'

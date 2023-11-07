@@ -1,3 +1,5 @@
+package test:comp@1.0.0;
+
 import i: foo:bar/i;
 
 export i;

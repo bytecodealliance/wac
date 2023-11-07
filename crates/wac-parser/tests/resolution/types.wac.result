@@ -1,5 +1,6 @@
 {
-  "package": "test:test",
+  "package": "test:comp",
+  "version": null,
   "definitions": {
     "types": [
       {
@@ -115,7 +116,7 @@
     ],
     "interfaces": [
       {
-        "id": "test:test/i",
+        "id": "test:comp/i",
         "exports": {
           "a": {
             "kind": {
@@ -145,7 +146,7 @@
         "scope": 1
       },
       {
-        "id": "test:test/i2",
+        "id": "test:comp/i2",
         "exports": {
           "r": {
             "use": {
@@ -256,7 +257,7 @@
               "func": 3
             }
           },
-          "test:test/i": {
+          "test:comp/i": {
             "kind": {
               "instance": 0
             }
@@ -275,7 +276,7 @@
               }
             }
           },
-          "test:test/i2": {
+          "test:comp/i2": {
             "kind": {
               "instance": 1
             }
@@ -307,7 +308,7 @@
               "func": 3
             }
           },
-          "test:test/i": {
+          "test:comp/i": {
             "kind": {
               "instance": 0
             }
@@ -333,7 +334,7 @@
               }
             }
           },
-          "test:test/i2": {
+          "test:comp/i2": {
             "kind": {
               "instance": 1
             }

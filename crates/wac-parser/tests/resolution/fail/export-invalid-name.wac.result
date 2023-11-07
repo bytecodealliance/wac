@@ -1,7 +1,7 @@
 export name `INVALID!` is not valid
-    --> tests/resolution/fail/export-invalid-name.wac:2:15
+    --> tests/resolution/fail/export-invalid-name.wac:4:15
      |
-   2 | export f with "INVALID!";
+   4 | export f with "INVALID!";
      |               ^--------^
 
 Caused by:

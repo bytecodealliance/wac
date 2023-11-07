@@ -1,5 +1,5 @@
 import `x` conflicts with existing import of the same name in world `w`
-    --> tests/resolution/fail/duplicate-world-import.wac:3:12
+    --> tests/resolution/fail/duplicate-world-import.wac:5:12
      |
-   3 |     import x: func();
+   5 |     import x: func();
      |            ^

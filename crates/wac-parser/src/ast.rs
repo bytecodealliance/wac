@@ -113,6 +113,14 @@ pub enum Error<'a> {
         /// The span of the empty type.
         span: Span<'a>,
     },
+    /// An invalid semantic version was encountered.
+    #[error("`{version}` is not a valid semantic version")]
+    InvalidVersion {
+        /// The invalid version.
+        version: &'a str,
+        /// The span of the version.
+        span: Span<'a>,
+    },
 }
 
 impl Spanned for Error<'_> {
@@ -122,7 +130,8 @@ impl Spanned for Error<'_> {
             | Error::Expected { span, .. }
             | Error::ExpectedEither { span, .. }
             | Error::ExpectedMultiple { span, .. }
-            | Error::EmptyType { span, .. } => *span,
+            | Error::EmptyType { span, .. }
+            | Error::InvalidVersion { span, .. } => *span,
         }
     }
 }
@@ -313,6 +322,10 @@ pub struct Document<'a> {
     /// The path to the document, used for error reporting.
     #[serde(skip)]
     pub path: &'a Path,
+    /// The doc comments for the package.
+    pub docs: Vec<DocComment<'a>>,
+    /// The package name of the document.
+    pub package: PackageName<'a>,
     /// The statements in the document.
     pub statements: Vec<Statement<'a>>,
 }
@@ -323,14 +336,25 @@ impl<'a> Document<'a> {
     /// The given path is used for error reporting.
     pub fn parse(source: &'a str, path: &'a Path) -> ParseResult<'a, Self> {
         let mut lexer = Lexer::new(source).map_err(Error::from)?;
-        let mut statements: Vec<Statement> = Default::default();
 
+        let docs = Parse::parse(&mut lexer)?;
+
+        parse_token(&mut lexer, Token::PackageKeyword)?;
+        let package = Parse::parse(&mut lexer)?;
+        parse_token(&mut lexer, Token::Semicolon)?;
+
+        let mut statements: Vec<Statement> = Default::default();
         while lexer.peek().is_some() {
             statements.push(Parse::parse(&mut lexer)?);
         }
 
         assert!(lexer.next().is_none(), "expected all tokens to be consumed");
-        Ok(Self { path, statements })
+        Ok(Self {
+            path,
+            docs,
+            package,
+            statements,
+        })
     }
 }
 
@@ -468,6 +492,8 @@ mod test {
     fn document_roundtrip() {
         let document = Document::parse(
             r#"/* ignore me */
+/// Doc comment for the package!
+package test:foo:bar@1.0.0;
 /// Doc comment #1!
 import foo: foo:bar/baz;
 /// Doc comment #2!
@@ -499,7 +525,10 @@ export x with "foo";
 
         assert_eq!(
             document.to_string(),
-            r#"/// Doc comment #1!
+            r#"/// Doc comment for the package!
+package test:foo:bar@1.0.0;
+
+/// Doc comment #1!
 import foo: foo:bar/baz;
 
 /// Doc comment #2!

@@ -1,4 +1,14 @@
 {
+  "docs": [],
+  "package": {
+    "name": "test:comp",
+    "version": null,
+    "span": {
+      "str": "test:comp",
+      "start": 8,
+      "end": 17
+    }
+  },
   "statements": [
     {
       "Export": {
@@ -7,15 +17,15 @@
             "comment": "Export an item (default name)",
             "span": {
               "str": "/// Export an item (default name)",
-              "start": 0,
-              "end": 33
+              "start": 20,
+              "end": 53
             }
           }
         ],
         "span": {
           "str": "export",
-          "start": 34,
-          "end": 40
+          "start": 54,
+          "end": 60
         },
         "with": null,
         "expr": {
@@ -24,8 +34,8 @@
               "string": "e",
               "span": {
                 "str": "e",
-                "start": 41,
-                "end": 42
+                "start": 61,
+                "end": 62
               }
             }
           },
@@ -40,15 +50,15 @@
             "comment": "Export an alias of an item (default name)",
             "span": {
               "str": "/// Export an alias of an item (default name)",
-              "start": 45,
-              "end": 90
+              "start": 65,
+              "end": 110
             }
           }
         ],
         "span": {
           "str": "export",
-          "start": 91,
-          "end": 97
+          "start": 111,
+          "end": 117
         },
         "with": null,
         "expr": {
@@ -57,8 +67,8 @@
               "string": "e",
               "span": {
                 "str": "e",
-                "start": 98,
-                "end": 99
+                "start": 118,
+                "end": 119
               }
             }
           },
@@ -67,15 +77,15 @@
               "namedAccess": {
                 "span": {
                   "str": "[\"foo\"]",
-                  "start": 99,
-                  "end": 106
+                  "start": 119,
+                  "end": 126
                 },
                 "string": {
                   "value": "foo",
                   "span": {
                     "str": "\"foo\"",
-                    "start": 100,
-                    "end": 105
+                    "start": 120,
+                    "end": 125
                   }
                 }
               }
@@ -91,22 +101,22 @@
             "comment": "Export an alias of an item with a different name",
             "span": {
               "str": "/// Export an alias of an item with a different name",
-              "start": 109,
-              "end": 161
+              "start": 129,
+              "end": 181
             }
           }
         ],
         "span": {
           "str": "export",
-          "start": 162,
-          "end": 168
+          "start": 182,
+          "end": 188
         },
         "with": {
           "value": "bar",
           "span": {
             "str": "\"bar\"",
-            "start": 183,
-            "end": 188
+            "start": 203,
+            "end": 208
           }
         },
         "expr": {
@@ -115,8 +125,8 @@
               "string": "e",
               "span": {
                 "str": "e",
-                "start": 169,
-                "end": 170
+                "start": 189,
+                "end": 190
               }
             }
           },
@@ -125,15 +135,15 @@
               "namedAccess": {
                 "span": {
                   "str": "[\"foo\"]",
-                  "start": 170,
-                  "end": 177
+                  "start": 190,
+                  "end": 197
                 },
                 "string": {
                   "value": "foo",
                   "span": {
                     "str": "\"foo\"",
-                    "start": 171,
-                    "end": 176
+                    "start": 191,
+                    "end": 196
                   }
                 }
               }

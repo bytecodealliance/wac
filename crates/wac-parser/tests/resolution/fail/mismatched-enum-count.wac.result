@@ -1,7 +1,7 @@
 mismatched instantiation argument `x`
-    --> tests/resolution/fail/mismatched-enum-count.wac:10:23
+    --> tests/resolution/fail/mismatched-enum-count.wac:12:23
      |
-  10 | let i = new foo:bar { x };
+  12 | let i = new foo:bar { x };
      |                       ^
 
 Caused by:

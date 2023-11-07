@@ -1,3 +1,5 @@
+package test:comp;
+
 world w {
     import foo:bar/baz;
     export bar:baz/qux;

@@ -1,5 +1,6 @@
 {
-  "package": "test:test",
+  "package": "test:comp",
+  "version": null,
   "definitions": {
     "types": [
       {
@@ -22,7 +23,7 @@
     ],
     "interfaces": [
       {
-        "id": "test:test/foo",
+        "id": "test:comp/foo",
         "exports": {
           "x": {
             "kind": {

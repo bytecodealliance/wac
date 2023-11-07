@@ -1,3 +1,5 @@
+package test:comp@2.0.0;
+
 world w {
     import x: func();
     export x: func();

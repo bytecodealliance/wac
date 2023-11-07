@@ -1,3 +1,5 @@
+package test:comp;
+
 import f with "x": func();
 
 type x = u32;

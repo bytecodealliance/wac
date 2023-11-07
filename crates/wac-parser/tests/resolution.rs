@@ -88,7 +88,6 @@ fn run_test(test: &Path, ntests: &AtomicUsize) -> Result<()> {
         .map_err(|e| anyhow!("{e}", e = ErrorFormatter::new(test, e, false)))?;
     let result = match ResolvedDocument::new(
         &document,
-        "test:test",
         Some(Box::new(FileSystemPackageResolver::new(
             test.parent().unwrap().join(test.file_stem().unwrap()),
             Default::default(),

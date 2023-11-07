@@ -1,5 +1,6 @@
 {
-  "package": "test:test",
+  "package": "test:comp",
+  "version": "0.0.1",
   "definitions": {
     "types": [
       {
@@ -78,7 +79,7 @@
         "scope": null
       },
       {
-        "id": "test:test/i",
+        "id": "test:comp/i",
         "exports": {
           "a": {
             "use": {

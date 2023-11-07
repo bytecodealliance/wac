@@ -1,7 +1,7 @@
 import name `NOT-VALID-NAME!` is not valid
-    --> tests/resolution/fail/import-invalid-name.wac:1:15
+    --> tests/resolution/fail/import-invalid-name.wac:3:15
      |
-   1 | import x with "NOT-VALID-NAME!": func();
+   3 | import x with "NOT-VALID-NAME!": func();
      |               ^---------------^
 
 Caused by:

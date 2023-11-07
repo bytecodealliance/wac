@@ -1,5 +1,5 @@
 `x` (u32) is not a function type or interface
-    --> tests/resolution/fail/invalid-world-export.wac:4:15
+    --> tests/resolution/fail/invalid-world-export.wac:6:15
      |
-   4 |     import x: x;
+   6 |     import x: x;
      |               ^

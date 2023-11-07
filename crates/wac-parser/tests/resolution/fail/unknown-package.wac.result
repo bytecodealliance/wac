@@ -1,5 +1,5 @@
 unknown package `bar:baz`
-    --> tests/resolution/fail/unknown-package.wac:1:13
+    --> tests/resolution/fail/unknown-package.wac:3:13
      |
-   1 | import foo: bar:baz/qux;
+   3 | import foo: bar:baz/qux;
      |             ^-----^

@@ -1,5 +1,5 @@
 duplicate constructor parameter `a`
-    --> tests/resolution/fail/duplicate-resource-constructor-param.wac:3:29
+    --> tests/resolution/fail/duplicate-resource-constructor-param.wac:5:29
      |
-   3 |         constructor(a: u32, a: string);
+   5 |         constructor(a: u32, a: string);
      |                             ^

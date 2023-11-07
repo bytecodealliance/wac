@@ -1,0 +1,3 @@
+package foo:bar;
+
+import i: foo:bar/baz@1;

@@ -1,2 +1,4 @@
+package test:comp;
+
 import x with "foo": func();
 import y with "foo": interface {};

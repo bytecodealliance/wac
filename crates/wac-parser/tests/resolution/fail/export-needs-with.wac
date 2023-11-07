@@ -1,2 +1,4 @@
+package test:comp;
+
 let i = new foo:bar {};
 export i;

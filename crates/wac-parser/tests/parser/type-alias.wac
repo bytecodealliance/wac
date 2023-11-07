@@ -1,3 +1,5 @@
+package test:comp;
+
 /// u8
 type a = u8;
 /// s8

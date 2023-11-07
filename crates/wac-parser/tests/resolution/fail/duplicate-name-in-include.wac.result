@@ -1,5 +1,5 @@
 duplicate `a` in world include `with` clause
-    --> tests/resolution/fail/duplicate-name-in-include.wac:6:31
+    --> tests/resolution/fail/duplicate-name-in-include.wac:8:31
      |
-   6 |     include w1 with { a as b, a as c};
+   8 |     include w1 with { a as b, a as c};
      |                               ^

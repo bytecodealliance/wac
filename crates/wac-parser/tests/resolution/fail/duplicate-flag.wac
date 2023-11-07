@@ -1,3 +1,5 @@
+package test:comp;
+
 flags f {
     a,
     b,

@@ -1,5 +1,5 @@
 export `x` from world `w1` conflicts with export of the same name in world `w2`
-    --> tests/resolution/fail/world-include-with-conflict.wac:6:28
+    --> tests/resolution/fail/world-include-with-conflict.wac:8:28
      |
-   6 |     include w1 with { a as x };
+   8 |     include w1 with { a as x };
      |                            ^

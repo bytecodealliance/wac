@@ -1,5 +1,5 @@
 duplicate export `x`
-    --> tests/resolution/fail/export-duplicate-name.wac:3:15
+    --> tests/resolution/fail/export-duplicate-name.wac:5:15
      |
-   3 | export f with "x";
+   5 | export f with "x";
      |               ^-^

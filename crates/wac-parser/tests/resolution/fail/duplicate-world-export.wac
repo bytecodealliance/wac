@@ -1,3 +1,5 @@
+package test:comp;
+
 world w {
     export x: func();
     export x: func();

@@ -1,3 +1,5 @@
+package test:comp;
+
 interface foo {
     resource x;
     type f = func(x: borrow<x>);

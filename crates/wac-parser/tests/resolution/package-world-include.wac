@@ -1,3 +1,5 @@
+package test:comp@1.2.3-prerelease;
+
 world w {
     include foo:bar/baz;
 }

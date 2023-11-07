@@ -1,1 +1,3 @@
+package test:comp;
+
 import foo: foo:bar/qux;

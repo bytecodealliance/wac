@@ -1,8 +1,9 @@
 use super::{
-    display, parse_optional, parse_token, DocComment, FuncType, Ident, InlineInterface, Lookahead,
-    Parse, ParseResult, Peek,
+    display, parse_optional, parse_token, DocComment, Error, FuncType, Ident, InlineInterface,
+    Lookahead, Parse, ParseResult, Peek,
 };
 use crate::lexer::{Lexer, Span, Token};
+use semver::Version;
 use serde::Serialize;
 
 /// Represents an import statement in the AST.
@@ -82,7 +83,7 @@ pub struct PackagePath<'a> {
     /// The path segments.
     pub segments: &'a str,
     /// The optional version of the package.
-    pub version: Option<&'a str>,
+    pub version: Option<Version>,
 }
 
 impl<'a> PackagePath<'a> {
@@ -112,7 +113,15 @@ impl<'a> Parse<'a> for PackagePath<'a> {
         let at = s.find('@');
         let name = &s[..slash];
         let segments = &s[slash + 1..at.unwrap_or(slash + s.len() - name.len())];
-        let version = at.map(|at| &s[at + 1..]);
+        let version = at
+            .map(|at| {
+                let version = &s[at + 1..];
+                version.parse().map_err(|_| Error::InvalidVersion {
+                    version,
+                    span: Span::from_span(span.source(), &(span.start + at + 1..span.end)),
+                })
+            })
+            .transpose()?;
 
         Ok(Self {
             span,
@@ -135,6 +144,8 @@ impl Peek for PackagePath<'_> {
 pub struct PackageName<'a> {
     /// The name of the package.
     pub name: &'a str,
+    /// The optional version of the package.
+    pub version: Option<Version>,
     /// The span of the package name,
     pub span: Span<'a>,
 }
@@ -142,8 +153,23 @@ pub struct PackageName<'a> {
 impl<'a> Parse<'a> for PackageName<'a> {
     fn parse(lexer: &mut Lexer<'a>) -> ParseResult<'a, Self> {
         let span = parse_token(lexer, Token::PackageName)?;
-        let name = span.as_str();
-        Ok(Self { name, span })
+        let s = span.as_str();
+        let at = s.find('@');
+        let name = at.map(|at| &s[..at]).unwrap_or(s);
+        let version = at
+            .map(|at| {
+                let version = &s[at + 1..];
+                version.parse().map_err(|_| Error::InvalidVersion {
+                    version,
+                    span: Span::from_span(span.source(), &(span.start + at + 1..span.end)),
+                })
+            })
+            .transpose()?;
+        Ok(Self {
+            name,
+            version,
+            span,
+        })
     }
 }
 

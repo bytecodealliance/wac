@@ -1,3 +1,5 @@
+package test:comp;
+
 type x = string;
 
 record r {

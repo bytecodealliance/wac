@@ -1,5 +1,5 @@
-export `x` conflicts with record definition at tests/resolution/fail/export-conflict-type.wac:3:8
-    --> tests/resolution/fail/export-conflict-type.wac:7:15
+export `x` conflicts with record definition at tests/resolution/fail/export-conflict-type.wac:5:8
+    --> tests/resolution/fail/export-conflict-type.wac:9:15
      |
-   7 | export f with "x";
+   9 | export f with "x";
      |               ^-^

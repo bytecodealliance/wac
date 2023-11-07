@@ -1,4 +1,14 @@
 {
+  "docs": [],
+  "package": {
+    "name": "test:comp",
+    "version": null,
+    "span": {
+      "str": "test:comp",
+      "start": 8,
+      "end": 17
+    }
+  },
   "statements": [
     {
       "Let": {
@@ -7,8 +17,8 @@
             "comment": "Instantiate without args",
             "span": {
               "str": "/// Instantiate without args",
-              "start": 0,
-              "end": 28
+              "start": 20,
+              "end": 48
             }
           }
         ],
@@ -16,8 +26,8 @@
           "string": "a",
           "span": {
             "str": "a",
-            "start": 33,
-            "end": 34
+            "start": 53,
+            "end": 54
           }
         },
         "expr": {
@@ -25,10 +35,11 @@
             "new": {
               "package": {
                 "name": "foo:bar",
+                "version": null,
                 "span": {
                   "str": "foo:bar",
-                  "start": 41,
-                  "end": 48
+                  "start": 61,
+                  "end": 68
                 }
               },
               "arguments": [],
@@ -46,8 +57,8 @@
             "comment": "Instantiation with import-propagation.",
             "span": {
               "str": "/// Instantiation with import-propagation.",
-              "start": 54,
-              "end": 96
+              "start": 74,
+              "end": 116
             }
           }
         ],
@@ -55,8 +66,8 @@
           "string": "b",
           "span": {
             "str": "b",
-            "start": 101,
-            "end": 102
+            "start": 121,
+            "end": 122
           }
         },
         "expr": {
@@ -64,10 +75,11 @@
             "new": {
               "package": {
                 "name": "foo:bar",
+                "version": "1.0.0",
                 "span": {
-                  "str": "foo:bar",
-                  "start": 109,
-                  "end": 116
+                  "str": "foo:bar@1.0.0",
+                  "start": 129,
+                  "end": 142
                 }
               },
               "arguments": [],
@@ -85,8 +97,8 @@
             "comment": "Instantiation with arguments",
             "span": {
               "str": "/// Instantiation with arguments",
-              "start": 127,
-              "end": 159
+              "start": 153,
+              "end": 185
             }
           }
         ],
@@ -94,8 +106,8 @@
           "string": "c",
           "span": {
             "str": "c",
-            "start": 164,
-            "end": 165
+            "start": 190,
+            "end": 191
           }
         },
         "expr": {
@@ -103,10 +115,11 @@
             "new": {
               "package": {
                 "name": "foo:bar",
+                "version": "2.0.0",
                 "span": {
-                  "str": "foo:bar",
-                  "start": 172,
-                  "end": 179
+                  "str": "foo:bar@2.0.0",
+                  "start": 198,
+                  "end": 211
                 }
               },
               "arguments": [
@@ -115,8 +128,8 @@
                     "string": "a",
                     "span": {
                       "str": "a",
-                      "start": 182,
-                      "end": 183
+                      "start": 214,
+                      "end": 215
                     }
                   }
                 },
@@ -125,8 +138,8 @@
                     "string": "b",
                     "span": {
                       "str": "b",
-                      "start": 185,
-                      "end": 186
+                      "start": 217,
+                      "end": 218
                     }
                   }
                 },
@@ -137,8 +150,8 @@
                         "value": "c",
                         "span": {
                           "str": "\"c\"",
-                          "start": 188,
-                          "end": 191
+                          "start": 220,
+                          "end": 223
                         }
                       }
                     },
@@ -148,8 +161,8 @@
                           "string": "c",
                           "span": {
                             "str": "c",
-                            "start": 193,
-                            "end": 194
+                            "start": 225,
+                            "end": 226
                           }
                         }
                       },
@@ -172,8 +185,8 @@
             "comment": "Instantiation with arguments and import-propagation.",
             "span": {
               "str": "/// Instantiation with arguments and import-propagation.",
-              "start": 200,
-              "end": 256
+              "start": 232,
+              "end": 288
             }
           }
         ],
@@ -181,8 +194,8 @@
           "string": "d",
           "span": {
             "str": "d",
-            "start": 261,
-            "end": 262
+            "start": 293,
+            "end": 294
           }
         },
         "expr": {
@@ -190,10 +203,11 @@
             "new": {
               "package": {
                 "name": "foo:bar",
+                "version": "3.0.0",
                 "span": {
-                  "str": "foo:bar",
-                  "start": 269,
-                  "end": 276
+                  "str": "foo:bar@3.0.0",
+                  "start": 301,
+                  "end": 314
                 }
               },
               "arguments": [
@@ -202,8 +216,8 @@
                     "string": "a",
                     "span": {
                       "str": "a",
-                      "start": 279,
-                      "end": 280
+                      "start": 317,
+                      "end": 318
                     }
                   }
                 },
@@ -214,8 +228,8 @@
                         "value": "b",
                         "span": {
                           "str": "\"b\"",
-                          "start": 282,
-                          "end": 285
+                          "start": 320,
+                          "end": 323
                         }
                       }
                     },
@@ -226,10 +240,11 @@
                             "new": {
                               "package": {
                                 "name": "foo:bar",
+                                "version": null,
                                 "span": {
                                   "str": "foo:bar",
-                                  "start": 292,
-                                  "end": 299
+                                  "start": 330,
+                                  "end": 337
                                 }
                               },
                               "arguments": [],
@@ -250,8 +265,8 @@
                         "string": "c",
                         "span": {
                           "str": "c",
-                          "start": 306,
-                          "end": 307
+                          "start": 344,
+                          "end": 345
                         }
                       }
                     },
@@ -261,8 +276,8 @@
                           "string": "c",
                           "span": {
                             "str": "c",
-                            "start": 309,
-                            "end": 310
+                            "start": 347,
+                            "end": 348
                           }
                         }
                       },
@@ -285,8 +300,8 @@
             "comment": "Nested expression",
             "span": {
               "str": "/// Nested expression",
-              "start": 320,
-              "end": 341
+              "start": 358,
+              "end": 379
             }
           }
         ],
@@ -294,8 +309,8 @@
           "string": "e",
           "span": {
             "str": "e",
-            "start": 346,
-            "end": 347
+            "start": 384,
+            "end": 385
           }
         },
         "expr": {
@@ -306,8 +321,8 @@
                   "string": "b",
                   "span": {
                     "str": "b",
-                    "start": 351,
-                    "end": 352
+                    "start": 389,
+                    "end": 390
                   }
                 }
               },
@@ -325,8 +340,8 @@
             "comment": "Access expression",
             "span": {
               "str": "/// Access expression",
-              "start": 356,
-              "end": 377
+              "start": 394,
+              "end": 415
             }
           }
         ],
@@ -334,8 +349,8 @@
           "string": "f",
           "span": {
             "str": "f",
-            "start": 382,
-            "end": 383
+            "start": 420,
+            "end": 421
           }
         },
         "expr": {
@@ -344,8 +359,8 @@
               "string": "e",
               "span": {
                 "str": "e",
-                "start": 386,
-                "end": 387
+                "start": 424,
+                "end": 425
               }
             }
           },
@@ -354,15 +369,15 @@
               "namedAccess": {
                 "span": {
                   "str": "[\"b-c\"]",
-                  "start": 387,
-                  "end": 394
+                  "start": 425,
+                  "end": 432
                 },
                 "string": {
                   "value": "b-c",
                   "span": {
                     "str": "\"b-c\"",
-                    "start": 388,
-                    "end": 393
+                    "start": 426,
+                    "end": 431
                   }
                 }
               }
@@ -371,15 +386,15 @@
               "access": {
                 "span": {
                   "str": ".c",
-                  "start": 394,
-                  "end": 396
+                  "start": 432,
+                  "end": 434
                 },
                 "id": {
                   "string": "c",
                   "span": {
                     "str": "c",
-                    "start": 395,
-                    "end": 396
+                    "start": 433,
+                    "end": 434
                   }
                 }
               }
@@ -388,15 +403,15 @@
               "access": {
                 "span": {
                   "str": ".d",
-                  "start": 396,
-                  "end": 398
+                  "start": 434,
+                  "end": 436
                 },
                 "id": {
                   "string": "d",
                   "span": {
                     "str": "d",
-                    "start": 397,
-                    "end": 398
+                    "start": 435,
+                    "end": 436
                   }
                 }
               }
@@ -405,15 +420,15 @@
               "namedAccess": {
                 "span": {
                   "str": "[\"foo:bar/baz\"]",
-                  "start": 398,
-                  "end": 413
+                  "start": 436,
+                  "end": 451
                 },
                 "string": {
                   "value": "foo:bar/baz",
                   "span": {
                     "str": "\"foo:bar/baz\"",
-                    "start": 399,
-                    "end": 412
+                    "start": 437,
+                    "end": 450
                   }
                 }
               }
@@ -422,15 +437,15 @@
               "access": {
                 "span": {
                   "str": ".e",
-                  "start": 413,
-                  "end": 415
+                  "start": 451,
+                  "end": 453
                 },
                 "id": {
                   "string": "e",
                   "span": {
                     "str": "e",
-                    "start": 414,
-                    "end": 415
+                    "start": 452,
+                    "end": 453
                   }
                 }
               }

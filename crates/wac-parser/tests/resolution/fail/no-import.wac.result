@@ -1,5 +1,5 @@
 component `foo:bar` has no import named `x`
-    --> tests/resolution/fail/no-import.wac:2:23
+    --> tests/resolution/fail/no-import.wac:4:23
      |
-   2 | let i = new foo:bar { x };
+   4 | let i = new foo:bar { x };
      |                       ^
