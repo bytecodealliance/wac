@@ -1,0 +1,5 @@
+import f with "x": func();
+
+type x = u32;
+
+export f;

@@ -15,6 +15,7 @@ use std::{
     fmt, fs,
     path::{Path, PathBuf},
 };
+use wasmparser::names::{ComponentName, ComponentNameKind};
 use wit_parser::Resolve;
 
 mod package;
@@ -487,6 +488,53 @@ pub enum Error<'a> {
         /// The span where the error occurred.
         span: Span<'a>,
     },
+    /// An export requires a with clause.
+    #[error("export statement requires a `with` clause as the export name cannot be inferred")]
+    ExportRequiresWith {
+        /// The span where the error occurred.
+        span: Span<'a>,
+    },
+    /// An export conflicts with a definition.
+    #[error("export `{name}` conflicts with {kind} definition at {path}:{line}:{column}{hint}", path = .path.display())]
+    ExportConflict {
+        /// The name of the export.
+        name: String,
+        /// The path of the source file.
+        path: &'a Path,
+        /// The kind of the definition.
+        kind: &'static str,
+        /// The line of the definition.
+        line: usize,
+        /// The column of the definition.
+        column: usize,
+        /// The hint of the error.
+        hint: &'static str,
+        /// The span where the error occurred.
+        span: Span<'a>,
+    },
+    /// A duplicate extern name was encountered.
+    #[error("duplicate {kind} `{name}`")]
+    DuplicateExternName {
+        /// The name of the export.
+        name: String,
+        /// The kind of extern name (e.g. `import` or `export`).
+        kind: &'static str,
+        /// The span where the error occurred.
+        span: Span<'a>,
+    },
+    /// An invalid extern name was encountered.
+    #[error("{kind} name `{name}` is not valid")]
+    InvalidExternName {
+        /// The name of the export.
+        name: String,
+        /// The kind of extern name (e.g. `import` or `export`).
+        kind: &'static str,
+        /// The span where the error occurred.
+        span: Span<'a>,
+        /// The underlying validation error.
+        #[source]
+        source: anyhow::Error,
+    },
 }
 
 impl Spanned for Error<'_> {
@@ -527,7 +575,11 @@ impl Spanned for Error<'_> {
             | Error::MissingInstantiationArg { span, .. }
             | Error::Inaccessible { span, .. }
             | Error::InaccessibleInterface { span, .. }
-            | Error::MissingInstanceExport { span, .. } => *span,
+            | Error::MissingInstanceExport { span, .. }
+            | Error::ExportRequiresWith { span }
+            | Error::ExportConflict { span, .. }
+            | Error::DuplicateExternName { span, .. }
+            | Error::InvalidExternName { span, .. } => *span,
         }
     }
 }
@@ -691,11 +743,8 @@ pub enum ItemSource {
     /// The item comes from a use statement.
     Use,
     /// The item comes from an import,
-    Import {
-        /// The import string to use.
-        with: Option<String>,
-    },
-    /// The item comes from an alias.
+    Import(String),
+    /// The item comes from an instance alias.
     Alias {
         /// The instance being aliased.
         #[serde(serialize_with = "serialize_id")]
@@ -796,6 +845,12 @@ pub struct ResolvedDocument {
     /// The items in the resolution.
     #[serde(serialize_with = "serialize_arena")]
     pub items: Arena<Item>,
+    /// The imported items from the composition.
+    #[serde(serialize_with = "serialize_id_map")]
+    pub imports: IndexMap<String, ItemId>,
+    /// The exported items from the composition.
+    #[serde(serialize_with = "serialize_id_map")]
+    pub exports: IndexMap<String, ItemId>,
     /// The name scopes in the resolution.
     #[serde(serialize_with = "serialize_arena")]
     pub scopes: Arena<Scope>,
@@ -818,6 +873,8 @@ impl ResolvedDocument {
             package: package.into(),
             definitions: Default::default(),
             items: Default::default(),
+            imports: Default::default(),
+            exports: Default::default(),
             scopes,
         };
 
@@ -833,10 +890,10 @@ impl ResolvedDocument {
 
         for stmt in &document.statements {
             match stmt {
-                ast::Statement::Import(i) => resolution.import(&mut state, i)?,
+                ast::Statement::Import(i) => resolution.import_statement(&mut state, i)?,
                 ast::Statement::Type(t) => resolution.type_statement(&mut state, t)?,
                 ast::Statement::Let(l) => resolution.let_statement(&mut state, l)?,
-                ast::Statement::Export(_) => todo!("implement export statements"),
+                ast::Statement::Export(e) => resolution.export_statement(&mut state, e)?,
             }
         }
 
@@ -911,7 +968,7 @@ impl ResolvedDocument {
         Ok(())
     }
 
-    fn import<'a>(
+    fn import_statement<'a>(
         &mut self,
         state: &mut ResolutionState<'a>,
         stmt: &'a ast::ImportStatement<'a>,
@@ -933,12 +990,49 @@ impl ResolvedDocument {
             _ => kind,
         };
 
+        let (name, span) = if let Some(with) = stmt.with {
+            (with.value, with.span)
+        } else {
+            // If the item is an instance with an id, use the id
+            if let ItemKind::Instance(id) = kind {
+                if let Some(id) = &self.definitions.interfaces[id].id {
+                    (id.as_str(), stmt.id.span)
+                } else {
+                    (stmt.id.string, stmt.id.span)
+                }
+            } else {
+                (stmt.id.string, stmt.id.span)
+            }
+        };
+
+        // Validate the import name
+        ComponentName::new(name, 0).map_err(|e| {
+            let msg = e.to_string();
+            Error::InvalidExternName {
+                name: name.to_string(),
+                kind: "import",
+                span,
+                source: anyhow::anyhow!(
+                    "{msg}",
+                    msg = msg.strip_suffix(" (at offset 0x0)").unwrap_or(&msg)
+                ),
+            }
+        })?;
+
+        if self.imports.contains_key(name) {
+            return Err(Error::DuplicateExternName {
+                name: name.to_owned(),
+                kind: "import",
+                span,
+            });
+        }
+
         let id = self.items.alloc(Item {
             kind,
-            source: ItemSource::Import {
-                with: stmt.with.as_ref().map(|s| s.value.to_owned()),
-            },
+            source: ItemSource::Import(name.to_owned()),
         });
+
+        self.imports.insert(name.to_owned(), id);
 
         self.register_name(state, stmt.id, id)
     }
@@ -962,6 +1056,88 @@ impl ResolvedDocument {
     ) -> ResolutionResult<'a, ()> {
         let item = self.expr(state, &stmt.expr)?;
         self.register_name(state, stmt.id, item)
+    }
+
+    fn export_statement<'a>(
+        &mut self,
+        state: &mut ResolutionState<'a>,
+        stmt: &'a ast::ExportStatement<'a>,
+    ) -> ResolutionResult<'a, ()> {
+        let item = self.expr(state, &stmt.expr)?;
+        let (name, span) = if let Some(name) = stmt.with {
+            (name.value, name.span)
+        } else {
+            (
+                self.infer_export_name(item)
+                    .ok_or(Error::ExportRequiresWith { span: stmt.span })?,
+                stmt.span,
+            )
+        };
+
+        // Validate the export name
+        match ComponentName::new(name, 0)
+            .map_err(|e| {
+                let msg = e.to_string();
+                Error::InvalidExternName {
+                    name: name.to_string(),
+                    kind: "export",
+                    span,
+                    source: anyhow::anyhow!(
+                        "{msg}",
+                        msg = msg.strip_suffix(" (at offset 0x0)").unwrap_or(&msg)
+                    ),
+                }
+            })?
+            .kind()
+        {
+            ComponentNameKind::Hash(_)
+            | ComponentNameKind::Url(_)
+            | ComponentNameKind::Dependency(_) => {
+                return Err(Error::InvalidExternName {
+                    name: name.to_string(),
+                    kind: "export",
+                    span,
+                    source: anyhow::anyhow!("export name cannot be a hash, url, or dependency"),
+                });
+            }
+            _ => {}
+        }
+
+        if self.exports.contains_key(name) {
+            return Err(Error::DuplicateExternName {
+                name: name.to_owned(),
+                kind: "export",
+                span,
+            });
+        }
+
+        // Ensure the export does not conflict with a defined item as
+        // they are implicitly exported.
+        if let Some(item_id) = self.scopes[state.root_scope].get(name) {
+            let item = &self.items[item_id];
+            if let ItemSource::Definition = &item.source {
+                let offset = state.offsets[&item_id];
+                let (line, column) = line_column(stmt.span.source(), offset);
+                return Err(Error::ExportConflict {
+                    name: name.to_owned(),
+                    path: state.document.path,
+                    kind: item.kind.as_str(&self.definitions),
+                    line,
+                    column,
+                    hint: if stmt.with.is_some() {
+                        ""
+                    } else {
+                        " (consider using a `with` clause to use a different name)"
+                    },
+                    span,
+                });
+            }
+        }
+
+        let prev = self.exports.insert(name.to_owned(), item);
+        assert!(prev.is_none());
+
+        Ok(())
     }
 
     fn inline_interface<'a>(
@@ -2183,7 +2359,7 @@ impl ResolvedDocument {
 
         // If the item comes from an import or an alias, try the name associated with it
         match &item.source {
-            ItemSource::Import { with: Some(name) } | ItemSource::Alias { export: name, .. } => {
+            ItemSource::Import(name) | ItemSource::Alias { export: name, .. } => {
                 if world.imports.contains_key(name) {
                     return Ok((name.clone(), item_id, ident.span));
                 }
@@ -2227,6 +2403,29 @@ impl ResolvedDocument {
         }
 
         Some(name)
+    }
+
+    fn infer_export_name(&self, item_id: ItemId) -> Option<&str> {
+        let item = &self.items[item_id];
+
+        // If the item is an instance with an id, try the id.
+        if let ItemKind::Instance(id) = item.kind {
+            if let Some(id) = &self.definitions.interfaces[id].id {
+                if !self.exports.contains_key(id.as_str()) {
+                    return Some(id);
+                }
+            }
+        }
+
+        // If the item comes from an import or an alias, try the name associated with it
+        match &item.source {
+            ItemSource::Import(name) | ItemSource::Alias { export: name, .. }
+                if !self.exports.contains_key(name) =>
+            {
+                Some(name)
+            }
+            _ => None,
+        }
     }
 
     fn postfix_expr<'a>(

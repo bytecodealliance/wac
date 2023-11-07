@@ -1,0 +1,8 @@
+export name `url=<https://example.com/foo>` is not valid
+    --> tests/resolution/fail/export-url-name.wac:2:15
+     |
+   2 | export f with "url=<https://example.com/foo>";
+     |               ^-----------------------------^
+
+Caused by:
+    export name cannot be a hash, url, or dependency

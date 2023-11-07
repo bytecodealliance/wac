@@ -1,0 +1,8 @@
+export name `locked-dep=<foo:bar>` is not valid
+    --> tests/resolution/fail/export-dep-name.wac:2:15
+     |
+   2 | export f with "locked-dep=<foo:bar>";
+     |               ^--------------------^
+
+Caused by:
+    export name cannot be a hash, url, or dependency

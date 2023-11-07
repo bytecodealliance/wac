@@ -3,3 +3,7 @@ type a = u32;
 type b = string;
 
 type c = func();
+
+export a with "a2";
+export b with "b2";
+export c with "c2";

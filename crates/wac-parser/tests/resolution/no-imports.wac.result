@@ -26,6 +26,10 @@
       }
     }
   ],
+  "imports": {},
+  "exports": {
+    "i": 0
+  },
   "scopes": [
     {
       "parent": null,

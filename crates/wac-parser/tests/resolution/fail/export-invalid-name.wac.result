@@ -1,0 +1,8 @@
+export name `INVALID!` is not valid
+    --> tests/resolution/fail/export-invalid-name.wac:2:15
+     |
+   2 | export f with "INVALID!";
+     |               ^--------^
+
+Caused by:
+    `INVALID!` is not in kebab case

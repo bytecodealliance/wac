@@ -12,6 +12,11 @@
             }
           }
         ],
+        "span": {
+          "str": "export",
+          "start": 34,
+          "end": 40
+        },
         "with": null,
         "expr": {
           "primary": {
@@ -40,6 +45,11 @@
             }
           }
         ],
+        "span": {
+          "str": "export",
+          "start": 91,
+          "end": 97
+        },
         "with": null,
         "expr": {
           "primary": {
@@ -86,6 +96,11 @@
             }
           }
         ],
+        "span": {
+          "str": "export",
+          "start": 162,
+          "end": 168
+        },
         "with": {
           "value": "bar",
           "span": {

@@ -1,0 +1,7 @@
+import f: func();
+
+world foo {
+
+}
+
+export f with "foo";

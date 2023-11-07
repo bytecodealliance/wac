@@ -1,0 +1,2 @@
+import x with "foo": func();
+import y with "foo": interface {};

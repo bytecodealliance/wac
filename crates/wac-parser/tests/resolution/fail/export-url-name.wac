@@ -1,0 +1,2 @@
+import f: func();
+export f with "url=<https://example.com/foo>";

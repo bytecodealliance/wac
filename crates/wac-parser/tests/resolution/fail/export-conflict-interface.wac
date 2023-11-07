@@ -1,0 +1,7 @@
+import f: func();
+
+interface foo {
+
+}
+
+export f with "foo";

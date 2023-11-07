@@ -2,7 +2,7 @@ use super::{
     display, expr::Expr, parse_optional, parse_token, DocComment, Lookahead, Parse, ParseResult,
     Peek,
 };
-use crate::lexer::{Lexer, Token};
+use crate::lexer::{Lexer, Span, Token};
 use serde::Serialize;
 
 /// Represents an export statement in the AST.
@@ -11,6 +11,8 @@ use serde::Serialize;
 pub struct ExportStatement<'a> {
     /// The doc comments for the statement.
     pub docs: Vec<DocComment<'a>>,
+    /// The span of the export keyword.
+    pub span: Span<'a>,
     /// The optional `with` string.
     pub with: Option<super::String<'a>>,
     /// The expression to export.
@@ -20,11 +22,16 @@ pub struct ExportStatement<'a> {
 impl<'a> Parse<'a> for ExportStatement<'a> {
     fn parse(lexer: &mut Lexer<'a>) -> ParseResult<'a, Self> {
         let docs = Parse::parse(lexer)?;
-        parse_token(lexer, Token::ExportKeyword)?;
+        let span = parse_token(lexer, Token::ExportKeyword)?;
         let expr = Parse::parse(lexer)?;
         let with = parse_optional(lexer, Token::WithKeyword, Parse::parse)?;
         parse_token(lexer, Token::Semicolon)?;
-        Ok(Self { docs, expr, with })
+        Ok(Self {
+            docs,
+            span,
+            expr,
+            with,
+        })
     }
 }
 

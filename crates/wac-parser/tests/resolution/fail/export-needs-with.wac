@@ -1,3 +1,2 @@
 let i = new foo:bar {};
-
-export i with "i";
+export i;
