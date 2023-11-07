@@ -1,0 +1,5 @@
+implicit instantiation argument `foo` (function) conflicts with an explicit import at tests/resolution/fail/implicit-arg-conflict.wac:3:8
+    --> tests/resolution/fail/implicit-arg-conflict.wac:5:13
+     |
+   5 | let x = new foo:bar { ... };
+     |             ^-----^

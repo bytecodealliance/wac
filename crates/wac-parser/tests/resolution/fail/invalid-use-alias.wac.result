@@ -1,4 +1,4 @@
-`b` was previously defined at tests/resolution/fail/invalid-use-alias.wac:8:10
+use of type `b` conflicts with an export of the same name
     --> tests/resolution/fail/invalid-use-alias.wac:9:17
      |
    9 |     use a.{a as b};

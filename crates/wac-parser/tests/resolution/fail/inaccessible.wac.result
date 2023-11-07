@@ -1,0 +1,5 @@
+a function cannot be accessed
+    --> tests/resolution/fail/inaccessible.wac:5:10
+     |
+   5 | let x = f.foo;
+     |          ^--^

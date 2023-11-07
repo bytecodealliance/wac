@@ -33,7 +33,13 @@
               }
             },
             "kind": {
-              "type": "u8"
+              "type": {
+                "u8": {
+                  "str": "u8",
+                  "start": 36,
+                  "end": 38
+                }
+              }
             }
           }
         }
@@ -62,7 +68,13 @@
               }
             },
             "kind": {
-              "type": "s8"
+              "type": {
+                "s8": {
+                  "str": "s8",
+                  "start": 56,
+                  "end": 58
+                }
+              }
             }
           }
         }
@@ -91,7 +103,13 @@
               }
             },
             "kind": {
-              "type": "u16"
+              "type": {
+                "u16": {
+                  "str": "u16",
+                  "start": 77,
+                  "end": 80
+                }
+              }
             }
           }
         }
@@ -120,7 +138,13 @@
               }
             },
             "kind": {
-              "type": "s16"
+              "type": {
+                "s16": {
+                  "str": "s16",
+                  "start": 99,
+                  "end": 102
+                }
+              }
             }
           }
         }
@@ -149,7 +173,13 @@
               }
             },
             "kind": {
-              "type": "u32"
+              "type": {
+                "u32": {
+                  "str": "u32",
+                  "start": 121,
+                  "end": 124
+                }
+              }
             }
           }
         }
@@ -178,7 +208,13 @@
               }
             },
             "kind": {
-              "type": "s32"
+              "type": {
+                "s32": {
+                  "str": "s32",
+                  "start": 143,
+                  "end": 146
+                }
+              }
             }
           }
         }
@@ -207,7 +243,13 @@
               }
             },
             "kind": {
-              "type": "u64"
+              "type": {
+                "u64": {
+                  "str": "u64",
+                  "start": 165,
+                  "end": 168
+                }
+              }
             }
           }
         }
@@ -236,7 +278,13 @@
               }
             },
             "kind": {
-              "type": "s64"
+              "type": {
+                "s64": {
+                  "str": "s64",
+                  "start": 187,
+                  "end": 190
+                }
+              }
             }
           }
         }
@@ -265,7 +313,13 @@
               }
             },
             "kind": {
-              "type": "float32"
+              "type": {
+                "float32": {
+                  "str": "float32",
+                  "start": 213,
+                  "end": 220
+                }
+              }
             }
           }
         }
@@ -294,7 +348,13 @@
               }
             },
             "kind": {
-              "type": "float64"
+              "type": {
+                "float64": {
+                  "str": "float64",
+                  "start": 243,
+                  "end": 250
+                }
+              }
             }
           }
         }
@@ -323,7 +383,13 @@
               }
             },
             "kind": {
-              "type": "bool"
+              "type": {
+                "bool": {
+                  "str": "bool",
+                  "start": 270,
+                  "end": 274
+                }
+              }
             }
           }
         }
@@ -352,7 +418,13 @@
               }
             },
             "kind": {
-              "type": "char"
+              "type": {
+                "char": {
+                  "str": "char",
+                  "start": 294,
+                  "end": 298
+                }
+              }
             }
           }
         }
@@ -381,7 +453,13 @@
               }
             },
             "kind": {
-              "type": "string"
+              "type": {
+                "string": {
+                  "str": "string",
+                  "start": 320,
+                  "end": 326
+                }
+              }
             }
           }
         }
@@ -412,8 +490,27 @@
             "kind": {
               "type": {
                 "tuple": [
-                  "u8",
-                  "s8"
+                  [
+                    {
+                      "u8": {
+                        "str": "u8",
+                        "start": 361,
+                        "end": 363
+                      }
+                    },
+                    {
+                      "s8": {
+                        "str": "s8",
+                        "start": 365,
+                        "end": 367
+                      }
+                    }
+                  ],
+                  {
+                    "str": "tuple<u8, s8>",
+                    "start": 355,
+                    "end": 368
+                  }
                 ]
               }
             }
@@ -445,11 +542,31 @@
             },
             "kind": {
               "type": {
-                "list": {
-                  "tuple": [
-                    "u8"
-                  ]
-                }
+                "list": [
+                  {
+                    "tuple": [
+                      [
+                        {
+                          "u8": {
+                            "str": "u8",
+                            "start": 410,
+                            "end": 412
+                          }
+                        }
+                      ],
+                      {
+                        "str": "tuple<u8>",
+                        "start": 404,
+                        "end": 413
+                      }
+                    ]
+                  },
+                  {
+                    "str": "list<tuple<u8>>",
+                    "start": 399,
+                    "end": 414
+                  }
+                ]
               }
             }
           }
@@ -480,7 +597,20 @@
             },
             "kind": {
               "type": {
-                "option": "string"
+                "option": [
+                  {
+                    "string": {
+                      "str": "string",
+                      "start": 451,
+                      "end": 457
+                    }
+                  },
+                  {
+                    "str": "option<string>",
+                    "start": 444,
+                    "end": 458
+                  }
+                ]
               }
             }
           }
@@ -513,7 +643,12 @@
               "type": {
                 "result": {
                   "ok": null,
-                  "err": null
+                  "err": null,
+                  "span": {
+                    "str": "result",
+                    "start": 480,
+                    "end": 486
+                  }
                 }
               }
             }
@@ -546,8 +681,19 @@
             "kind": {
               "type": {
                 "result": {
-                  "ok": "u8",
-                  "err": null
+                  "ok": {
+                    "u8": {
+                      "str": "u8",
+                      "start": 519,
+                      "end": 521
+                    }
+                  },
+                  "err": null,
+                  "span": {
+                    "str": "result<u8>",
+                    "start": 512,
+                    "end": 522
+                  }
                 }
               }
             }
@@ -581,7 +727,18 @@
               "type": {
                 "result": {
                   "ok": null,
-                  "err": "s8"
+                  "err": {
+                    "s8": {
+                      "str": "s8",
+                      "start": 561,
+                      "end": 563
+                    }
+                  },
+                  "span": {
+                    "str": "result<_, s8>",
+                    "start": 551,
+                    "end": 564
+                  }
                 }
               }
             }
@@ -614,8 +771,25 @@
             "kind": {
               "type": {
                 "result": {
-                  "ok": "u8",
-                  "err": "string"
+                  "ok": {
+                    "u8": {
+                      "str": "u8",
+                      "start": 605,
+                      "end": 607
+                    }
+                  },
+                  "err": {
+                    "string": {
+                      "str": "string",
+                      "start": 609,
+                      "end": 615
+                    }
+                  },
+                  "span": {
+                    "str": "result<u8, string>",
+                    "start": 598,
+                    "end": 616
+                  }
                 }
               }
             }
@@ -647,14 +821,21 @@
             },
             "kind": {
               "type": {
-                "borrow": {
-                  "string": "x",
-                  "span": {
-                    "str": "x",
-                    "start": 648,
-                    "end": 649
+                "borrow": [
+                  {
+                    "string": "x",
+                    "span": {
+                      "str": "x",
+                      "start": 648,
+                      "end": 649
+                    }
+                  },
+                  {
+                    "str": "borrow<x>",
+                    "start": 641,
+                    "end": 650
                   }
-                }
+                ]
               }
             }
           }

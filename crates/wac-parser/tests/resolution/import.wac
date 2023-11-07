@@ -19,7 +19,7 @@ import e: interface {
 };
 
 /// Import by package path with version
-import f: foo:bar/baz@1.0.0;
+import f: foo:bar/baz;
 
 export d;
 export e with "e";

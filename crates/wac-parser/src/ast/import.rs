@@ -98,7 +98,7 @@ impl<'a> PackagePath<'a> {
     /// Iterates over the segments of the package path.
     pub fn segment_spans<'b>(&'b self) -> impl Iterator<Item = (&'a str, Span<'a>)> + 'b {
         self.segments.split('/').map(|s| {
-            let start = s.as_ptr() as usize - self.name.as_ptr() as usize;
+            let start = self.span.start + s.as_ptr() as usize - self.name.as_ptr() as usize;
             let end = start + s.len();
             (s, Span::from_span(self.span.source(), &(start..end)))
         })

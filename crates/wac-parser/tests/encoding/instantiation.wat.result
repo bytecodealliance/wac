@@ -1,0 +1,75 @@
+(component
+  (type (;0;)
+    (instance
+      (type (;0;) (func))
+      (export (;0;) "foo" (func (type 0)))
+    )
+  )
+  (import "i" (instance (;0;) (type 0)))
+  (type (;1;) (func))
+  (import "f" (func (;0;) (type 1)))
+  (type (;2;) (func))
+  (import "baz" (func (;1;) (type 2)))
+  (type (;3;)
+    (component
+      (type (;0;) (func))
+      (import "baz" (func (;0;) (type 0)))
+      (export (;1;) "foo" (func (type 0)))
+    )
+  )
+  (import "unlocked-dep=<foo:bar>" (component (;0;) (type 3)))
+  (instance (;1;) (instantiate 0
+      (with "baz" (func 1))
+    )
+  )
+  (instance (;2;) (instantiate 0
+      (with "baz" (func 0))
+    )
+  )
+  (instance (;3;) (instantiate 0
+      (with "baz" (func 0))
+    )
+  )
+  (type (;4;)
+    (instance
+      (type (;0;) (func))
+      (export (;0;) "foo" (func (type 0)))
+    )
+  )
+  (import "foo" (instance (;4;) (type 4)))
+  (type (;5;)
+    (component
+      (type (;0;)
+        (instance
+          (type (;0;) (func))
+          (export (;0;) "foo" (func (type 0)))
+        )
+      )
+      (import "foo" (instance (;0;) (type 0)))
+    )
+  )
+  (import "unlocked-dep=<bar:baz>" (component (;1;) (type 5)))
+  (instance (;5;) (instantiate 1
+      (with "foo" (instance 4))
+    )
+  )
+  (instance (;6;) (instantiate 1
+      (with "foo" (instance 0))
+    )
+  )
+  (instance (;7;) (instantiate 1
+      (with "foo" (instance 1))
+    )
+  )
+  (instance (;8;) (instantiate 1
+      (with "foo" (instance 2))
+    )
+  )
+  (instance (;9;) (instantiate 1
+      (with "foo" (instance 3))
+    )
+  )
+  (@producers
+    (processed-by "wac-parser" "0.1.0")
+  )
+)

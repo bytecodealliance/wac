@@ -7,4 +7,4 @@ mismatched instantiation argument `x`
 Caused by:
     0: mismatched type for export `f`
     1: mismatched type for function parameter `x`
-    2: mismatched resource types
+    2: expected resource `x`, found resource `y`

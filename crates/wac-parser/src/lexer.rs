@@ -1,4 +1,4 @@
-//! The module for the WAC lexer implementation.
+//! Module for the lexer implementation.
 
 use logos::{Logos, SpannedIter};
 use serde::{Serialize, Serializer};

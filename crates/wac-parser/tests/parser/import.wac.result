@@ -147,7 +147,13 @@
                     "end": 227
                   }
                 },
-                "ty": "string"
+                "ty": {
+                  "string": {
+                    "str": "string",
+                    "start": 229,
+                    "end": 235
+                  }
+                }
               }
             ],
             "results": "empty"

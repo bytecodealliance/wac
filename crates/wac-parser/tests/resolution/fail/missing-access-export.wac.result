@@ -1,0 +1,5 @@
+the instance has no export named `foo`
+    --> tests/resolution/fail/missing-access-export.wac:7:10
+     |
+   7 | let x = i.foo;
+     |          ^--^

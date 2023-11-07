@@ -1,0 +1,5 @@
+package test:comp;
+
+let x = new foo:bar { ... };
+
+import foo: func();

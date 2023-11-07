@@ -4,4 +4,7 @@ interface foo {
     resource x;
     type f = func(x: borrow<x>);
     f2: f;
+
+    type x2 = x;
+    f3: func(x: x, x2: x2, x3: borrow<x>, x4: borrow<x2>);
 }

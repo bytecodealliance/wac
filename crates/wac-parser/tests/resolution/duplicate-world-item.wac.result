@@ -17,47 +17,37 @@
     "interfaces": [],
     "worlds": [
       {
+        "id": "test:comp/w@2.0.0",
+        "uses": {},
         "imports": {
           "x": {
-            "kind": {
-              "func": 0
-            }
+            "func": 0
           }
         },
         "exports": {
           "x": {
-            "kind": {
-              "func": 1
-            }
+            "func": 1
           }
-        },
-        "scope": 1
+        }
       }
     ],
     "modules": []
   },
+  "packages": [],
   "items": [
     {
-      "kind": {
-        "type": {
-          "world": 0
+      "definition": {
+        "name": "w",
+        "kind": {
+          "type": {
+            "world": 0
+          }
         }
-      },
-      "source": "definition"
+      }
     }
   ],
   "imports": {},
-  "exports": {},
-  "scopes": [
-    {
-      "parent": null,
-      "items": {
-        "w": 0
-      }
-    },
-    {
-      "parent": 0,
-      "items": {}
-    }
-  ]
+  "exports": {
+    "w": 0
+  }
 }

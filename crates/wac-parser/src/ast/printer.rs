@@ -140,20 +140,20 @@ impl<W: Write> DocumentPrinter<W> {
     /// Prints the given type.
     pub fn ty(&mut self, ty: &Type) -> std::fmt::Result {
         match ty {
-            Type::U8 => write!(self.writer, "u8"),
-            Type::S8 => write!(self.writer, "s8"),
-            Type::U16 => write!(self.writer, "u16"),
-            Type::S16 => write!(self.writer, "s16"),
-            Type::U32 => write!(self.writer, "u32"),
-            Type::S32 => write!(self.writer, "s32"),
-            Type::U64 => write!(self.writer, "u64"),
-            Type::S64 => write!(self.writer, "s64"),
-            Type::Float32 => write!(self.writer, "float32"),
-            Type::Float64 => write!(self.writer, "float64"),
-            Type::Char => write!(self.writer, "char"),
-            Type::Bool => write!(self.writer, "bool"),
-            Type::String => write!(self.writer, "string"),
-            Type::Tuple(types) => {
+            Type::U8(_) => write!(self.writer, "u8"),
+            Type::S8(_) => write!(self.writer, "s8"),
+            Type::U16(_) => write!(self.writer, "u16"),
+            Type::S16(_) => write!(self.writer, "s16"),
+            Type::U32(_) => write!(self.writer, "u32"),
+            Type::S32(_) => write!(self.writer, "s32"),
+            Type::U64(_) => write!(self.writer, "u64"),
+            Type::S64(_) => write!(self.writer, "s64"),
+            Type::Float32(_) => write!(self.writer, "float32"),
+            Type::Float64(_) => write!(self.writer, "float64"),
+            Type::Char(_) => write!(self.writer, "char"),
+            Type::Bool(_) => write!(self.writer, "bool"),
+            Type::String(_) => write!(self.writer, "string"),
+            Type::Tuple(types, _) => {
                 write!(self.writer, "tuple<")?;
                 for (i, ty) in types.iter().enumerate() {
                     if i > 0 {
@@ -165,17 +165,17 @@ impl<W: Write> DocumentPrinter<W> {
 
                 write!(self.writer, ">")
             }
-            Type::List(ty) => {
+            Type::List(ty, _) => {
                 write!(self.writer, "list<")?;
                 self.ty(ty)?;
                 write!(self.writer, ">")
             }
-            Type::Option(ty) => {
+            Type::Option(ty, _) => {
                 write!(self.writer, "option<")?;
                 self.ty(ty)?;
                 write!(self.writer, ">")
             }
-            Type::Result { ok, err } => match (ok, err) {
+            Type::Result { ok, err, .. } => match (ok, err) {
                 (None, None) => write!(self.writer, "result"),
                 (None, Some(err)) => {
                     write!(self.writer, "result<_, ")?;
@@ -195,7 +195,7 @@ impl<W: Write> DocumentPrinter<W> {
                     write!(self.writer, ">")
                 }
             },
-            Type::Borrow(id) => {
+            Type::Borrow(id, _) => {
                 write!(self.writer, "borrow<{id}>", id = id.span.as_str())
             }
             Type::Ident(id) => write!(self.writer, "{id}", id = id.span.as_str()),
@@ -323,7 +323,7 @@ impl<W: Write> DocumentPrinter<W> {
             write!(self.writer, "static ")?;
         }
 
-        self.func_type_ref(&method.ty)?;
+        self.func_type(&method.ty)?;
         write!(self.writer, ";")
     }
 

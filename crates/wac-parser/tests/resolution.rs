@@ -10,11 +10,7 @@ use std::{
     process::exit,
     sync::atomic::{AtomicUsize, Ordering},
 };
-use wac_parser::{
-    ast::Document,
-    resolution::{FileSystemPackageResolver, ResolvedDocument},
-    ErrorFormatter,
-};
+use wac_parser::{ast::Document, Composition, ErrorFormatter, FileSystemPackageResolver};
 
 #[cfg(not(feature = "wat"))]
 compile_error!("the `wat` feature must be enabled for this test to run");
@@ -86,7 +82,7 @@ fn run_test(test: &Path, ntests: &AtomicUsize) -> Result<()> {
     let source = std::fs::read_to_string(test)?.replace("\r\n", "\n");
     let document = Document::parse(&source, test)
         .map_err(|e| anyhow!("{e}", e = ErrorFormatter::new(test, e, false)))?;
-    let result = match ResolvedDocument::new(
+    let result = match Composition::from_ast(
         &document,
         Some(Box::new(FileSystemPackageResolver::new(
             test.parent().unwrap().join(test.file_stem().unwrap()),
@@ -129,17 +125,38 @@ fn main() {
         .par_iter()
         .filter_map(|test| {
             let test_name = test.file_stem().and_then(OsStr::to_str).unwrap();
-            match run_test(test, &ntests)
-                .with_context(|| format!("failed to run test `{path}`", path = test.display()))
-                .err()
-            {
-                Some(e) => {
-                    println!("test {test_name} ... {failed}", failed = "failed".red());
-                    Some((test_name, e))
+            match std::panic::catch_unwind(|| {
+                match run_test(test, &ntests)
+                    .with_context(|| format!("failed to run test `{path}`", path = test.display()))
+                    .err()
+                {
+                    Some(e) => {
+                        println!("test {test_name} ... {failed}", failed = "failed".red());
+                        Some((test_name, e))
+                    }
+                    None => {
+                        println!("test {test_name} ... {ok}", ok = "ok".green());
+                        None
+                    }
                 }
-                None => {
-                    println!("test {test_name} ... {ok}", ok = "ok".green());
-                    None
+            }) {
+                Ok(result) => result,
+                Err(e) => {
+                    println!(
+                        "test {test_name} ... {panicked}",
+                        panicked = "panicked".red()
+                    );
+                    Some((
+                        test_name,
+                        anyhow!(
+                            "test panicked: {e:?}",
+                            e = e
+                                .downcast_ref::<String>()
+                                .map(|s| s.as_str())
+                                .or_else(|| e.downcast_ref::<&str>().copied())
+                                .unwrap_or("no panic message")
+                        ),
+                    ))
                 }
             }
         })

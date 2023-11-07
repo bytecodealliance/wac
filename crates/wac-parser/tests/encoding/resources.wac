@@ -1,0 +1,18 @@
+package test:comp;
+
+import foo: interface {
+    resource r {
+        constructor();
+        foo: func();
+        bar: static func();
+    }
+
+    type r2 = r;
+
+    foo: func(r: borrow<r>, r2: borrow<r2>, r3: r, r4: r2) -> tuple<r, r2>;
+    baz: func();
+};
+
+let x = new foo:bar { foo };
+
+export x.foo;

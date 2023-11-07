@@ -21,6 +21,8 @@ serde = { workspace = true }
 wasmparser = { workspace = true }
 wit-parser = { workspace = true }
 wit-component = { workspace = true }
+wasm-encoder = { workspace = true }
+wasm-metadata = { workspace = true }
 wat = { workspace = true, optional = true }
 owo-colors = { workspace = true }
 
@@ -32,6 +34,7 @@ pretty_assertions = "1.4.0"
 pretty_env_logger = { workspace = true }
 rayon = "1.8.0"
 serde_json = { workspace = true }
+wasmprinter = { workspace = true }
 
 [[test]]
 name = "parser"
@@ -39,4 +42,8 @@ harness = false
 
 [[test]]
 name = "resolution"
+harness = false
+
+[[test]]
+name = "encoding"
 harness = false

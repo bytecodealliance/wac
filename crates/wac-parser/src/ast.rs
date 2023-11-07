@@ -11,11 +11,13 @@ mod export;
 mod expr;
 mod import;
 mod r#let;
+mod printer;
 mod r#type;
 
 pub use export::*;
 pub use expr::*;
 pub use import::*;
+pub use printer::*;
 pub use r#let::*;
 pub use r#type::*;
 
@@ -43,7 +45,7 @@ impl fmt::Display for Expected<'_> {
                 write!(f, ", ")?;
             }
 
-            if i == self.expected.len() - 1 && self.count <= self.expected.len() {
+            if i == self.count - 1 {
                 write!(f, "or ")?;
             }
 
@@ -306,7 +308,7 @@ macro_rules! display {
     ($name:ident, $method:ident) => {
         impl std::fmt::Display for $name<'_> {
             fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                let mut printer = crate::printer::DocumentPrinter::new(f, None);
+                let mut printer = crate::ast::DocumentPrinter::new(f, None);
                 printer.$method(self)
             }
         }

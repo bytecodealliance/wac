@@ -1,0 +1,10 @@
+package foo:bar;
+
+interface i {
+    type x = u32;
+}
+
+world w {
+    import x: func();
+    use i.{x};
+}

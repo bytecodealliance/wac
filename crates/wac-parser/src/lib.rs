@@ -12,8 +12,9 @@ use std::{
 
 pub mod ast;
 pub mod lexer;
-pub mod printer;
-pub mod resolution;
+mod resolution;
+
+pub use resolution::*;
 
 /// Gets the 1-based line and column of a position within a source.
 pub(crate) fn line_column(source: &str, pos: usize) -> (usize, usize) {

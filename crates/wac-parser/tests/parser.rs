@@ -1,4 +1,4 @@
-use anyhow::{bail, Context, Result};
+use anyhow::{anyhow, bail, Context, Result};
 use owo_colors::OwoColorize;
 use pretty_assertions::StrComparison;
 use rayon::prelude::*;
@@ -114,17 +114,38 @@ fn main() {
         .par_iter()
         .filter_map(|test| {
             let test_name = test.file_stem().and_then(OsStr::to_str).unwrap();
-            match run_test(test, &ntests)
-                .with_context(|| format!("failed to run test `{path}`", path = test.display()))
-                .err()
-            {
-                Some(e) => {
-                    println!("test {test_name} ... {failed}", failed = "failed".red());
-                    Some((test_name, e))
+            match std::panic::catch_unwind(|| {
+                match run_test(test, &ntests)
+                    .with_context(|| format!("failed to run test `{path}`", path = test.display()))
+                    .err()
+                {
+                    Some(e) => {
+                        println!("test {test_name} ... {failed}", failed = "failed".red());
+                        Some((test_name, e))
+                    }
+                    None => {
+                        println!("test {test_name} ... {ok}", ok = "ok".green());
+                        None
+                    }
                 }
-                None => {
-                    println!("test {test_name} ... {ok}", ok = "ok".green());
-                    None
+            }) {
+                Ok(result) => result,
+                Err(e) => {
+                    println!(
+                        "test {test_name} ... {panicked}",
+                        panicked = "panicked".red()
+                    );
+                    Some((
+                        test_name,
+                        anyhow!(
+                            "test panicked: {e:?}",
+                            e = e
+                                .downcast_ref::<String>()
+                                .map(|s| s.as_str())
+                                .or_else(|| e.downcast_ref::<&str>().copied())
+                                .unwrap_or("no panic message")
+                        ),
+                    ))
                 }
             }
         })

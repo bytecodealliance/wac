@@ -143,7 +143,13 @@
                                 "end": 331
                               }
                             },
-                            "ty": "u32"
+                            "ty": {
+                              "u32": {
+                                "str": "u32",
+                                "start": 333,
+                                "end": 336
+                              }
+                            }
                           }
                         ]
                       }
@@ -170,22 +176,26 @@
                         },
                         "isStatic": false,
                         "ty": {
-                          "func": {
-                            "params": [
-                              {
-                                "id": {
-                                  "string": "b",
-                                  "span": {
-                                    "str": "b",
-                                    "start": 374,
-                                    "end": 375
-                                  }
-                                },
-                                "ty": "u32"
+                          "params": [
+                            {
+                              "id": {
+                                "string": "b",
+                                "span": {
+                                  "str": "b",
+                                  "start": 374,
+                                  "end": 375
+                                }
+                              },
+                              "ty": {
+                                "u32": {
+                                  "str": "u32",
+                                  "start": 377,
+                                  "end": 380
+                                }
                               }
-                            ],
-                            "results": "empty"
-                          }
+                            }
+                          ],
+                          "results": "empty"
                         }
                       }
                     },
@@ -211,22 +221,26 @@
                         },
                         "isStatic": true,
                         "ty": {
-                          "func": {
-                            "params": [
-                              {
-                                "id": {
-                                  "string": "c",
-                                  "span": {
-                                    "str": "c",
-                                    "start": 432,
-                                    "end": 433
-                                  }
-                                },
-                                "ty": "u32"
+                          "params": [
+                            {
+                              "id": {
+                                "string": "c",
+                                "span": {
+                                  "str": "c",
+                                  "start": 432,
+                                  "end": 433
+                                }
+                              },
+                              "ty": {
+                                "u32": {
+                                  "str": "u32",
+                                  "start": 435,
+                                  "end": 438
+                                }
                               }
-                            ],
-                            "results": "empty"
-                          }
+                            }
+                          ],
+                          "results": "empty"
                         }
                       }
                     }
@@ -371,7 +385,13 @@
                                 "end": 757
                               }
                             },
-                            "ty": "u32"
+                            "ty": {
+                              "u32": {
+                                "str": "u32",
+                                "start": 759,
+                                "end": 762
+                              }
+                            }
                           }
                         ]
                       }
@@ -398,22 +418,26 @@
                         },
                         "isStatic": false,
                         "ty": {
-                          "func": {
-                            "params": [
-                              {
-                                "id": {
-                                  "string": "b",
-                                  "span": {
-                                    "str": "b",
-                                    "start": 800,
-                                    "end": 801
-                                  }
-                                },
-                                "ty": "u32"
+                          "params": [
+                            {
+                              "id": {
+                                "string": "b",
+                                "span": {
+                                  "str": "b",
+                                  "start": 800,
+                                  "end": 801
+                                }
+                              },
+                              "ty": {
+                                "u32": {
+                                  "str": "u32",
+                                  "start": 803,
+                                  "end": 806
+                                }
                               }
-                            ],
-                            "results": "empty"
-                          }
+                            }
+                          ],
+                          "results": "empty"
                         }
                       }
                     },
@@ -439,22 +463,26 @@
                         },
                         "isStatic": true,
                         "ty": {
-                          "func": {
-                            "params": [
-                              {
-                                "id": {
-                                  "string": "c",
-                                  "span": {
-                                    "str": "c",
-                                    "start": 858,
-                                    "end": 859
-                                  }
-                                },
-                                "ty": "u32"
+                          "params": [
+                            {
+                              "id": {
+                                "string": "c",
+                                "span": {
+                                  "str": "c",
+                                  "start": 858,
+                                  "end": 859
+                                }
+                              },
+                              "ty": {
+                                "u32": {
+                                  "str": "u32",
+                                  "start": 861,
+                                  "end": 864
+                                }
                               }
-                            ],
-                            "results": "empty"
-                          }
+                            }
+                          ],
+                          "results": "empty"
                         }
                       }
                     }
