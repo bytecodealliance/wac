@@ -1,5 +1,15 @@
-export `foo` conflicts with world definition at tests/resolution/fail/export-conflict-world.wac:5:7
-    --> tests/resolution/fail/export-conflict-world.wac:9:15
-     |
-   9 | export f with "foo";
-     |               ^---^
+failed to resolve document
+
+  × export `foo` conflicts with world definition
+   ╭─[tests/resolution/fail/export-conflict-world.wac:9:15]
+ 4 │ 
+ 5 │ world foo {
+   ·       ─┬─
+   ·        ╰── previous definition is here
+ 6 │ 
+ 7 │ }
+ 8 │ 
+ 9 │ export f with "foo";
+   ·               ──┬──
+   ·                 ╰── conflicting export of `foo`
+   ╰────

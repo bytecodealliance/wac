@@ -1,5 +1,11 @@
-use of type `x` conflicts with an import of the same name (consider using an `as` clause to use a different name)
-    --> tests/resolution/fail/duplicate-use-in-world.wac:9:12
-     |
-   9 |     use i.{x};
-     |            ^
+failed to resolve document
+
+  × use of type `x` conflicts with an import of the same name
+    ╭─[tests/resolution/fail/duplicate-use-in-world.wac:9:12]
+  8 │     import x: func();
+  9 │     use i.{x};
+    ·            ┬
+    ·            ╰── conflicting name `x`
+ 10 │ }
+    ╰────
+  help: consider using an `as` clause to use a different name

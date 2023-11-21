@@ -1,5 +1,10 @@
-duplicate case `b` for enum type `e`
-    --> tests/resolution/fail/duplicate-enum-case.wac:7:5
-     |
-   7 |     b,
-     |     ^
+failed to resolve document
+
+  × duplicate case `b` for enum type `e`
+   ╭─[tests/resolution/fail/duplicate-enum-case.wac:7:5]
+ 6 │     c,
+ 7 │     b,
+   ·     ┬
+   ·     ╰── duplicate case `b`
+ 8 │ }
+   ╰────

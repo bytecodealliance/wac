@@ -1,5 +1,10 @@
-duplicate flag `a` for flags type `f`
-    --> tests/resolution/fail/duplicate-flag.wac:8:5
-     |
-   8 |     a,
-     |     ^
+failed to resolve document
+
+  × duplicate flag `a` for flags type `f`
+   ╭─[tests/resolution/fail/duplicate-flag.wac:8:5]
+ 7 │     d,
+ 8 │     a,
+   ·     ┬
+   ·     ╰── duplicate flag `a`
+ 9 │ }
+   ╰────

@@ -1,5 +1,9 @@
-`1` is not a valid semantic version
-    --> tests/parser/fail/invalid-path-semver.wac:3:23
-     |
-   3 | import i: foo:bar/baz@1;
-     |                       ^
+failed to parse document
+
+  × `1` is not a valid semantic version
+   ╭─[tests/parser/fail/invalid-path-semver.wac:3:23]
+ 2 │ 
+ 3 │ import i: foo:bar/baz@1;
+   ·                       ┬
+   ·                       ╰── invalid version
+   ╰────

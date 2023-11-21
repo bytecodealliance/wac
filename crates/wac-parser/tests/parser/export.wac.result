@@ -1,12 +1,12 @@
 {
   "docs": [],
   "package": {
+    "string": "test:comp",
     "name": "test:comp",
     "version": null,
     "span": {
-      "str": "test:comp",
-      "start": 8,
-      "end": 17
+      "offset": 8,
+      "length": 9
     }
   },
   "statements": [
@@ -16,16 +16,14 @@
           {
             "comment": "Export an item (default name)",
             "span": {
-              "str": "/// Export an item (default name)",
-              "start": 20,
-              "end": 53
+              "offset": 20,
+              "length": 33
             }
           }
         ],
         "span": {
-          "str": "export",
-          "start": 54,
-          "end": 60
+          "offset": 54,
+          "length": 6
         },
         "with": null,
         "expr": {
@@ -33,9 +31,8 @@
             "ident": {
               "string": "e",
               "span": {
-                "str": "e",
-                "start": 61,
-                "end": 62
+                "offset": 61,
+                "length": 1
               }
             }
           },
@@ -49,16 +46,14 @@
           {
             "comment": "Export an alias of an item (default name)",
             "span": {
-              "str": "/// Export an alias of an item (default name)",
-              "start": 65,
-              "end": 110
+              "offset": 65,
+              "length": 45
             }
           }
         ],
         "span": {
-          "str": "export",
-          "start": 111,
-          "end": 117
+          "offset": 111,
+          "length": 6
         },
         "with": null,
         "expr": {
@@ -66,9 +61,8 @@
             "ident": {
               "string": "e",
               "span": {
-                "str": "e",
-                "start": 118,
-                "end": 119
+                "offset": 118,
+                "length": 1
               }
             }
           },
@@ -76,16 +70,14 @@
             {
               "namedAccess": {
                 "span": {
-                  "str": "[\"foo\"]",
-                  "start": 119,
-                  "end": 126
+                  "offset": 119,
+                  "length": 7
                 },
                 "string": {
                   "value": "foo",
                   "span": {
-                    "str": "\"foo\"",
-                    "start": 120,
-                    "end": 125
+                    "offset": 120,
+                    "length": 5
                   }
                 }
               }
@@ -100,23 +92,20 @@
           {
             "comment": "Export an alias of an item with a different name",
             "span": {
-              "str": "/// Export an alias of an item with a different name",
-              "start": 129,
-              "end": 181
+              "offset": 129,
+              "length": 52
             }
           }
         ],
         "span": {
-          "str": "export",
-          "start": 182,
-          "end": 188
+          "offset": 182,
+          "length": 6
         },
         "with": {
           "value": "bar",
           "span": {
-            "str": "\"bar\"",
-            "start": 203,
-            "end": 208
+            "offset": 203,
+            "length": 5
           }
         },
         "expr": {
@@ -124,9 +113,8 @@
             "ident": {
               "string": "e",
               "span": {
-                "str": "e",
-                "start": 189,
-                "end": 190
+                "offset": 189,
+                "length": 1
               }
             }
           },
@@ -134,16 +122,14 @@
             {
               "namedAccess": {
                 "span": {
-                  "str": "[\"foo\"]",
-                  "start": 190,
-                  "end": 197
+                  "offset": 190,
+                  "length": 7
                 },
                 "string": {
                   "value": "foo",
                   "span": {
-                    "str": "\"foo\"",
-                    "start": 191,
-                    "end": 196
+                    "offset": 191,
+                    "length": 5
                   }
                 }
               }

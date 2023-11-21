@@ -31,6 +31,9 @@ serde_json = { workspace = true }
 wat = { workspace = true }
 wasmparser = { workspace = true }
 wasmprinter = { workspace = true }
+thiserror = { workspace = true }
+# TODO: use the next release which has support for primary labels
+miette = { git = "https://github.com/zkat/miette", features = ["fancy"] }
 
 [features]
 default = []

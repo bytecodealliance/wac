@@ -1,8 +1,10 @@
-export name `locked-dep=<foo:bar>` is not valid
-    --> tests/resolution/fail/export-dep-name.wac:4:15
-     |
-   4 | export f with "locked-dep=<foo:bar>";
-     |               ^--------------------^
+failed to resolve document
 
-Caused by:
-    export name cannot be a hash, url, or dependency
+  × export name `locked-dep=<foo:bar>` is not valid
+  ╰─▶ export name cannot be a hash, url, or dependency
+   ╭─[tests/resolution/fail/export-dep-name.wac:4:15]
+ 3 │ import f: func();
+ 4 │ export f with "locked-dep=<foo:bar>";
+   ·               ───────────┬──────────
+   ·                          ╰── invalid name `locked-dep=<foo:bar>`
+   ╰────

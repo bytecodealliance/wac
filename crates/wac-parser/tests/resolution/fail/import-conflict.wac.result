@@ -1,5 +1,13 @@
-import name `foo` conflicts with an instance that was implicitly imported by the instantiation of `foo:bar` at tests/resolution/fail/import-conflict.wac:3:13
-    --> tests/resolution/fail/import-conflict.wac:5:8
-     |
-   5 | import foo: func();
-     |        ^-^
+failed to resolve document
+
+  × import name `foo` conflicts with an instance that was implicitly imported by an instantiation of `foo:bar`
+   ╭─[tests/resolution/fail/import-conflict.wac:5:8]
+ 2 │ 
+ 3 │ let x = new foo:bar { ... };
+   ·             ───┬───
+   ·                ╰── previous instantiation here
+ 4 │ 
+ 5 │ import foo: func();
+   ·        ─┬─
+   ·         ╰── conflicting import here
+   ╰────

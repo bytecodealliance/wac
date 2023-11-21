@@ -1,9 +1,11 @@
-mismatched instantiation argument `x`
-    --> tests/resolution/fail/mismatched-enum-count.wac:12:23
-     |
-  12 | let i = new foo:bar { x };
-     |                       ^
+failed to resolve document
 
-Caused by:
-    0: mismatched type for export `e`
-    1: expected an enum type case count of 3, found a count of 4
+  × mismatched instantiation argument `x`
+  ├─▶ mismatched type for export `e`
+  ╰─▶ expected an enum type case count of 3, found a count of 4
+    ╭─[tests/resolution/fail/mismatched-enum-count.wac:12:23]
+ 11 │ 
+ 12 │ let i = new foo:bar { x };
+    ·                       ┬
+    ·                       ╰── mismatched argument `x`
+    ╰────

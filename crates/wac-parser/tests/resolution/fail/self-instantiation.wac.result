@@ -1,5 +1,9 @@
-cannot instantiate the package being defined
-    --> tests/resolution/fail/self-instantiation.wac:3:13
-     |
-   3 | let i = new foo:bar {};
-     |             ^-----^
+failed to resolve document
+
+  × cannot instantiate the package being defined
+   ╭─[tests/resolution/fail/self-instantiation.wac:3:13]
+ 2 │ 
+ 3 │ let i = new foo:bar {};
+   ·             ───┬───
+   ·                ╰── cannot instantiate self
+   ╰────

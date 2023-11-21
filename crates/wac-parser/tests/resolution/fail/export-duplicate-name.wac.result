@@ -1,5 +1,9 @@
-duplicate export `x`
-    --> tests/resolution/fail/export-duplicate-name.wac:5:15
-     |
-   5 | export f with "x";
-     |               ^-^
+failed to resolve document
+
+  × duplicate export `x`
+   ╭─[tests/resolution/fail/export-duplicate-name.wac:5:15]
+ 4 │ export f with "x";
+ 5 │ export f with "x";
+   ·               ─┬─
+   ·                ╰── duplicate name `x`
+   ╰────

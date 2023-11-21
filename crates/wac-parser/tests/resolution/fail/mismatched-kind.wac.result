@@ -1,9 +1,11 @@
-mismatched instantiation argument `x`
-    --> tests/resolution/fail/mismatched-kind.wac:7:23
-     |
-   7 | let i = new foo:bar { x };
-     |                       ^
+failed to resolve document
 
-Caused by:
-    0: mismatched type for export `x`
-    1: expected function, found u32
+  × mismatched instantiation argument `x`
+  ├─▶ mismatched type for export `x`
+  ╰─▶ expected function, found u32
+   ╭─[tests/resolution/fail/mismatched-kind.wac:7:23]
+ 6 │ 
+ 7 │ let i = new foo:bar { x };
+   ·                       ┬
+   ·                       ╰── mismatched argument `x`
+   ╰────

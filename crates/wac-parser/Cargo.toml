@@ -24,17 +24,21 @@ wit-component = { workspace = true }
 wasm-encoder = { workspace = true }
 wasm-metadata = { workspace = true }
 wat = { workspace = true, optional = true }
-owo-colors = { workspace = true }
+# TODO: use the next release which has support for primary labels
+miette = { git = "https://github.com/zkat/miette", features = ["serde"] }
 
 [features]
 default = ["wat"]
 
 [dev-dependencies]
+owo-colors = "3.5.0"
 pretty_assertions = "1.4.0"
 pretty_env_logger = { workspace = true }
 rayon = "1.8.0"
 serde_json = { workspace = true }
 wasmprinter = { workspace = true }
+# TODO: use the next release which has support for primary labels
+miette = { git = "https://github.com/zkat/miette", features = ["serde", "fancy"] }
 
 [[test]]
 name = "parser"

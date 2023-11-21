@@ -1,5 +1,9 @@
-unknown package `bar:baz`
-    --> tests/resolution/fail/unknown-package.wac:3:13
-     |
-   3 | import foo: bar:baz/qux;
-     |             ^-----^
+failed to resolve document
+
+  × unknown package `bar:baz`
+   ╭─[tests/resolution/fail/unknown-package.wac:3:13]
+ 2 │ 
+ 3 │ import foo: bar:baz/qux;
+   ·             ───┬───
+   ·                ╰── unknown package `bar:baz`
+   ╰────

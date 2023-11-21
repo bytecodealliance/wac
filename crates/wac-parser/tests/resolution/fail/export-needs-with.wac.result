@@ -1,5 +1,9 @@
-export statement requires a `with` clause as the export name cannot be inferred
-    --> tests/resolution/fail/export-needs-with.wac:4:1
-     |
-   4 | export i;
-     | ^----^
+failed to resolve document
+
+  × export statement requires a `with` clause as the export name cannot be inferred
+   ╭─[tests/resolution/fail/export-needs-with.wac:4:1]
+ 3 │ let i = new foo:bar {};
+ 4 │ export i;
+   · ───┬──
+   ·    ╰── a `with` clause is required
+   ╰────

@@ -1,5 +1,9 @@
-duplicate import `foo`
-    --> tests/resolution/fail/import-duplicate-name.wac:4:15
-     |
-   4 | import y with "foo": interface {};
-     |               ^---^
+failed to resolve document
+
+  × duplicate import `foo`
+   ╭─[tests/resolution/fail/import-duplicate-name.wac:4:15]
+ 3 │ import x with "foo": func();
+ 4 │ import y with "foo": interface {};
+   ·               ──┬──
+   ·                 ╰── duplicate name `foo`
+   ╰────

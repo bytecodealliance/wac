@@ -1,5 +1,10 @@
-type `x` is not defined in interface `a`
-    --> tests/resolution/fail/missing-type-in-use.wac:8:12
-     |
-   8 |     use a.{x};
-     |            ^
+failed to resolve document
+
+  × a type named `x` is not defined in interface `a`
+   ╭─[tests/resolution/fail/missing-type-in-use.wac:8:12]
+ 7 │ interface b {
+ 8 │     use a.{x};
+   ·            ┬
+   ·            ╰── `x` is not a type in interface `a`
+ 9 │ }
+   ╰────

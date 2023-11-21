@@ -1,5 +1,9 @@
-variant must contain at least one case
-    --> tests/parser/fail/empty-variant.wac:3:12
-     |
-   3 | variant v {}
-     |            ^
+failed to parse document
+
+  × variant must contain at least one case
+   ╭─[tests/parser/fail/empty-variant.wac:3:12]
+ 2 │ 
+ 3 │ variant v {}
+   ·            ┬
+   ·            ╰── empty variant
+   ╰────

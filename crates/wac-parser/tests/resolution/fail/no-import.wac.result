@@ -1,5 +1,9 @@
-component `foo:bar` has no import named `x`
-    --> tests/resolution/fail/no-import.wac:4:23
-     |
-   4 | let i = new foo:bar { x };
-     |                       ^
+failed to resolve document
+
+  × component `foo:bar` has no import named `x`
+   ╭─[tests/resolution/fail/no-import.wac:4:23]
+ 3 │ import x: interface {};
+ 4 │ let i = new foo:bar { x };
+   ·                       ┬
+   ·                       ╰── unknown import `x`
+   ╰────

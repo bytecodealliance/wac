@@ -1,10 +1,12 @@
-mismatched instantiation argument `x`
-    --> tests/resolution/fail/mismatched-func-param-type.wac:8:23
-     |
-   8 | let i = new foo:bar { x };
-     |                       ^
+failed to resolve document
 
-Caused by:
-    0: mismatched type for export `f`
-    1: mismatched type for function parameter `r`
-    2: expected borrow, found string
+  × mismatched instantiation argument `x`
+  ├─▶ mismatched type for export `f`
+  ├─▶ mismatched type for function parameter `r`
+  ╰─▶ expected borrow, found string
+   ╭─[tests/resolution/fail/mismatched-func-param-type.wac:8:23]
+ 7 │ 
+ 8 │ let i = new foo:bar { x };
+   ·                       ┬
+   ·                       ╰── mismatched argument `x`
+   ╰────

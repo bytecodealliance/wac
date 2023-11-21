@@ -1,5 +1,10 @@
-`x` (u32) is not a function type or interface
-    --> tests/resolution/fail/invalid-world-export.wac:6:15
-     |
-   6 |     import x: x;
-     |               ^
+failed to resolve document
+
+  × `x` (u32) is not a function type or interface
+   ╭─[tests/resolution/fail/invalid-world-export.wac:6:15]
+ 5 │ world w {
+ 6 │     import x: x;
+   ·               ┬
+   ·               ╰── `x` is not a function type or interface
+ 7 │ }
+   ╰────

@@ -1,8 +1,9 @@
 use super::{
-    display, parse_delimited, parse_optional, parse_token, DocComment, Error, Ident, Lookahead,
-    PackagePath, Parse, ParseResult, Peek,
+    parse_delimited, parse_optional, parse_token, DocComment, Error, Ident, Lookahead, PackagePath,
+    Parse, ParseResult, Peek,
 };
-use crate::lexer::{Lexer, Span, Token};
+use crate::lexer::{Lexer, Token};
+use miette::SourceSpan;
 use serde::Serialize;
 
 /// Represents a type statement in the AST.
@@ -18,7 +19,7 @@ pub enum TypeStatement<'a> {
 }
 
 impl<'a> Parse<'a> for TypeStatement<'a> {
-    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<'a, Self> {
+    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<Self> {
         let mut lookahead = Lookahead::new(lexer);
         if InterfaceDecl::peek(&mut lookahead) {
             Ok(Self::Interface(Parse::parse(lexer)?))
@@ -39,8 +40,6 @@ impl Peek for TypeStatement<'_> {
             || TypeDecl::peek(lookahead)
     }
 }
-
-display!(TypeStatement, type_statement);
 
 /// Represents a top-level type declaration in the AST.
 ///
@@ -75,7 +74,7 @@ impl TypeDecl<'_> {
 }
 
 impl<'a> Parse<'a> for TypeDecl<'a> {
-    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<'a, Self> {
+    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<Self> {
         let mut lookahead = Lookahead::new(lexer);
         if lookahead.peek(Token::VariantKeyword) {
             Ok(Self::Variant(Parse::parse(lexer)?))
@@ -116,7 +115,7 @@ pub struct ResourceDecl<'a> {
 }
 
 impl<'a> Parse<'a> for ResourceDecl<'a> {
-    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<'a, Self> {
+    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<Self> {
         let docs = Parse::parse(lexer)?;
         parse_token(lexer, Token::ResourceKeyword)?;
         let id = Ident::parse(lexer)?;
@@ -150,7 +149,7 @@ pub struct VariantDecl<'a> {
 }
 
 impl<'a> Parse<'a> for VariantDecl<'a> {
-    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<'a, Self> {
+    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<Self> {
         let docs = Parse::parse(lexer)?;
         parse_token(lexer, Token::VariantKeyword)?;
         let id = Ident::parse(lexer)?;
@@ -183,7 +182,7 @@ pub struct VariantCase<'a> {
 }
 
 impl<'a> Parse<'a> for VariantCase<'a> {
-    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<'a, Self> {
+    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<Self> {
         let docs = Parse::parse(lexer)?;
         let id = Ident::parse(lexer)?;
         let ty = parse_optional(lexer, Token::OpenParen, |lexer| {
@@ -214,7 +213,7 @@ pub struct RecordDecl<'a> {
 }
 
 impl<'a> Parse<'a> for RecordDecl<'a> {
-    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<'a, Self> {
+    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<Self> {
         let docs = Parse::parse(lexer)?;
         parse_token(lexer, Token::RecordKeyword)?;
         let id = Ident::parse(lexer)?;
@@ -247,7 +246,7 @@ pub struct Field<'a> {
 }
 
 impl<'a> Parse<'a> for Field<'a> {
-    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<'a, Self> {
+    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<Self> {
         let docs = Parse::parse(lexer)?;
         let named: NamedType = Parse::parse(lexer)?;
         Ok(Self {
@@ -277,7 +276,7 @@ pub struct FlagsDecl<'a> {
 }
 
 impl<'a> Parse<'a> for FlagsDecl<'a> {
-    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<'a, Self> {
+    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<Self> {
         let docs = Parse::parse(lexer)?;
         parse_token(lexer, Token::FlagsKeyword)?;
         let id = Ident::parse(lexer)?;
@@ -308,7 +307,7 @@ pub struct Flag<'a> {
 }
 
 impl<'a> Parse<'a> for Flag<'a> {
-    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<'a, Self> {
+    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<Self> {
         let docs = Parse::parse(lexer)?;
         let id = Ident::parse(lexer)?;
         Ok(Self { docs, id })
@@ -334,7 +333,7 @@ pub struct EnumDecl<'a> {
 }
 
 impl<'a> Parse<'a> for EnumDecl<'a> {
-    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<'a, Self> {
+    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<Self> {
         let docs = Parse::parse(lexer)?;
         parse_token(lexer, Token::EnumKeyword)?;
         let id = Ident::parse(lexer)?;
@@ -365,7 +364,7 @@ pub struct EnumCase<'a> {
 }
 
 impl<'a> Parse<'a> for EnumCase<'a> {
-    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<'a, Self> {
+    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<Self> {
         let docs = Parse::parse(lexer)?;
         let id = Ident::parse(lexer)?;
         Ok(Self { docs, id })
@@ -389,7 +388,7 @@ pub enum ResourceMethod<'a> {
 }
 
 impl<'a> Parse<'a> for ResourceMethod<'a> {
-    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<'a, Self> {
+    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<Self> {
         let mut lookahead = Lookahead::new(lexer);
         if lookahead.peek(Token::ConstructorKeyword) {
             Ok(Self::Constructor(Parse::parse(lexer)?))
@@ -414,13 +413,13 @@ pub struct Constructor<'a> {
     /// The doc comments for the constructor.
     pub docs: Vec<DocComment<'a>>,
     /// The span of the constructor keyword.
-    pub span: Span<'a>,
+    pub span: SourceSpan,
     /// The parameters of the constructor.
     pub params: Vec<NamedType<'a>>,
 }
 
 impl<'a> Parse<'a> for Constructor<'a> {
-    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<'a, Self> {
+    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<Self> {
         let docs = Parse::parse(lexer)?;
         let span = parse_token(lexer, Token::ConstructorKeyword)?;
         parse_token(lexer, Token::OpenParen)?;
@@ -446,7 +445,7 @@ pub struct Method<'a> {
 }
 
 impl<'a> Parse<'a> for Method<'a> {
-    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<'a, Self> {
+    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<Self> {
         let docs = Parse::parse(lexer)?;
         let id = Ident::parse(lexer)?;
         parse_token(lexer, Token::Colon)?;
@@ -481,7 +480,7 @@ pub enum FuncTypeRef<'a> {
 }
 
 impl<'a> Parse<'a> for FuncTypeRef<'a> {
-    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<'a, Self> {
+    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<Self> {
         let mut lookahead = Lookahead::new(lexer);
         if lookahead.peek(Token::FuncKeyword) {
             Ok(Self::Func(Parse::parse(lexer)?))
@@ -504,7 +503,7 @@ pub struct FuncType<'a> {
 }
 
 impl<'a> Parse<'a> for FuncType<'a> {
-    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<'a, Self> {
+    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<Self> {
         parse_token(lexer, Token::FuncKeyword)?;
         parse_token(lexer, Token::OpenParen)?;
         let params = parse_delimited(lexer, &[Token::CloseParen], true)?;
@@ -535,7 +534,7 @@ pub enum ResultList<'a> {
 }
 
 impl<'a> Parse<'a> for ResultList<'a> {
-    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<'a, Self> {
+    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<Self> {
         let mut lookahead = Lookahead::new(lexer);
         if lookahead.peek(Token::OpenParen) {
             parse_token(lexer, Token::OpenParen)?;
@@ -561,7 +560,7 @@ pub struct NamedType<'a> {
 }
 
 impl<'a> Parse<'a> for NamedType<'a> {
-    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<'a, Self> {
+    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<Self> {
         let id = Ident::parse(lexer)?;
         parse_token(lexer, Token::Colon)?;
         let ty = Parse::parse(lexer)?;
@@ -588,7 +587,7 @@ pub struct TypeAlias<'a> {
 }
 
 impl<'a> Parse<'a> for TypeAlias<'a> {
-    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<'a, Self> {
+    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<Self> {
         let docs = Parse::parse(lexer)?;
         parse_token(lexer, Token::TypeKeyword)?;
         let id = Ident::parse(lexer)?;
@@ -610,7 +609,7 @@ pub enum TypeAliasKind<'a> {
 }
 
 impl<'a> Parse<'a> for TypeAliasKind<'a> {
-    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<'a, Self> {
+    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<Self> {
         let mut lookahead = Lookahead::new(lexer);
         if lookahead.peek(Token::FuncKeyword) {
             Ok(Self::Func(Parse::parse(lexer)?))
@@ -627,37 +626,37 @@ impl<'a> Parse<'a> for TypeAliasKind<'a> {
 #[serde(rename_all = "camelCase")]
 pub enum Type<'a> {
     /// A `u8` type.
-    U8(Span<'a>),
+    U8(SourceSpan),
     /// A `s8` type.
-    S8(Span<'a>),
+    S8(SourceSpan),
     /// A `u16` type.
-    U16(Span<'a>),
+    U16(SourceSpan),
     /// A `s16` type.
-    S16(Span<'a>),
+    S16(SourceSpan),
     /// A `u32` type.
-    U32(Span<'a>),
+    U32(SourceSpan),
     /// A `s32` type.
-    S32(Span<'a>),
+    S32(SourceSpan),
     /// A `u64` type.
-    U64(Span<'a>),
+    U64(SourceSpan),
     /// A `s64` type.
-    S64(Span<'a>),
+    S64(SourceSpan),
     /// A `float32` type.
-    Float32(Span<'a>),
+    Float32(SourceSpan),
     /// A `float64` type.
-    Float64(Span<'a>),
+    Float64(SourceSpan),
     /// A `char` type.
-    Char(Span<'a>),
+    Char(SourceSpan),
     /// A `bool` type.
-    Bool(Span<'a>),
+    Bool(SourceSpan),
     /// A `string` type.
-    String(Span<'a>),
+    String(SourceSpan),
     /// A tuple type.
-    Tuple(Vec<Type<'a>>, Span<'a>),
+    Tuple(Vec<Type<'a>>, SourceSpan),
     /// A list type.
-    List(Box<Type<'a>>, Span<'a>),
+    List(Box<Type<'a>>, SourceSpan),
     /// An option type.
-    Option(Box<Type<'a>>, Span<'a>),
+    Option(Box<Type<'a>>, SourceSpan),
     /// A result type.
     Result {
         /// The `ok` of the result type.
@@ -665,17 +664,17 @@ pub enum Type<'a> {
         /// The `err` of the result type.
         err: Option<Box<Type<'a>>>,
         /// The span of the result type.
-        span: Span<'a>,
+        span: SourceSpan,
     },
     /// A borrow type.
-    Borrow(Ident<'a>, Span<'a>),
+    Borrow(Ident<'a>, SourceSpan),
     /// An identifier to a value type.
     Ident(Ident<'a>),
 }
 
 impl<'a> Type<'a> {
     /// Gets the span of the type.
-    pub fn span(&self) -> Span<'a> {
+    pub fn span(&self) -> SourceSpan {
         match self {
             Self::U8(span)
             | Self::S8(span)
@@ -701,7 +700,7 @@ impl<'a> Type<'a> {
 }
 
 impl<'a> Parse<'a> for Type<'a> {
-    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<'a, Self> {
+    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<Self> {
         let mut lookahead = Lookahead::new(lexer);
         if lookahead.peek(Token::U8Keyword) {
             Ok(Self::U8(lexer.next().unwrap().1))
@@ -730,7 +729,7 @@ impl<'a> Parse<'a> for Type<'a> {
         } else if lookahead.peek(Token::StringKeyword) {
             Ok(Self::String(lexer.next().unwrap().1))
         } else if lookahead.peek(Token::TupleKeyword) {
-            let mut span = lexer.next().unwrap().1;
+            let span = lexer.next().unwrap().1;
             parse_token(lexer, Token::OpenAngle)?;
 
             // There must be at least one type in the tuple.
@@ -742,22 +741,37 @@ impl<'a> Parse<'a> for Type<'a> {
             let types = parse_delimited(lexer, &[Token::CloseAngle], true)?;
             assert!(!types.is_empty());
             let close = parse_token(lexer, Token::CloseAngle)?;
-            span.end = close.end;
-            Ok(Self::Tuple(types, span))
+            Ok(Self::Tuple(
+                types,
+                SourceSpan::new(
+                    span.offset().into(),
+                    ((close.offset() + close.len()) - span.offset()).into(),
+                ),
+            ))
         } else if lookahead.peek(Token::ListKeyword) {
-            let mut span = lexer.next().unwrap().1;
+            let span = lexer.next().unwrap().1;
             parse_token(lexer, Token::OpenAngle)?;
             let ty = Box::new(Parse::parse(lexer)?);
             let close = parse_token(lexer, Token::CloseAngle)?;
-            span.end = close.end;
-            Ok(Self::List(ty, span))
+            Ok(Self::List(
+                ty,
+                SourceSpan::new(
+                    span.offset().into(),
+                    ((close.offset() + close.len()) - span.offset()).into(),
+                ),
+            ))
         } else if lookahead.peek(Token::OptionKeyword) {
-            let mut span = lexer.next().unwrap().1;
+            let span = lexer.next().unwrap().1;
             parse_token(lexer, Token::OpenAngle)?;
             let ty = Box::new(Parse::parse(lexer)?);
             let close = parse_token(lexer, Token::CloseAngle)?;
-            span.end = close.end;
-            Ok(Self::Option(ty, span))
+            Ok(Self::Option(
+                ty,
+                SourceSpan::new(
+                    span.offset().into(),
+                    ((close.offset() + close.len()) - span.offset()).into(),
+                ),
+            ))
         } else if lookahead.peek(Token::ResultKeyword) {
             let mut span = lexer.next().unwrap().1;
             let (ok, err) = match parse_optional(lexer, Token::OpenAngle, |lexer| {
@@ -785,7 +799,10 @@ impl<'a> Parse<'a> for Type<'a> {
                 .unwrap_or(None);
 
                 let close = parse_token(lexer, Token::CloseAngle)?;
-                span.end = close.end;
+                span = SourceSpan::new(
+                    span.offset().into(),
+                    ((close.offset() + close.len()) - span.offset()).into(),
+                );
                 Ok((ok, err))
             })? {
                 Some((ok, err)) => (ok, err),
@@ -793,12 +810,17 @@ impl<'a> Parse<'a> for Type<'a> {
             };
             Ok(Self::Result { ok, err, span })
         } else if lookahead.peek(Token::BorrowKeyword) {
-            let mut span = lexer.next().unwrap().1;
+            let span = lexer.next().unwrap().1;
             parse_token(lexer, Token::OpenAngle)?;
             let id = Parse::parse(lexer)?;
             let close = parse_token(lexer, Token::CloseAngle)?;
-            span.end = close.end;
-            Ok(Self::Borrow(id, span))
+            Ok(Self::Borrow(
+                id,
+                SourceSpan::new(
+                    span.offset().into(),
+                    ((close.offset() + close.len()) - span.offset()).into(),
+                ),
+            ))
         } else if Ident::peek(&mut lookahead) {
             Ok(Self::Ident(Parse::parse(lexer)?))
         } else {
@@ -853,7 +875,7 @@ pub enum ItemTypeDecl<'a> {
 }
 
 impl<'a> Parse<'a> for ItemTypeDecl<'a> {
-    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<'a, Self> {
+    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<Self> {
         let mut lookahead = Lookahead::new(lexer);
         if lookahead.peek(Token::ResourceKeyword) {
             Ok(Self::Resource(Parse::parse(lexer)?))
@@ -911,7 +933,7 @@ pub struct InterfaceDecl<'a> {
 }
 
 impl<'a> Parse<'a> for InterfaceDecl<'a> {
-    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<'a, Self> {
+    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<Self> {
         let docs = Parse::parse(lexer)?;
         parse_token(lexer, Token::InterfaceKeyword)?;
         let id = Ident::parse(lexer)?;
@@ -928,8 +950,6 @@ impl Peek for InterfaceDecl<'_> {
     }
 }
 
-display!(InterfaceDecl, interface_decl);
-
 /// Represents an interface item in the AST.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -943,7 +963,7 @@ pub enum InterfaceItem<'a> {
 }
 
 impl<'a> Parse<'a> for InterfaceItem<'a> {
-    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<'a, Self> {
+    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<Self> {
         let mut lookahead = Lookahead::new(lexer);
         if Use::peek(&mut lookahead) {
             Ok(Self::Use(Box::new(Parse::parse(lexer)?)))
@@ -976,7 +996,7 @@ pub struct Use<'a> {
 }
 
 impl<'a> Parse<'a> for Use<'a> {
-    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<'a, Self> {
+    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<Self> {
         let docs = Parse::parse(lexer)?;
         parse_token(lexer, Token::UseKeyword)?;
         let path = Parse::parse(lexer)?;
@@ -1006,8 +1026,8 @@ pub enum UsePath<'a> {
 }
 
 impl<'a> Parse<'a> for UsePath<'a> {
-    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<'a, Self> {
-        let mut lookahead: Lookahead<'_> = Lookahead::new(lexer);
+    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<Self> {
+        let mut lookahead = Lookahead::new(lexer);
         if PackagePath::peek(&mut lookahead) {
             Ok(Self::Package(Parse::parse(lexer)?))
         } else if Ident::peek(&mut lookahead) {
@@ -1035,7 +1055,7 @@ pub struct UseItem<'a> {
 }
 
 impl<'a> Parse<'a> for UseItem<'a> {
-    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<'a, Self> {
+    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<Self> {
         let id = Ident::parse(lexer)?;
         let as_id = parse_optional(lexer, Token::AsKeyword, Ident::parse)?;
         Ok(Self { id, as_id })
@@ -1061,7 +1081,7 @@ pub struct InterfaceExport<'a> {
 }
 
 impl<'a> Parse<'a> for InterfaceExport<'a> {
-    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<'a, Self> {
+    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<Self> {
         let docs = Parse::parse(lexer)?;
         let id = Ident::parse(lexer)?;
         parse_token(lexer, Token::Colon)?;
@@ -1090,7 +1110,7 @@ pub struct WorldDecl<'a> {
 }
 
 impl<'a> Parse<'a> for WorldDecl<'a> {
-    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<'a, Self> {
+    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<Self> {
         let docs = Parse::parse(lexer)?;
         parse_token(lexer, Token::WorldKeyword)?;
         let id = Ident::parse(lexer)?;
@@ -1106,8 +1126,6 @@ impl Peek for WorldDecl<'_> {
         lookahead.peek(Token::WorldKeyword)
     }
 }
-
-display!(WorldDecl, world_decl);
 
 /// Represents a world item in the AST.
 #[derive(Debug, Clone, Serialize)]
@@ -1126,7 +1144,7 @@ pub enum WorldItem<'a> {
 }
 
 impl<'a> Parse<'a> for WorldItem<'a> {
-    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<'a, Self> {
+    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<Self> {
         let mut lookahead = Lookahead::new(lexer);
         if Use::peek(&mut lookahead) {
             Ok(Self::Use(Parse::parse(lexer)?))
@@ -1165,7 +1183,7 @@ pub struct WorldImport<'a> {
 }
 
 impl<'a> Parse<'a> for WorldImport<'a> {
-    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<'a, Self> {
+    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<Self> {
         let docs = Parse::parse(lexer)?;
         parse_token(lexer, Token::ImportKeyword)?;
         let path = Parse::parse(lexer)?;
@@ -1191,7 +1209,7 @@ pub struct WorldExport<'a> {
 }
 
 impl<'a> Parse<'a> for WorldExport<'a> {
-    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<'a, Self> {
+    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<Self> {
         let docs = Parse::parse(lexer)?;
         parse_token(lexer, Token::ExportKeyword)?;
         let path = Parse::parse(lexer)?;
@@ -1219,7 +1237,7 @@ pub enum WorldItemPath<'a> {
 }
 
 impl<'a> Parse<'a> for WorldItemPath<'a> {
-    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<'a, Self> {
+    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<Self> {
         let mut lookahead = Lookahead::new(lexer);
         if PackagePath::peek(&mut lookahead) {
             Ok(Self::Package(Parse::parse(lexer)?))
@@ -1247,7 +1265,7 @@ pub struct NamedWorldItem<'a> {
 }
 
 impl<'a> Parse<'a> for NamedWorldItem<'a> {
-    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<'a, Self> {
+    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<Self> {
         let id = Ident::parse(lexer)?;
         parse_token(lexer, Token::Colon)?;
         let ty = Parse::parse(lexer)?;
@@ -1268,7 +1286,7 @@ pub enum ExternType<'a> {
 }
 
 impl<'a> Parse<'a> for ExternType<'a> {
-    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<'a, Self> {
+    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<Self> {
         let mut lookahead = Lookahead::new(lexer);
         if Ident::peek(&mut lookahead) {
             Ok(Self::Ident(Parse::parse(lexer)?))
@@ -1291,7 +1309,7 @@ pub struct InlineInterface<'a> {
 }
 
 impl<'a> Parse<'a> for InlineInterface<'a> {
-    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<'a, Self> {
+    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<Self> {
         parse_token(lexer, Token::InterfaceKeyword)?;
         parse_token(lexer, Token::OpenBrace)?;
         let items = parse_delimited(lexer, &[Token::CloseBrace], false)?;
@@ -1319,7 +1337,7 @@ pub struct WorldInclude<'a> {
 }
 
 impl<'a> Parse<'a> for WorldInclude<'a> {
-    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<'a, Self> {
+    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<Self> {
         let docs = Parse::parse(lexer)?;
         parse_token(lexer, Token::IncludeKeyword)?;
         let world = Parse::parse(lexer)?;
@@ -1356,12 +1374,12 @@ impl<'a> WorldRef<'a> {
     pub fn name(&self) -> &'a str {
         match self {
             Self::Ident(id) => id.string,
-            Self::Package(path) => path.span.as_str(),
+            Self::Package(path) => path.string,
         }
     }
 
     /// Gets the span of the world reference.
-    pub fn span(&self) -> Span<'a> {
+    pub fn span(&self) -> SourceSpan {
         match self {
             Self::Ident(id) => id.span,
             Self::Package(path) => path.span,
@@ -1370,7 +1388,7 @@ impl<'a> WorldRef<'a> {
 }
 
 impl<'a> Parse<'a> for WorldRef<'a> {
-    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<'a, Self> {
+    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<Self> {
         let mut lookahead = Lookahead::new(lexer);
         if PackagePath::peek(&mut lookahead) {
             Ok(Self::Package(Parse::parse(lexer)?))
@@ -1393,7 +1411,7 @@ pub struct WorldIncludeItem<'a> {
 }
 
 impl<'a> Parse<'a> for WorldIncludeItem<'a> {
-    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<'a, Self> {
+    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<Self> {
         let from = Ident::parse(lexer)?;
         parse_token(lexer, Token::AsKeyword)?;
         let to = Ident::parse(lexer)?;
@@ -1409,13 +1427,13 @@ impl Peek for WorldIncludeItem<'_> {
 
 #[cfg(test)]
 mod test {
-    use super::*;
     use crate::ast::test::roundtrip;
 
     #[test]
     fn resource_roundtrip() {
-        roundtrip::<TypeStatement>(
-            r#"interface i { resource foo-bar {
+        roundtrip(
+            r#"package foo:bar;
+interface i { resource foo-bar {
     /** A constructor */
     constructor(foo: u8, bar: u8);
     /// A method
@@ -1425,7 +1443,9 @@ mod test {
     /// A static method
     id: static func() -> u32;
 }}"#,
-            r#"interface i {
+            r#"package foo:bar;
+
+interface i {
     resource foo-bar {
         /// A constructor
         constructor(foo: u8, bar: u8);
@@ -1439,117 +1459,137 @@ mod test {
         /// A static method
         id: static func() -> u32;
     }
-}"#,
+}
+"#,
         )
         .unwrap();
     }
 
     #[test]
     fn variant_roundtrip() {
-        roundtrip::<TypeStatement>(
-            r#"variant foo {
+        roundtrip(
+            r#"package foo:bar;
+variant foo {
     foo,
     bar(u32),
     baz(bar),
     qux(tuple<u8, u16, u32>)
 }"#,
-            r#"variant foo {
+            r#"package foo:bar;
+
+variant foo {
     foo,
     bar(u32),
     baz(bar),
     qux(tuple<u8, u16, u32>),
-}"#,
+}
+"#,
         )
         .unwrap();
     }
 
     #[test]
     fn record_roundtrip() {
-        roundtrip::<TypeStatement>(
-            r#"record foo-bar2-baz {
+        roundtrip(
+            r#"package foo:bar;
+record foo-bar2-baz {
     foo: foo,
     bar-qux: list<string>,
     // A comment
     jam: borrow<foo>,
 }"#,
-            r#"record foo-bar2-baz {
+            r#"package foo:bar;
+
+record foo-bar2-baz {
     foo: foo,
     bar-qux: list<string>,
     jam: borrow<foo>,
-}"#,
+}
+"#,
         )
         .unwrap();
     }
 
     #[test]
     fn flags_roundtrip() {
-        roundtrip::<TypeStatement>(
-            r#"flags %flags {
+        roundtrip(
+            r#"package foo:bar;
+flags %flags {
     foo, bar, baz
 }"#,
-            r#"flags %flags {
+            r#"package foo:bar;
+
+flags %flags {
     foo,
     bar,
     baz,
-}"#,
+}
+"#,
         )
         .unwrap();
     }
 
     #[test]
     fn enum_roundtrip() {
-        roundtrip::<TypeStatement>(
-            r#"enum foo {
+        roundtrip(
+            r#"package foo:bar; enum foo {
     foo, bar, baz
 }"#,
-            r#"enum foo {
+            r#"package foo:bar;
+
+enum foo {
     foo,
     bar,
     baz,
-}"#,
+}
+"#,
         )
         .unwrap();
     }
 
     #[test]
     fn func_type_alias_roundtrip() {
-        roundtrip::<TypeStatement>(
-            r#"type x = func(a: /* comment */ string) -> string;"#,
-            r#"type x = func(a: string) -> string;"#,
+        roundtrip(
+            r#"package foo:bar; type x = func(a: /* comment */ string) -> string;"#,
+            "package foo:bar;\n\ntype x = func(a: string) -> string;\n",
         )
         .unwrap();
     }
 
     #[test]
     fn type_alias_roundtrip() {
-        roundtrip::<TypeStatement>(
-            r#"type x = tuple<u8, s8, u16, s16, u32, s32, u64, s64, float32, float64, char, bool, string, tuple<string, list<u8>>, option<list<bool>>, result, result<string>, result<_, string>, result<u8, u8>, borrow<y>, y>;"#,
-            r#"type x = tuple<u8, s8, u16, s16, u32, s32, u64, s64, float32, float64, char, bool, string, tuple<string, list<u8>>, option<list<bool>>, result, result<string>, result<_, string>, result<u8, u8>, borrow<y>, y>;"#,
+        roundtrip(
+            r#"package foo:bar; type x = tuple<u8, s8, u16, s16, u32, s32, u64, s64, float32, float64, char, bool, string, tuple<string, list<u8>>, option<list<bool>>, result, result<string>, result<_, string>, result<u8, u8>, borrow<y>, y>;"#,
+            "package foo:bar;\n\ntype x = tuple<u8, s8, u16, s16, u32, s32, u64, s64, float32, float64, char, bool, string, tuple<string, list<u8>>, option<list<bool>>, result, result<string>, result<_, string>, result<u8, u8>, borrow<y>, y>;\n",
         )
         .unwrap();
     }
 
     #[test]
     fn interface_roundtrip() {
-        roundtrip::<InterfaceDecl>(
-            r#"interface foo {
-            /// Type t
-            type t = list<string>;
+        roundtrip(
+            r#"package foo:bar;
 
-            /// Use x and y
-            use foo.{ x, y, };
+interface foo {
+    /// Type t
+    type t = list<string>;
 
-            /// Function a
-            a: func(a: string, b: string) -> string;
+    /// Use x and y
+    use foo.{ x, y, };
 
-            // not a doc comment
-            type x = func() -> list<string>;
+    /// Function a
+    a: func(a: string, b: string) -> string;
 
-            /// Function b
-            b: x;
+    // not a doc comment
+    type x = func() -> list<string>;
+
+    /// Function b
+    b: x;
 }
             "#,
-            r#"interface foo {
+            r#"package foo:bar;
+
+interface foo {
     /// Type t
     type t = list<string>;
 
@@ -1563,79 +1603,80 @@ mod test {
 
     /// Function b
     b: x;
-}"#,
+}
+"#,
         )
         .unwrap();
     }
 
     #[test]
     fn world_roundtrip() {
-        roundtrip::<WorldDecl>(
-            r#"world foo {
-            /// Type t
-            type t = list<string>;
+        roundtrip(
+            r#"package foo:bar;
 
-            // not a doc comment
-            type x = func() -> list<string>;
+world foo {
+    /// Type t
+    type t = list<string>;
 
-            use foo.{ y, };
+    // not a doc comment
+    type x = func() -> list<string>;
 
-            /// Import with function type.
-            import a: func(a: string, b: string) -> string;
+    use foo.{ y, };
 
-            /// Import with identifier.
-            import b: x;
+    /// Import with function type.
+    import a: func(a: string, b: string) -> string;
 
-            /// Import with inline interface.
-            import c: interface {
-                /// Function a
-                a: func(a: string, b: string) -> string;
-            };
+    /// Import with identifier.
+    import b: x;
 
-            /// Import with package path
-            import foo:bar/baz@1.0.0;
+    /// Import with inline interface.
+    import c: interface {
+        /// Function a
+        a: func(a: string, b: string) -> string;
+    };
 
-            /// Export with function type.
-            export a: func(a: string, b: string) -> string;
+    /// Import with package path
+    import foo:bar/baz@1.0.0;
 
-            /// Export with identifier.
-            export b: x;
+    /// Export with function type.
+    export a: func(a: string, b: string) -> string;
 
-            /// Export with inline interface.
-            export c: interface {
-                /// Function a
-                a: func(a: string, b: string) -> string;
-            };
+    /// Export with identifier.
+    export b: x;
 
-            /// Export with package path
-            export foo:bar/baz@1.0.0;
+    /// Export with inline interface.
+    export c: interface {
+        /// Function a
+        a: func(a: string, b: string) -> string;
+    };
 
-            /// Include world from package path with 2 renames.
-            include foo:bar/baz with { a as a1, b as b1 };
+    /// Export with package path
+    export foo:bar/baz@1.0.0;
 
-            /// Include world from package path with 1 rename.
-            include foo:bar/baz with {foo as foo1};
+    /// Include world from package path with 2 renames.
+    include foo:bar/baz with { a as a1, b as b1 };
 
-            /// Include world from package path (spacing).
-            include foo:bar/baz with { foo as foo1 };
+    /// Include world from package path with 1 rename.
+    include foo:bar/baz with {foo as foo1};
 
-            /// Include world from package path newline delimited renaming.
-            include foo:bar/baz with {
-                foo as foo1,
-                bar as bar1
-            };
+    /// Include world from package path (spacing).
+    include foo:bar/baz with { foo as foo1 };
 
-            /// Include local world.
-            include foo-bar;
+    /// Include world from package path newline delimited renaming.
+    include foo:bar/baz with {
+        foo as foo1,
+        bar as bar1
+    };
 
-            /// Include local world with renaming.
-            include foo-bar with { foo as bar };
-};
+    /// Include local world.
+    include foo-bar;
 
-include my-world;
-}
-            "#,
-            r#"world foo {
+    /// Include local world with renaming.
+    include foo-bar with { foo as bar };
+}"#,
+            r#"package foo:bar;
+
+world foo {
     /// Type t
     type t = list<string>;
 
@@ -1702,7 +1743,8 @@ include my-world;
     include foo-bar with {
         foo as bar,
     };
-}"#,
+}
+"#,
         )
         .unwrap();
     }

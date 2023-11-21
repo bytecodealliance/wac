@@ -4,21 +4,23 @@ use crate::ast::*;
 use std::fmt::Write;
 
 /// A printer for WAC documents.
-pub struct DocumentPrinter<W: Write> {
+pub struct DocumentPrinter<'a, W: Write> {
     writer: W,
+    source: &'a str,
     space: &'static str,
     indent: usize,
     indented: bool,
 }
 
-impl<W: Write> DocumentPrinter<W> {
+impl<'a, W: Write> DocumentPrinter<'a, W> {
     /// Creates a new document printer for the given write.
     ///
     /// If `space` is `None`, then the printer will use four spaces for
     /// indentation.
-    pub fn new(writer: W, space: Option<&'static str>) -> Self {
+    pub fn new(writer: W, source: &'a str, space: Option<&'static str>) -> Self {
         Self {
             writer,
+            source,
             space: space.unwrap_or("    "),
             indent: 0,
             indented: false,
@@ -31,7 +33,7 @@ impl<W: Write> DocumentPrinter<W> {
         writeln!(
             self.writer,
             "package {package};",
-            package = doc.package.span.as_str()
+            package = self.source(doc.package.span),
         )?;
         self.newline()?;
 
@@ -75,10 +77,14 @@ impl<W: Write> DocumentPrinter<W> {
         self.docs(&statement.docs)?;
 
         self.indent()?;
-        write!(self.writer, "import {id}", id = statement.id.span.as_str())?;
+        write!(
+            self.writer,
+            "import {id}",
+            id = self.source(statement.id.span)
+        )?;
 
         if let Some(with) = &statement.with {
-            write!(self.writer, " with {with}", with = with.span.as_str())?;
+            write!(self.writer, " with {with}", with = self.source(with.span))?;
         }
 
         write!(self.writer, ": ")?;
@@ -94,13 +100,13 @@ impl<W: Write> DocumentPrinter<W> {
             ImportType::Package(p) => self.package_path(p),
             ImportType::Func(f) => self.func_type(f),
             ImportType::Interface(i) => self.inline_interface(i),
-            ImportType::Ident(id) => write!(self.writer, "{id}", id = id.span.as_str()),
+            ImportType::Ident(id) => write!(self.writer, "{id}", id = self.source(id.span)),
         }
     }
 
     /// Prints the given package path.
     pub fn package_path(&mut self, path: &PackagePath) -> std::fmt::Result {
-        write!(self.writer, "{path}", path = path.span.as_str())?;
+        write!(self.writer, "{path}", path = self.source(path.span))?;
         Ok(())
     }
 
@@ -130,7 +136,7 @@ impl<W: Write> DocumentPrinter<W> {
                 write!(self.writer, ", ")?;
             }
 
-            write!(self.writer, "{id}: ", id = param.id.span.as_str())?;
+            write!(self.writer, "{id}: ", id = self.source(param.id.span))?;
             self.ty(&param.ty)?;
         }
 
@@ -196,9 +202,9 @@ impl<W: Write> DocumentPrinter<W> {
                 }
             },
             Type::Borrow(id, _) => {
-                write!(self.writer, "borrow<{id}>", id = id.span.as_str())
+                write!(self.writer, "borrow<{id}>", id = self.source(id.span))
             }
-            Type::Ident(id) => write!(self.writer, "{id}", id = id.span.as_str()),
+            Type::Ident(id) => write!(self.writer, "{id}", id = self.source(id.span)),
         }
     }
 
@@ -245,9 +251,9 @@ impl<W: Write> DocumentPrinter<W> {
                 write!(self.writer, ", ")?;
             }
 
-            write!(self.writer, "{id}", id = item.id.span.as_str())?;
+            write!(self.writer, "{id}", id = self.source(item.id.span))?;
             if let Some(as_id) = &item.as_id {
-                write!(self.writer, " as {as_id}", as_id = as_id.span.as_str())?;
+                write!(self.writer, " as {as_id}", as_id = self.source(as_id.span))?;
             }
         }
 
@@ -258,7 +264,7 @@ impl<W: Write> DocumentPrinter<W> {
     pub fn use_path(&mut self, path: &UsePath) -> std::fmt::Result {
         match path {
             UsePath::Package(p) => self.package_path(p),
-            UsePath::Ident(id) => write!(self.writer, "{id}", id = id.span.as_str()),
+            UsePath::Ident(id) => write!(self.writer, "{id}", id = self.source(id.span)),
         }
     }
 
@@ -278,7 +284,11 @@ impl<W: Write> DocumentPrinter<W> {
     pub fn resource_decl(&mut self, decl: &ResourceDecl) -> std::fmt::Result {
         self.docs(&decl.docs)?;
         self.indent()?;
-        write!(self.writer, "resource {id} {{", id = decl.id.span.as_str())?;
+        write!(
+            self.writer,
+            "resource {id} {{",
+            id = self.source(decl.id.span)
+        )?;
         self.newline()?;
 
         self.inc();
@@ -317,7 +327,7 @@ impl<W: Write> DocumentPrinter<W> {
     pub fn method(&mut self, method: &Method) -> std::fmt::Result {
         self.docs(&method.docs)?;
         self.indent()?;
-        write!(self.writer, "{id}: ", id = method.id.span.as_str())?;
+        write!(self.writer, "{id}: ", id = self.source(method.id.span))?;
 
         if method.is_static {
             write!(self.writer, "static ")?;
@@ -331,7 +341,7 @@ impl<W: Write> DocumentPrinter<W> {
     pub fn func_type_ref(&mut self, ty: &FuncTypeRef) -> std::fmt::Result {
         match ty {
             FuncTypeRef::Func(ty) => self.func_type(ty),
-            FuncTypeRef::Ident(id) => write!(self.writer, "{id}", id = id.span.as_str()),
+            FuncTypeRef::Ident(id) => write!(self.writer, "{id}", id = self.source(id.span)),
         }
     }
 
@@ -339,7 +349,11 @@ impl<W: Write> DocumentPrinter<W> {
     pub fn variant_decl(&mut self, decl: &VariantDecl) -> std::fmt::Result {
         self.docs(&decl.docs)?;
         self.indent()?;
-        write!(self.writer, "variant {id} {{", id = decl.id.span.as_str())?;
+        write!(
+            self.writer,
+            "variant {id} {{",
+            id = self.source(decl.id.span)
+        )?;
         self.newline()?;
 
         self.inc();
@@ -359,7 +373,7 @@ impl<W: Write> DocumentPrinter<W> {
     pub fn variant_case(&mut self, case: &VariantCase) -> std::fmt::Result {
         self.docs(&case.docs)?;
         self.indent()?;
-        write!(self.writer, "{id}", id = case.id.span.as_str())?;
+        write!(self.writer, "{id}", id = self.source(case.id.span))?;
 
         if let Some(ty) = &case.ty {
             write!(self.writer, "(")?;
@@ -374,14 +388,18 @@ impl<W: Write> DocumentPrinter<W> {
     pub fn record_decl(&mut self, decl: &RecordDecl) -> std::fmt::Result {
         self.docs(&decl.docs)?;
         self.indent()?;
-        write!(self.writer, "record {id} {{", id = decl.id.span.as_str())?;
+        write!(
+            self.writer,
+            "record {id} {{",
+            id = self.source(decl.id.span)
+        )?;
         self.newline()?;
 
         self.inc();
         for field in &decl.fields {
             self.docs(&field.docs)?;
             self.indent()?;
-            write!(self.writer, "{id}: ", id = field.id.span.as_str())?;
+            write!(self.writer, "{id}: ", id = self.source(field.id.span))?;
             self.ty(&field.ty)?;
             write!(self.writer, ",")?;
             self.newline()?;
@@ -396,14 +414,14 @@ impl<W: Write> DocumentPrinter<W> {
     pub fn flags_decl(&mut self, decl: &FlagsDecl) -> std::fmt::Result {
         self.docs(&decl.docs)?;
         self.indent()?;
-        write!(self.writer, "flags {id} {{", id = decl.id.span.as_str())?;
+        write!(self.writer, "flags {id} {{", id = self.source(decl.id.span))?;
         self.newline()?;
 
         self.inc();
         for flag in &decl.flags {
             self.docs(&flag.docs)?;
             self.indent()?;
-            write!(self.writer, "{id},", id = flag.id.span.as_str())?;
+            write!(self.writer, "{id},", id = self.source(flag.id.span))?;
             self.newline()?;
         }
 
@@ -416,14 +434,14 @@ impl<W: Write> DocumentPrinter<W> {
     pub fn enum_decl(&mut self, decl: &EnumDecl) -> std::fmt::Result {
         self.docs(&decl.docs)?;
         self.indent()?;
-        write!(self.writer, "enum {id} {{", id = decl.id.span.as_str())?;
+        write!(self.writer, "enum {id} {{", id = self.source(decl.id.span))?;
         self.newline()?;
 
         self.inc();
         for case in &decl.cases {
             self.docs(&case.docs)?;
             self.indent()?;
-            write!(self.writer, "{id},", id = case.id.span.as_str())?;
+            write!(self.writer, "{id},", id = self.source(case.id.span))?;
             self.newline()?;
         }
 
@@ -436,7 +454,7 @@ impl<W: Write> DocumentPrinter<W> {
     pub fn type_alias(&mut self, alias: &TypeAlias) -> std::fmt::Result {
         self.docs(&alias.docs)?;
         self.indent()?;
-        write!(self.writer, "type {id} = ", id = alias.id.span.as_str())?;
+        write!(self.writer, "type {id} = ", id = self.source(alias.id.span))?;
         match &alias.kind {
             TypeAliasKind::Func(ty) => self.func_type(ty)?,
             TypeAliasKind::Type(ty) => self.ty(ty)?,
@@ -449,7 +467,7 @@ impl<W: Write> DocumentPrinter<W> {
     pub fn interface_export(&mut self, export: &InterfaceExport) -> std::fmt::Result {
         self.docs(&export.docs)?;
         self.indent()?;
-        write!(self.writer, "{id}: ", id = export.id.span.as_str())?;
+        write!(self.writer, "{id}: ", id = self.source(export.id.span))?;
         self.func_type_ref(&export.ty)?;
         write!(self.writer, ";")
     }
@@ -467,7 +485,11 @@ impl<W: Write> DocumentPrinter<W> {
     pub fn interface_decl(&mut self, decl: &InterfaceDecl) -> std::fmt::Result {
         self.docs(&decl.docs)?;
         self.indent()?;
-        write!(self.writer, "interface {id} {{", id = decl.id.span.as_str())?;
+        write!(
+            self.writer,
+            "interface {id} {{",
+            id = self.source(decl.id.span)
+        )?;
         self.newline()?;
 
         self.inc();
@@ -489,7 +511,7 @@ impl<W: Write> DocumentPrinter<W> {
     pub fn world_decl(&mut self, decl: &WorldDecl) -> std::fmt::Result {
         self.docs(&decl.docs)?;
         self.indent()?;
-        write!(self.writer, "world {id} {{", id = decl.id.span.as_str())?;
+        write!(self.writer, "world {id} {{", id = self.source(decl.id.span))?;
         self.newline()?;
 
         self.inc();
@@ -543,20 +565,20 @@ impl<W: Write> DocumentPrinter<W> {
         match path {
             WorldItemPath::Named(n) => self.named_world_item(n),
             WorldItemPath::Package(p) => self.package_path(p),
-            WorldItemPath::Ident(id) => write!(self.writer, "{id}", id = id.span.as_str()),
+            WorldItemPath::Ident(id) => write!(self.writer, "{id}", id = self.source(id.span)),
         }
     }
 
     /// Prints the given named world item.
     pub fn named_world_item(&mut self, item: &NamedWorldItem) -> std::fmt::Result {
-        write!(self.writer, "{id}: ", id = item.id.span.as_str())?;
+        write!(self.writer, "{id}: ", id = self.source(item.id.span))?;
         self.extern_type(&item.ty)
     }
 
     /// Prints the given extern type.
     pub fn extern_type(&mut self, ty: &ExternType) -> std::fmt::Result {
         match ty {
-            ExternType::Ident(id) => write!(self.writer, "{id}", id = id.span.as_str()),
+            ExternType::Ident(id) => write!(self.writer, "{id}", id = self.source(id.span)),
             ExternType::Func(ty) => self.func_type(ty),
             ExternType::Interface(i) => self.inline_interface(i),
         }
@@ -579,8 +601,8 @@ impl<W: Write> DocumentPrinter<W> {
                 write!(
                     self.writer,
                     "{source} as {target},",
-                    source = item.from.span.as_str(),
-                    target = item.to.span.as_str()
+                    source = self.source(item.from.span),
+                    target = self.source(item.to.span)
                 )?;
                 self.newline()?;
             }
@@ -596,7 +618,7 @@ impl<W: Write> DocumentPrinter<W> {
     /// Prints the given world reference.
     pub fn world_ref(&mut self, reference: &WorldRef) -> std::fmt::Result {
         match reference {
-            WorldRef::Ident(id) => write!(self.writer, "{id}", id = id.span.as_str()),
+            WorldRef::Ident(id) => write!(self.writer, "{id}", id = self.source(id.span)),
             WorldRef::Package(p) => self.package_path(p),
         }
     }
@@ -616,7 +638,7 @@ impl<W: Write> DocumentPrinter<W> {
     pub fn let_statement(&mut self, stmt: &LetStatement) -> std::fmt::Result {
         self.docs(&stmt.docs)?;
         self.indent()?;
-        write!(self.writer, "let {id} = ", id = stmt.id.span.as_str())?;
+        write!(self.writer, "let {id} = ", id = self.source(stmt.id.span))?;
         self.expr(&stmt.expr)?;
         write!(self.writer, ";")
     }
@@ -640,7 +662,7 @@ impl<W: Write> DocumentPrinter<W> {
                 self.expr(&e.0)?;
                 write!(self.writer, ")")
             }
-            PrimaryExpr::Ident(id) => write!(self.writer, "{id}", id = id.span.as_str()),
+            PrimaryExpr::Ident(id) => write!(self.writer, "{id}", id = self.source(id.span)),
         }
     }
 
@@ -649,7 +671,7 @@ impl<W: Write> DocumentPrinter<W> {
         write!(
             self.writer,
             "new {name} {{",
-            name = expr.package.span.as_str()
+            name = self.source(expr.package.span)
         )?;
 
         if expr.arguments.is_empty() {
@@ -671,16 +693,16 @@ impl<W: Write> DocumentPrinter<W> {
                 InstantiationArgument::Named(arg) => {
                     match &arg.name {
                         InstantiationArgumentName::Ident(id) => {
-                            write!(self.writer, "{id}: ", id = id.span.as_str())?;
+                            write!(self.writer, "{id}: ", id = self.source(id.span))?;
                         }
                         InstantiationArgumentName::String(s) => {
-                            write!(self.writer, "{s}: ", s = s.span.as_str())?;
+                            write!(self.writer, "{s}: ", s = self.source(s.span))?;
                         }
                     }
                     self.expr(&arg.expr)?;
                 }
                 InstantiationArgument::Ident(id) => {
-                    write!(self.writer, "{id}", id = id.span.as_str())?
+                    write!(self.writer, "{id}", id = self.source(id.span))?
                 }
             }
 
@@ -709,12 +731,16 @@ impl<W: Write> DocumentPrinter<W> {
 
     /// Prints the given access expression.
     pub fn access_expr(&mut self, expr: &AccessExpr) -> std::fmt::Result {
-        write!(self.writer, ".{id}", id = expr.id.span.as_str())
+        write!(self.writer, ".{id}", id = self.source(expr.id.span))
     }
 
     /// Prints the given named access expression.
     pub fn named_access_expr(&mut self, expr: &NamedAccessExpr) -> std::fmt::Result {
-        write!(self.writer, "[{name}]", name = expr.string.span.as_str())
+        write!(
+            self.writer,
+            "[{name}]",
+            name = self.source(expr.string.span)
+        )
     }
 
     /// Prints the given export statement.
@@ -726,7 +752,7 @@ impl<W: Write> DocumentPrinter<W> {
         self.expr(&stmt.expr)?;
 
         if let Some(with) = &stmt.with {
-            write!(self.writer, " with {with}", with = with.span.as_str())?;
+            write!(self.writer, " with {with}", with = self.source(with.span))?;
         }
 
         write!(self.writer, ";")
@@ -756,5 +782,9 @@ impl<W: Write> DocumentPrinter<W> {
 
     fn dec(&mut self) {
         self.indent = self.indent.saturating_sub(1);
+    }
+
+    fn source(&self, span: SourceSpan) -> &'a str {
+        &self.source[span.offset()..span.offset() + span.len()]
     }
 }

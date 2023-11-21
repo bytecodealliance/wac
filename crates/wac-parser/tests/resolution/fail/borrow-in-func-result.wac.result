@@ -1,5 +1,10 @@
-function result cannot recursively contain a borrow type
-    --> tests/resolution/fail/borrow-in-func-result.wac:6:18
-     |
-   6 |     f: func() -> result<a>;
-     |                  ^-------^
+failed to resolve document
+
+  × function result cannot recursively contain a borrow type
+   ╭─[tests/resolution/fail/borrow-in-func-result.wac:6:18]
+ 5 │     type a = borrow<x>;
+ 6 │     f: func() -> result<a>;
+   ·                  ────┬────
+   ·                      ╰── borrow type in result
+ 7 │ }
+   ╰────

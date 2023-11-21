@@ -1,5 +1,9 @@
-record must contain at least one field
-    --> tests/parser/fail/empty-record.wac:3:11
-     |
-   3 | record r {}
-     |           ^
+failed to parse document
+
+  × record must contain at least one field
+   ╭─[tests/parser/fail/empty-record.wac:3:11]
+ 2 │ 
+ 3 │ record r {}
+   ·           ┬
+   ·           ╰── empty record
+   ╰────

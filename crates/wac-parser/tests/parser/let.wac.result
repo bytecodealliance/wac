@@ -1,12 +1,12 @@
 {
   "docs": [],
   "package": {
+    "string": "test:comp",
     "name": "test:comp",
     "version": null,
     "span": {
-      "str": "test:comp",
-      "start": 8,
-      "end": 17
+      "offset": 8,
+      "length": 9
     }
   },
   "statements": [
@@ -16,30 +16,28 @@
           {
             "comment": "Instantiate without args",
             "span": {
-              "str": "/// Instantiate without args",
-              "start": 20,
-              "end": 48
+              "offset": 20,
+              "length": 28
             }
           }
         ],
         "id": {
           "string": "a",
           "span": {
-            "str": "a",
-            "start": 53,
-            "end": 54
+            "offset": 53,
+            "length": 1
           }
         },
         "expr": {
           "primary": {
             "new": {
               "package": {
+                "string": "foo:bar",
                 "name": "foo:bar",
                 "version": null,
                 "span": {
-                  "str": "foo:bar",
-                  "start": 61,
-                  "end": 68
+                  "offset": 61,
+                  "length": 7
                 }
               },
               "arguments": [],
@@ -56,30 +54,28 @@
           {
             "comment": "Instantiation with import-propagation.",
             "span": {
-              "str": "/// Instantiation with import-propagation.",
-              "start": 74,
-              "end": 116
+              "offset": 74,
+              "length": 42
             }
           }
         ],
         "id": {
           "string": "b",
           "span": {
-            "str": "b",
-            "start": 121,
-            "end": 122
+            "offset": 121,
+            "length": 1
           }
         },
         "expr": {
           "primary": {
             "new": {
               "package": {
+                "string": "foo:bar@1.0.0",
                 "name": "foo:bar",
                 "version": "1.0.0",
                 "span": {
-                  "str": "foo:bar@1.0.0",
-                  "start": 129,
-                  "end": 142
+                  "offset": 129,
+                  "length": 13
                 }
               },
               "arguments": [],
@@ -96,30 +92,28 @@
           {
             "comment": "Instantiation with arguments",
             "span": {
-              "str": "/// Instantiation with arguments",
-              "start": 153,
-              "end": 185
+              "offset": 153,
+              "length": 32
             }
           }
         ],
         "id": {
           "string": "c",
           "span": {
-            "str": "c",
-            "start": 190,
-            "end": 191
+            "offset": 190,
+            "length": 1
           }
         },
         "expr": {
           "primary": {
             "new": {
               "package": {
+                "string": "foo:bar@2.0.0",
                 "name": "foo:bar",
                 "version": "2.0.0",
                 "span": {
-                  "str": "foo:bar@2.0.0",
-                  "start": 198,
-                  "end": 211
+                  "offset": 198,
+                  "length": 13
                 }
               },
               "arguments": [
@@ -127,9 +121,8 @@
                   "ident": {
                     "string": "a",
                     "span": {
-                      "str": "a",
-                      "start": 214,
-                      "end": 215
+                      "offset": 214,
+                      "length": 1
                     }
                   }
                 },
@@ -137,9 +130,8 @@
                   "ident": {
                     "string": "b",
                     "span": {
-                      "str": "b",
-                      "start": 217,
-                      "end": 218
+                      "offset": 217,
+                      "length": 1
                     }
                   }
                 },
@@ -149,9 +141,8 @@
                       "string": {
                         "value": "c",
                         "span": {
-                          "str": "\"c\"",
-                          "start": 220,
-                          "end": 223
+                          "offset": 220,
+                          "length": 3
                         }
                       }
                     },
@@ -160,9 +151,8 @@
                         "ident": {
                           "string": "c",
                           "span": {
-                            "str": "c",
-                            "start": 225,
-                            "end": 226
+                            "offset": 225,
+                            "length": 1
                           }
                         }
                       },
@@ -184,30 +174,28 @@
           {
             "comment": "Instantiation with arguments and import-propagation.",
             "span": {
-              "str": "/// Instantiation with arguments and import-propagation.",
-              "start": 232,
-              "end": 288
+              "offset": 232,
+              "length": 56
             }
           }
         ],
         "id": {
           "string": "d",
           "span": {
-            "str": "d",
-            "start": 293,
-            "end": 294
+            "offset": 293,
+            "length": 1
           }
         },
         "expr": {
           "primary": {
             "new": {
               "package": {
+                "string": "foo:bar@3.0.0",
                 "name": "foo:bar",
                 "version": "3.0.0",
                 "span": {
-                  "str": "foo:bar@3.0.0",
-                  "start": 301,
-                  "end": 314
+                  "offset": 301,
+                  "length": 13
                 }
               },
               "arguments": [
@@ -215,9 +203,8 @@
                   "ident": {
                     "string": "a",
                     "span": {
-                      "str": "a",
-                      "start": 317,
-                      "end": 318
+                      "offset": 317,
+                      "length": 1
                     }
                   }
                 },
@@ -227,9 +214,8 @@
                       "string": {
                         "value": "b",
                         "span": {
-                          "str": "\"b\"",
-                          "start": 320,
-                          "end": 323
+                          "offset": 320,
+                          "length": 3
                         }
                       }
                     },
@@ -239,12 +225,12 @@
                           "primary": {
                             "new": {
                               "package": {
+                                "string": "foo:bar",
                                 "name": "foo:bar",
                                 "version": null,
                                 "span": {
-                                  "str": "foo:bar",
-                                  "start": 330,
-                                  "end": 337
+                                  "offset": 330,
+                                  "length": 7
                                 }
                               },
                               "arguments": [],
@@ -264,9 +250,8 @@
                       "ident": {
                         "string": "c",
                         "span": {
-                          "str": "c",
-                          "start": 344,
-                          "end": 345
+                          "offset": 344,
+                          "length": 1
                         }
                       }
                     },
@@ -275,9 +260,8 @@
                         "ident": {
                           "string": "c",
                           "span": {
-                            "str": "c",
-                            "start": 347,
-                            "end": 348
+                            "offset": 347,
+                            "length": 1
                           }
                         }
                       },
@@ -299,18 +283,16 @@
           {
             "comment": "Nested expression",
             "span": {
-              "str": "/// Nested expression",
-              "start": 358,
-              "end": 379
+              "offset": 358,
+              "length": 21
             }
           }
         ],
         "id": {
           "string": "e",
           "span": {
-            "str": "e",
-            "start": 384,
-            "end": 385
+            "offset": 384,
+            "length": 1
           }
         },
         "expr": {
@@ -320,9 +302,8 @@
                 "ident": {
                   "string": "b",
                   "span": {
-                    "str": "b",
-                    "start": 389,
-                    "end": 390
+                    "offset": 389,
+                    "length": 1
                   }
                 }
               },
@@ -339,18 +320,16 @@
           {
             "comment": "Access expression",
             "span": {
-              "str": "/// Access expression",
-              "start": 394,
-              "end": 415
+              "offset": 394,
+              "length": 21
             }
           }
         ],
         "id": {
           "string": "f",
           "span": {
-            "str": "f",
-            "start": 420,
-            "end": 421
+            "offset": 420,
+            "length": 1
           }
         },
         "expr": {
@@ -358,9 +337,8 @@
             "ident": {
               "string": "e",
               "span": {
-                "str": "e",
-                "start": 424,
-                "end": 425
+                "offset": 424,
+                "length": 1
               }
             }
           },
@@ -368,16 +346,14 @@
             {
               "namedAccess": {
                 "span": {
-                  "str": "[\"b-c\"]",
-                  "start": 425,
-                  "end": 432
+                  "offset": 425,
+                  "length": 7
                 },
                 "string": {
                   "value": "b-c",
                   "span": {
-                    "str": "\"b-c\"",
-                    "start": 426,
-                    "end": 431
+                    "offset": 426,
+                    "length": 5
                   }
                 }
               }
@@ -385,16 +361,14 @@
             {
               "access": {
                 "span": {
-                  "str": ".c",
-                  "start": 432,
-                  "end": 434
+                  "offset": 432,
+                  "length": 2
                 },
                 "id": {
                   "string": "c",
                   "span": {
-                    "str": "c",
-                    "start": 433,
-                    "end": 434
+                    "offset": 433,
+                    "length": 1
                   }
                 }
               }
@@ -402,16 +376,14 @@
             {
               "access": {
                 "span": {
-                  "str": ".d",
-                  "start": 434,
-                  "end": 436
+                  "offset": 434,
+                  "length": 2
                 },
                 "id": {
                   "string": "d",
                   "span": {
-                    "str": "d",
-                    "start": 435,
-                    "end": 436
+                    "offset": 435,
+                    "length": 1
                   }
                 }
               }
@@ -419,16 +391,14 @@
             {
               "namedAccess": {
                 "span": {
-                  "str": "[\"foo:bar/baz\"]",
-                  "start": 436,
-                  "end": 451
+                  "offset": 436,
+                  "length": 15
                 },
                 "string": {
                   "value": "foo:bar/baz",
                   "span": {
-                    "str": "\"foo:bar/baz\"",
-                    "start": 437,
-                    "end": 450
+                    "offset": 437,
+                    "length": 13
                   }
                 }
               }
@@ -436,16 +406,14 @@
             {
               "access": {
                 "span": {
-                  "str": ".e",
-                  "start": 451,
-                  "end": 453
+                  "offset": 451,
+                  "length": 2
                 },
                 "id": {
                   "string": "e",
                   "span": {
-                    "str": "e",
-                    "start": 452,
-                    "end": 453
+                    "offset": 452,
+                    "length": 1
                   }
                 }
               }

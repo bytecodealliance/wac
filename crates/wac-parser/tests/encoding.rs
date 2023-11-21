@@ -10,9 +10,10 @@ use std::{
     process::exit,
     sync::atomic::{AtomicUsize, Ordering},
 };
-use wac_parser::{
-    ast::Document, Composition, EncodingOptions, ErrorFormatter, FileSystemPackageResolver,
-};
+use support::fmt_err;
+use wac_parser::{ast::Document, Composition, EncodingOptions, FileSystemPackageResolver};
+
+mod support;
 
 #[cfg(not(feature = "wat"))]
 compile_error!("the `wat` feature must be enabled for this test to run");
@@ -75,8 +76,9 @@ fn compare_result(test: &Path, result: &str) -> Result<()> {
 
 fn run_test(test: &Path, ntests: &AtomicUsize) -> Result<()> {
     let source = std::fs::read_to_string(test)?.replace("\r\n", "\n");
-    let document = Document::parse(&source, test)
-        .map_err(|e| anyhow!("{e}", e = ErrorFormatter::new(test, e, false)))?;
+
+    let document = Document::parse(&source).map_err(|e| anyhow!(fmt_err(e, test, &source)))?;
+
     let bytes = Composition::from_ast(
         &document,
         Some(Box::new(FileSystemPackageResolver::new(
@@ -84,12 +86,7 @@ fn run_test(test: &Path, ntests: &AtomicUsize) -> Result<()> {
             Default::default(),
         ))),
     )
-    .map_err(|e| {
-        anyhow!(
-            "the resolution failed but it was expected to succeed: {e}",
-            e = ErrorFormatter::new(test, e, false)
-        )
-    })?
+    .map_err(|e| anyhow!(fmt_err(e, test, &source)))?
     .encode(EncodingOptions::default())
     .with_context(|| {
         format!(

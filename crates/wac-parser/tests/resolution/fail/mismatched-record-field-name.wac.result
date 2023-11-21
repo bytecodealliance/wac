@@ -1,9 +1,11 @@
-mismatched instantiation argument `x`
-    --> tests/resolution/fail/mismatched-record-field-name.wac:11:23
-     |
-  11 | let i = new foo:bar { x };
-     |                       ^
+failed to resolve document
 
-Caused by:
-    0: mismatched type for export `r`
-    1: expected record field 1 to be named `b`, found a field named `c`
+  × mismatched instantiation argument `x`
+  ├─▶ mismatched type for export `r`
+  ╰─▶ expected record field 1 to be named `b`, found a field named `c`
+    ╭─[tests/resolution/fail/mismatched-record-field-name.wac:11:23]
+ 10 │ 
+ 11 │ let i = new foo:bar { x };
+    ·                       ┬
+    ·                       ╰── mismatched argument `x`
+    ╰────

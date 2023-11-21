@@ -1,5 +1,15 @@
-export `x` conflicts with record definition at tests/resolution/fail/export-conflict-type.wac:5:8
-    --> tests/resolution/fail/export-conflict-type.wac:9:15
-     |
-   9 | export f with "x";
-     |               ^-^
+failed to resolve document
+
+  × export `x` conflicts with record definition
+   ╭─[tests/resolution/fail/export-conflict-type.wac:9:15]
+ 4 │ 
+ 5 │ record x {
+   ·        ┬
+   ·        ╰── previous definition is here
+ 6 │     a: u32
+ 7 │ }
+ 8 │ 
+ 9 │ export f with "x";
+   ·               ─┬─
+   ·                ╰── conflicting export of `x`
+   ╰────

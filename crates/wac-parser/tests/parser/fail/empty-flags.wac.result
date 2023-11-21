@@ -1,5 +1,9 @@
-flags must contain at least one flag
-    --> tests/parser/fail/empty-flags.wac:3:10
-     |
-   3 | flags f {}
-     |          ^
+failed to parse document
+
+  × flags must contain at least one flag
+   ╭─[tests/parser/fail/empty-flags.wac:3:10]
+ 2 │ 
+ 3 │ flags f {}
+   ·          ┬
+   ·          ╰── empty flags
+   ╰────

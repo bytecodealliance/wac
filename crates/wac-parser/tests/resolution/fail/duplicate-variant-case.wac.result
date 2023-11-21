@@ -1,5 +1,10 @@
-duplicate case `a` for variant type `x`
-    --> tests/resolution/fail/duplicate-variant-case.wac:8:5
-     |
-   8 |     a,
-     |     ^
+failed to resolve document
+
+  × duplicate case `a` for variant type `x`
+   ╭─[tests/resolution/fail/duplicate-variant-case.wac:8:5]
+ 7 │     b,
+ 8 │     a,
+   ·     ┬
+   ·     ╰── duplicate case `a`
+ 9 │ }
+   ╰────

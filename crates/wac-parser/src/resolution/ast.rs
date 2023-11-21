@@ -4,22 +4,23 @@ use super::{
     Record, ResolutionResult, Resource, ResourceId, SubtypeChecker, Type, ValueType, Variant,
     World, WorldId,
 };
-use crate::{ast, lexer::Span, line_column, method_extern_name, Item, ItemId, PackageId};
+use crate::{ast, method_extern_name, Item, ItemId, PackageId};
 use anyhow::Context;
 use id_arena::Arena;
 use indexmap::{IndexMap, IndexSet};
+use miette::SourceSpan;
 use semver::Version;
 use std::collections::{hash_map, HashMap, HashSet};
 use wasmparser::names::{ComponentName, ComponentNameKind};
 
 #[derive(Default)]
-struct Scope<'a> {
-    names: IndexMap<String, (ItemId, Span<'a>)>,
+struct Scope {
+    names: IndexMap<String, (ItemId, SourceSpan)>,
     items: Arena<Item>,
 }
 
-impl<'a> Scope<'a> {
-    fn get(&self, name: &str) -> Option<(ItemId, Span<'a>)> {
+impl Scope {
+    fn get(&self, name: &str) -> Option<(ItemId, SourceSpan)> {
         self.names.get(name).copied()
     }
 }
@@ -29,16 +30,15 @@ struct Import<'a> {
     /// This is `None` for explicit imports.
     package: Option<&'a str>,
     /// The span where the import was first introduced.
-    span: Span<'a>,
+    span: SourceSpan,
     /// The imported item.
     item: ItemId,
 }
 
 struct State<'a> {
-    document: &'a ast::Document<'a>,
     resolver: Option<Box<dyn PackageResolver>>,
-    scopes: Vec<Scope<'a>>,
-    current: Scope<'a>,
+    scopes: Vec<Scope>,
+    current: Scope,
     packages: Arena<Package>,
     /// The map of package name to id.
     package_map: HashMap<String, PackageId>,
@@ -50,9 +50,8 @@ struct State<'a> {
 }
 
 impl<'a> State<'a> {
-    fn new(document: &'a ast::Document<'a>, resolver: Option<Box<dyn PackageResolver>>) -> Self {
+    fn new(resolver: Option<Box<dyn PackageResolver>>) -> Self {
         Self {
-            document,
             resolver,
             scopes: Default::default(),
             current: Default::default(),
@@ -64,13 +63,13 @@ impl<'a> State<'a> {
     }
 
     // Gets an item by identifier from the root scope.
-    fn root_item(&self, id: &ast::Ident<'a>) -> ResolutionResult<'a, (ItemId, &Item)> {
+    fn root_item(&self, id: &ast::Ident<'a>) -> ResolutionResult<(ItemId, &Item)> {
         let scope = self.root_scope();
 
         let id = scope
             .get(id.string)
             .ok_or(Error::UndefinedName {
-                name: id.string,
+                name: id.string.to_owned(),
                 span: id.span,
             })?
             .0;
@@ -79,12 +78,12 @@ impl<'a> State<'a> {
     }
 
     /// Gets an item by identifier from the local (current) scope.
-    fn local_item(&self, id: &ast::Ident<'a>) -> ResolutionResult<'a, (ItemId, &Item)> {
+    fn local_item(&self, id: &ast::Ident<'a>) -> ResolutionResult<(ItemId, &Item)> {
         let id = self
             .current
             .get(id.string)
             .ok_or(Error::UndefinedName {
-                name: id.string,
+                name: id.string.to_owned(),
                 span: id.span,
             })?
             .0;
@@ -93,7 +92,7 @@ impl<'a> State<'a> {
     }
 
     /// Gets an item by identifier from the local (current) scope or the root scope.
-    fn local_or_root_item(&self, id: &ast::Ident<'a>) -> ResolutionResult<'a, (ItemId, &Item)> {
+    fn local_or_root_item(&self, id: &ast::Ident<'a>) -> ResolutionResult<(ItemId, &Item)> {
         if self.scopes.is_empty() {
             return self.local_item(id);
         }
@@ -115,11 +114,11 @@ impl<'a> State<'a> {
         std::mem::replace(&mut self.current, self.scopes.pop().unwrap())
     }
 
-    fn root_scope(&self) -> &Scope<'a> {
+    fn root_scope(&self) -> &Scope {
         self.scopes.first().unwrap_or(&self.current)
     }
 
-    fn register_name(&mut self, id: ast::Ident<'a>, item: ItemId) -> ResolutionResult<'a, ()> {
+    fn register_name(&mut self, id: ast::Ident<'a>, item: ItemId) -> ResolutionResult<()> {
         log::debug!(
             "registering name `{id}` for item {item} in the current scope",
             id = id.string,
@@ -130,13 +129,10 @@ impl<'a> State<'a> {
             .names
             .insert(id.string.to_owned(), (item, id.span))
         {
-            let (line, column) = line_column(id.span.source(), span.start);
             return Err(Error::DuplicateName {
-                name: id.string,
-                path: self.document.path,
-                line,
-                column,
+                name: id.string.to_owned(),
                 span: id.span,
+                previous: span,
             });
         }
 
@@ -162,8 +158,8 @@ impl<'a> AstResolver<'a> {
     pub fn resolve(
         mut self,
         resolver: Option<Box<dyn PackageResolver>>,
-    ) -> ResolutionResult<'a, Composition> {
-        let mut state = State::new(self.document, resolver);
+    ) -> ResolutionResult<Composition> {
+        let mut state = State::new(resolver);
 
         for stmt in &self.document.statements {
             match stmt {
@@ -195,7 +191,7 @@ impl<'a> AstResolver<'a> {
         &mut self,
         state: &mut State<'a>,
         stmt: &'a ast::ImportStatement<'a>,
-    ) -> ResolutionResult<'a, ()> {
+    ) -> ResolutionResult<()> {
         log::debug!(
             "resolving import statement for id `{id}`",
             id = stmt.id.string
@@ -259,14 +255,11 @@ impl<'a> AstResolver<'a> {
                         ..
                     }) = state.imports.get(name)
                     {
-                        let (line, column) = line_column(span.source(), prev_span.start);
                         return Err(Error::ImportConflict {
-                            name: name.to_owned(),
-                            package,
-                            path: state.document.path,
-                            line,
-                            column,
+                            name: name.to_string(),
+                            package: package.to_string(),
                             span,
+                            instantiation: *prev_span,
                         });
                     }
 
@@ -302,7 +295,7 @@ impl<'a> AstResolver<'a> {
         &mut self,
         state: &mut State<'a>,
         stmt: &'a ast::TypeStatement<'a>,
-    ) -> ResolutionResult<'a, ()> {
+    ) -> ResolutionResult<()> {
         log::debug!("resolving type statement");
 
         let (name, item) = match stmt {
@@ -320,7 +313,7 @@ impl<'a> AstResolver<'a> {
         &mut self,
         state: &mut State<'a>,
         stmt: &'a ast::LetStatement<'a>,
-    ) -> ResolutionResult<'a, ()> {
+    ) -> ResolutionResult<()> {
         log::debug!(
             "resolving type statement for id `{id}`",
             id = stmt.id.string
@@ -333,7 +326,7 @@ impl<'a> AstResolver<'a> {
         &mut self,
         state: &mut State<'a>,
         stmt: &'a ast::ExportStatement<'a>,
-    ) -> ResolutionResult<'a, ()> {
+    ) -> ResolutionResult<()> {
         log::debug!("resolving export statement");
         let item = self.expr(state, &stmt.expr)?;
         let (name, span) = if let Some(name) = stmt.with {
@@ -380,19 +373,16 @@ impl<'a> AstResolver<'a> {
         if let Some((item_id, prev_span)) = state.root_scope().get(name) {
             let item = &state.current.items[item_id];
             if let Item::Definition(definition) = item {
-                let (line, column) = line_column(stmt.span.source(), prev_span.start);
                 return Err(Error::ExportConflict {
                     name: name.to_owned(),
-                    path: state.document.path,
-                    kind: definition.kind.as_str(&self.definitions),
-                    line,
-                    column,
-                    hint: if stmt.with.is_some() {
-                        ""
-                    } else {
-                        " (consider using a `with` clause to use a different name)"
-                    },
+                    kind: definition.kind.as_str(&self.definitions).to_string(),
                     span,
+                    definition: prev_span,
+                    help: if stmt.with.is_some() {
+                        None
+                    } else {
+                        Some("consider using a `with` clause to use a different name".into())
+                    },
                 });
             }
         }
@@ -415,7 +405,7 @@ impl<'a> AstResolver<'a> {
         &mut self,
         state: &mut State<'a>,
         iface: &'a ast::InlineInterface<'a>,
-    ) -> ResolutionResult<'a, ItemKind> {
+    ) -> ResolutionResult<ItemKind> {
         log::debug!("resolving inline interface");
 
         state.push_scope();
@@ -451,7 +441,7 @@ impl<'a> AstResolver<'a> {
         &mut self,
         state: &mut State<'a>,
         decl: &'a ast::InterfaceDecl<'a>,
-    ) -> ResolutionResult<'a, ItemId> {
+    ) -> ResolutionResult<ItemId> {
         log::debug!(
             "resolving interface declaration for id `{id}`",
             id = decl.id.string
@@ -486,7 +476,7 @@ impl<'a> AstResolver<'a> {
         &mut self,
         state: &mut State<'a>,
         decl: &'a ast::WorldDecl<'a>,
-    ) -> ResolutionResult<'a, ItemId> {
+    ) -> ResolutionResult<ItemId> {
         log::debug!(
             "resolving world declaration for id `{id}`",
             id = decl.id.string
@@ -524,7 +514,7 @@ impl<'a> AstResolver<'a> {
         name: Option<&'a str>,
         items: &'a [ast::InterfaceItem<'a>],
         ty: &mut Interface,
-    ) -> ResolutionResult<'a, ()> {
+    ) -> ResolutionResult<()> {
         for item in items {
             match item {
                 ast::InterfaceItem::Use(u) => {
@@ -537,8 +527,8 @@ impl<'a> AstResolver<'a> {
                     let kind = ItemKind::Func(self.func_type_ref(state, &e.ty, FuncKind::Free)?);
                     if ty.exports.insert(e.id.string.into(), kind).is_some() {
                         return Err(Error::DuplicateInterfaceExport {
-                            name: e.id.string,
-                            interface_name: name,
+                            name: e.id.string.to_owned(),
+                            interface_name: name.map(ToOwned::to_owned),
                             span: e.id.span,
                         });
                     }
@@ -555,7 +545,7 @@ impl<'a> AstResolver<'a> {
         world: &'a str,
         items: &'a [ast::WorldItem<'a>],
         ty: &mut World,
-    ) -> ResolutionResult<'a, ()> {
+    ) -> ResolutionResult<()> {
         let mut includes = Vec::new();
         for item in items {
             match item {
@@ -594,7 +584,7 @@ impl<'a> AstResolver<'a> {
         kind: ExternKind,
         world: &'a str,
         ty: &mut World,
-    ) -> ResolutionResult<'a, ()> {
+    ) -> ResolutionResult<()> {
         let (k, v) = match path {
             ast::WorldItemPath::Named(named) => {
                 check_name(named.id.string, named.id.span, ty, world, kind)?;
@@ -609,8 +599,8 @@ impl<'a> AstResolver<'a> {
                                 ItemKind::Type(Type::Func(id)) => ItemKind::Func(id),
                                 kind => {
                                     return Err(Error::NotFuncOrInterface {
-                                        name: id.string,
-                                        kind: kind.as_str(&self.definitions),
+                                        name: id.string.to_owned(),
+                                        kind: kind.as_str(&self.definitions).to_owned(),
                                         span: id.span,
                                     });
                                 }
@@ -640,8 +630,8 @@ impl<'a> AstResolver<'a> {
                     }
                     kind => {
                         return Err(Error::NotInterface {
-                            name: id.string,
-                            kind: kind.as_str(&self.definitions),
+                            name: id.string.to_owned(),
+                            kind: kind.as_str(&self.definitions).to_owned(),
                             span: id.span,
                         });
                     }
@@ -659,8 +649,8 @@ impl<'a> AstResolver<'a> {
                 }
                 kind => {
                     return Err(Error::NotInterface {
-                        name: p.span.as_str(),
-                        kind: kind.as_str(&self.definitions),
+                        name: p.string.to_owned(),
+                        kind: kind.as_str(&self.definitions).to_owned(),
                         span: p.span,
                     });
                 }
@@ -675,13 +665,13 @@ impl<'a> AstResolver<'a> {
 
         return Ok(());
 
-        fn check_name<'a>(
+        fn check_name(
             name: &str,
-            span: Span<'a>,
+            span: SourceSpan,
             ty: &World,
-            world: &'a str,
+            world: &str,
             kind: ExternKind,
-        ) -> ResolutionResult<'a, ()> {
+        ) -> ResolutionResult<()> {
             let exists: bool = if kind == ExternKind::Import {
                 ty.imports.contains_key(name)
             } else {
@@ -692,7 +682,7 @@ impl<'a> AstResolver<'a> {
                 return Err(Error::DuplicateWorldItem {
                     kind,
                     name: name.to_owned(),
-                    world,
+                    world: world.to_owned(),
                     span,
                 });
             }
@@ -707,14 +697,14 @@ impl<'a> AstResolver<'a> {
         include: &ast::WorldInclude<'a>,
         world: &'a str,
         ty: &mut World,
-    ) -> ResolutionResult<'a, ()> {
+    ) -> ResolutionResult<()> {
         log::debug!("resolving include of world `{world}`");
         let mut replacements = HashMap::new();
         for item in &include.with {
             let prev = replacements.insert(item.from.string, item);
             if prev.is_some() {
                 return Err(Error::DuplicateWorldIncludeName {
-                    name: item.from.string,
+                    name: item.from.string.to_owned(),
                     span: item.from.span,
                 });
             }
@@ -727,8 +717,8 @@ impl<'a> AstResolver<'a> {
                     ItemKind::Type(Type::World(id)) | ItemKind::Component(id) => id,
                     kind => {
                         return Err(Error::NotWorld {
-                            name: id.string,
-                            kind: kind.as_str(&self.definitions),
+                            name: id.string.to_owned(),
+                            kind: kind.as_str(&self.definitions).to_owned(),
                             span: id.span,
                         });
                     }
@@ -738,8 +728,8 @@ impl<'a> AstResolver<'a> {
                 ItemKind::Type(Type::World(id)) | ItemKind::Component(id) => id,
                 kind => {
                     return Err(Error::NotWorld {
-                        name: path.span.as_str(),
-                        kind: kind.as_str(&self.definitions),
+                        name: path.string.to_owned(),
+                        kind: kind.as_str(&self.definitions).to_owned(),
                         span: path.span,
                     });
                 }
@@ -773,8 +763,8 @@ impl<'a> AstResolver<'a> {
 
         if let Some(missing) = replacements.values().next() {
             return Err(Error::MissingWorldInclude {
-                world: include.world.name(),
-                name: missing.from.string,
+                world: include.world.name().to_owned(),
+                name: missing.from.string.to_owned(),
                 span: missing.from.span,
             });
         }
@@ -788,7 +778,7 @@ impl<'a> AstResolver<'a> {
             name: &str,
             kind: ExternKind,
             replacements: &mut HashMap<&str, &ast::WorldIncludeItem<'a>>,
-        ) -> ResolutionResult<'a, String> {
+        ) -> ResolutionResult<String> {
             // Check for a id, which doesn't get replaced.
             if name.contains(':') {
                 return Ok(name.to_owned());
@@ -809,13 +799,13 @@ impl<'a> AstResolver<'a> {
                 return Err(Error::WorldIncludeConflict {
                     kind,
                     name: name.to_owned(),
-                    from: include.world.name(),
-                    to: world,
+                    from: include.world.name().to_owned(),
+                    to: world.to_owned(),
                     span,
-                    hint: if !include.with.is_empty() {
-                        ""
+                    help: if !include.with.is_empty() {
+                        None
                     } else {
-                        " (consider using a `with` clause to use a different name)"
+                        Some("consider using a `with` clause to use a different name".into())
                     },
                 });
             }
@@ -831,14 +821,14 @@ impl<'a> AstResolver<'a> {
         uses: &mut IndexMap<InterfaceId, IndexSet<usize>>,
         externs: &mut IndexMap<String, ItemKind>,
         in_world: bool,
-    ) -> ResolutionResult<'a, ()> {
+    ) -> ResolutionResult<()> {
         let (interface, name) = match &use_type.path {
             ast::UsePath::Package(path) => match self.resolve_package_export(state, path)? {
-                ItemKind::Type(Type::Interface(id)) => (id, path.span.as_str()),
+                ItemKind::Type(Type::Interface(id)) => (id, path.string),
                 kind => {
                     return Err(Error::NotInterface {
-                        name: path.span.as_str(),
-                        kind: kind.as_str(&self.definitions),
+                        name: path.string.to_owned(),
+                        kind: kind.as_str(&self.definitions).to_owned(),
                         span: path.span,
                     });
                 }
@@ -849,8 +839,8 @@ impl<'a> AstResolver<'a> {
                     ItemKind::Type(Type::Interface(iface_ty_id)) => (iface_ty_id, id.string),
                     kind => {
                         return Err(Error::NotInterface {
-                            name: id.string,
-                            kind: kind.as_str(&self.definitions),
+                            name: id.string.to_owned(),
+                            kind: kind.as_str(&self.definitions).to_owned(),
                             span: id.span,
                         });
                     }
@@ -864,8 +854,8 @@ impl<'a> AstResolver<'a> {
                 .exports
                 .get_full(item.id.string)
                 .ok_or(Error::UndefinedInterfaceType {
-                    name: item.id.string,
-                    interface_name: name,
+                    name: item.id.string.to_string(),
+                    interface_name: name.to_string(),
                     span: item.id.span,
                 })?;
 
@@ -873,18 +863,18 @@ impl<'a> AstResolver<'a> {
                 ItemKind::Resource(_) | ItemKind::Type(Type::Value(_)) => {
                     if externs.contains_key(ident.string) {
                         return Err(Error::UseConflict {
-                            name: ident.string,
+                            name: ident.string.to_string(),
                             kind: if in_world {
                                 ExternKind::Import
                             } else {
                                 ExternKind::Export
                             },
-                            hint: if item.as_id.is_some() {
-                                ""
-                            } else {
-                                " (consider using an `as` clause to use a different name)"
-                            },
                             span: ident.span,
+                            help: if item.as_id.is_some() {
+                                None
+                            } else {
+                                Some("consider using an `as` clause to use a different name".into())
+                            },
                         });
                     }
 
@@ -896,9 +886,9 @@ impl<'a> AstResolver<'a> {
                 }
                 _ => {
                     return Err(Error::NotInterfaceValueType {
-                        name: item.id.string,
-                        kind: kind.as_str(&self.definitions),
-                        interface_name: name,
+                        name: item.id.string.to_string(),
+                        kind: kind.as_str(&self.definitions).to_string(),
+                        interface_name: name.to_string(),
                         span: item.id.span,
                     });
                 }
@@ -912,7 +902,7 @@ impl<'a> AstResolver<'a> {
         &mut self,
         state: &mut State<'a>,
         decl: &'a ast::TypeDecl,
-    ) -> ResolutionResult<'a, ItemId> {
+    ) -> ResolutionResult<ItemId> {
         match decl {
             ast::TypeDecl::Variant(v) => self.variant_decl(state, v),
             ast::TypeDecl::Record(r) => self.record_decl(state, r),
@@ -927,7 +917,7 @@ impl<'a> AstResolver<'a> {
         state: &mut State<'a>,
         decl: &'a ast::ItemTypeDecl,
         externs: &mut IndexMap<String, ItemKind>,
-    ) -> ResolutionResult<'a, ItemId> {
+    ) -> ResolutionResult<ItemId> {
         let (insert, item) = match decl {
             ast::ItemTypeDecl::Resource(r) => (false, self.resource_decl(state, r, externs)?),
             ast::ItemTypeDecl::Variant(v) => (true, self.variant_decl(state, v)?),
@@ -950,7 +940,7 @@ impl<'a> AstResolver<'a> {
         state: &mut State<'a>,
         decl: &ast::ResourceDecl<'a>,
         externs: &mut IndexMap<String, ItemKind>,
-    ) -> ResolutionResult<'a, ItemId> {
+    ) -> ResolutionResult<ItemId> {
         log::debug!(
             "resolving resource declaration for id `{id}`",
             id = decl.id.string
@@ -983,7 +973,7 @@ impl<'a> AstResolver<'a> {
                 ast::ResourceMethod::Constructor(ast::Constructor { span, params, .. }) => {
                     if !names.insert("") {
                         return Err(Error::DuplicateResourceConstructor {
-                            resource: decl.id.string,
+                            resource: decl.id.string.to_string(),
                             span: *span,
                         });
                     }
@@ -1013,8 +1003,8 @@ impl<'a> AstResolver<'a> {
 
                     if !names.insert(method_id.string) {
                         return Err(Error::DuplicateResourceMethod {
-                            name: method_id.string,
-                            resource: decl.id.string,
+                            name: method_id.string.to_string(),
+                            resource: decl.id.string.to_string(),
                             span: method_id.span,
                         });
                     }
@@ -1037,7 +1027,7 @@ impl<'a> AstResolver<'a> {
         &mut self,
         state: &mut State<'a>,
         decl: &ast::VariantDecl<'a>,
-    ) -> ResolutionResult<'a, ItemId> {
+    ) -> ResolutionResult<ItemId> {
         log::debug!(
             "resolving variant declaration for id `{id}`",
             id = decl.id.string
@@ -1050,8 +1040,8 @@ impl<'a> AstResolver<'a> {
             contains_borrow |= ty.as_ref().map_or(false, |ty| ty.contains_borrow());
             if cases.insert(case.id.string.into(), ty).is_some() {
                 return Err(Error::DuplicateVariantCase {
-                    case: case.id.string,
-                    name: decl.id.string,
+                    case: case.id.string.to_string(),
+                    name: decl.id.string.to_string(),
                     span: case.id.span,
                 });
             }
@@ -1079,7 +1069,7 @@ impl<'a> AstResolver<'a> {
         &mut self,
         state: &mut State<'a>,
         decl: &ast::RecordDecl<'a>,
-    ) -> ResolutionResult<'a, ItemId> {
+    ) -> ResolutionResult<ItemId> {
         log::debug!(
             "resolving record declaration for id `{id}`",
             id = decl.id.string
@@ -1092,8 +1082,8 @@ impl<'a> AstResolver<'a> {
             contains_borrow |= ty.contains_borrow();
             if fields.insert(field.id.string.into(), ty).is_some() {
                 return Err(Error::DuplicateRecordField {
-                    field: field.id.string,
-                    name: decl.id.string,
+                    field: field.id.string.to_string(),
+                    name: decl.id.string.to_string(),
                     span: field.id.span,
                 });
             }
@@ -1121,7 +1111,7 @@ impl<'a> AstResolver<'a> {
         &mut self,
         state: &mut State<'a>,
         decl: &ast::FlagsDecl<'a>,
-    ) -> ResolutionResult<'a, ItemId> {
+    ) -> ResolutionResult<ItemId> {
         log::debug!(
             "resolving flags declaration for id `{id}`",
             id = decl.id.string
@@ -1131,8 +1121,8 @@ impl<'a> AstResolver<'a> {
         for flag in &decl.flags {
             if !flags.insert(flag.id.string.into()) {
                 return Err(Error::DuplicateFlag {
-                    flag: flag.id.string,
-                    name: decl.id.string,
+                    flag: flag.id.string.to_string(),
+                    name: decl.id.string.to_string(),
                     span: flag.id.span,
                 });
             }
@@ -1160,7 +1150,7 @@ impl<'a> AstResolver<'a> {
         &mut self,
         state: &mut State<'a>,
         decl: &ast::EnumDecl<'a>,
-    ) -> ResolutionResult<'a, ItemId> {
+    ) -> ResolutionResult<ItemId> {
         log::debug!(
             "resolving enum declaration for id `{id}`",
             id = decl.id.string
@@ -1170,8 +1160,8 @@ impl<'a> AstResolver<'a> {
         for case in &decl.cases {
             if !cases.insert(case.id.string.to_owned()) {
                 return Err(Error::DuplicateEnumCase {
-                    case: case.id.string,
-                    name: decl.id.string,
+                    case: case.id.string.to_string(),
+                    name: decl.id.string.to_string(),
                     span: case.id.span,
                 });
             }
@@ -1197,7 +1187,7 @@ impl<'a> AstResolver<'a> {
         &mut self,
         state: &mut State<'a>,
         alias: &ast::TypeAlias<'a>,
-    ) -> ResolutionResult<'a, ItemId> {
+    ) -> ResolutionResult<ItemId> {
         log::debug!("resolving type alias for id `{id}`", id = alias.id.string);
 
         let kind = match &alias.kind {
@@ -1229,8 +1219,8 @@ impl<'a> AstResolver<'a> {
                         }
                         kind => {
                             return Err(Error::InvalidAliasType {
-                                name: id.string,
-                                kind: kind.as_str(&self.definitions),
+                                name: id.string.to_string(),
+                                kind: kind.as_str(&self.definitions).to_string(),
                                 span: id.span,
                             });
                         }
@@ -1262,7 +1252,7 @@ impl<'a> AstResolver<'a> {
         state: &State<'a>,
         r: &ast::FuncTypeRef<'a>,
         kind: FuncKind,
-    ) -> ResolutionResult<'a, FuncId> {
+    ) -> ResolutionResult<FuncId> {
         match r {
             ast::FuncTypeRef::Func(ty) => {
                 self.func_type(state, &ty.params, &ty.results, kind, None)
@@ -1272,8 +1262,8 @@ impl<'a> AstResolver<'a> {
                 match item.kind() {
                     ItemKind::Type(Type::Func(id)) | ItemKind::Func(id) => Ok(id),
                     kind => Err(Error::NotFuncType {
-                        name: id.string,
-                        kind: kind.as_str(&self.definitions),
+                        name: id.string.to_string(),
+                        kind: kind.as_str(&self.definitions).to_string(),
                         span: id.span,
                     }),
                 }
@@ -1281,7 +1271,7 @@ impl<'a> AstResolver<'a> {
         }
     }
 
-    fn ty(&mut self, state: &State<'a>, ty: &ast::Type<'a>) -> ResolutionResult<'a, ValueType> {
+    fn ty(&mut self, state: &State<'a>, ty: &ast::Type<'a>) -> ResolutionResult<ValueType> {
         match ty {
             ast::Type::U8(_) => Ok(ValueType::Primitive(PrimitiveType::U8)),
             ast::Type::S8(_) => Ok(ValueType::Primitive(PrimitiveType::S8)),
@@ -1346,8 +1336,8 @@ impl<'a> AstResolver<'a> {
                 }
 
                 Err(Error::NotResourceType {
-                    name: id.string,
-                    kind: kind.as_str(&self.definitions),
+                    name: id.string.to_string(),
+                    kind: kind.as_str(&self.definitions).to_string(),
                     span: id.span,
                 })
             }
@@ -1357,8 +1347,8 @@ impl<'a> AstResolver<'a> {
                     ItemKind::Resource(id) => Ok(ValueType::Own(id)),
                     ItemKind::Type(Type::Value(ty)) => Ok(ty),
                     kind => Err(Error::NotValueType {
-                        name: id.string,
-                        kind: kind.as_str(&self.definitions),
+                        name: id.string.to_string(),
+                        kind: kind.as_str(&self.definitions).to_string(),
                         span: id.span,
                     }),
                 }
@@ -1373,7 +1363,7 @@ impl<'a> AstResolver<'a> {
         func_results: &ast::ResultList<'a>,
         kind: FuncKind,
         resource: Option<ResourceId>,
-    ) -> ResolutionResult<'a, FuncId> {
+    ) -> ResolutionResult<FuncId> {
         let mut params = IndexMap::new();
 
         if kind == FuncKind::Method {
@@ -1386,7 +1376,7 @@ impl<'a> AstResolver<'a> {
                 .is_some()
             {
                 return Err(Error::DuplicateParameter {
-                    name: param.id.string,
+                    name: param.id.string.to_string(),
                     kind,
                     span: param.id.span,
                 });
@@ -1416,7 +1406,7 @@ impl<'a> AstResolver<'a> {
                         .is_some()
                     {
                         return Err(Error::DuplicateResult {
-                            name: result.id.string,
+                            name: result.id.string.to_string(),
                             kind,
                             span: result.id.span,
                         });
@@ -1441,8 +1431,8 @@ impl<'a> AstResolver<'a> {
         state: &mut State<'a>,
         name: &'a str,
         version: Option<&Version>,
-        span: Span<'a>,
-    ) -> ResolutionResult<'a, PackageId> {
+        span: SourceSpan,
+    ) -> ResolutionResult<PackageId> {
         match state.package_map.entry(if let Some(version) = version {
             format!("{name}@{version}")
         } else {
@@ -1457,7 +1447,7 @@ impl<'a> AstResolver<'a> {
                     .and_then(|r| r.resolve(name, version).transpose())
                     .transpose()
                     .map_err(|e| Error::PackageResolutionFailure {
-                        name,
+                        name: name.to_string(),
                         span,
                         source: e,
                     })? {
@@ -1465,7 +1455,7 @@ impl<'a> AstResolver<'a> {
                         let id = state.packages.alloc(
                             Package::parse(&mut self.definitions, name, version, bytes).map_err(
                                 |e| Error::PackageParseFailure {
-                                    name,
+                                    name: name.to_string(),
                                     span,
                                     source: e,
                                 },
@@ -1473,7 +1463,10 @@ impl<'a> AstResolver<'a> {
                         );
                         Ok(*e.insert(id))
                     }
-                    None => Err(Error::UnknownPackage { name, span }),
+                    None => Err(Error::UnknownPackage {
+                        name: name.to_string(),
+                        span,
+                    }),
                 }
             }
         }
@@ -1483,7 +1476,7 @@ impl<'a> AstResolver<'a> {
         &mut self,
         state: &mut State<'a>,
         path: &ast::PackagePath<'a>,
-    ) -> ResolutionResult<'a, ItemKind> {
+    ) -> ResolutionResult<ItemKind> {
         // Check for reference to local item
         if path.name == self.document.package.name {
             return self.resolve_local_export(state, path);
@@ -1537,9 +1530,9 @@ impl<'a> AstResolver<'a> {
             for (i, (segment, span)) in segments {
                 if i == current {
                     return Error::PackageMissingExport {
-                        name: path.span.as_str(),
-                        export: segment,
-                        kind: parent_ty,
+                        name: path.string.to_string(),
+                        export: segment.to_string(),
+                        kind: parent_ty.map(ToOwned::to_owned),
                         path: prev_path,
                         span,
                     };
@@ -1560,8 +1553,8 @@ impl<'a> AstResolver<'a> {
         &self,
         state: &State<'a>,
         path: &ast::PackagePath<'a>,
-    ) -> ResolutionResult<'a, ItemKind> {
-        log::debug!("resolving local path `{path}`", path = path.span.as_str());
+    ) -> ResolutionResult<ItemKind> {
+        log::debug!("resolving local path `{path}`", path = path.string);
 
         let mut segments = path.segment_spans();
         let (segment, span) = segments.next().unwrap();
@@ -1584,9 +1577,9 @@ impl<'a> AstResolver<'a> {
                 }
                 _ => {
                     return Err(Error::PackagePathMissingExport {
-                        name: current,
-                        kind: kind.as_str(&self.definitions),
-                        export: segment,
+                        name: current.to_string(),
+                        kind: kind.as_str(&self.definitions).to_string(),
+                        export: segment.to_string(),
                         span,
                     });
                 }
@@ -1597,9 +1590,9 @@ impl<'a> AstResolver<'a> {
                     .get(segment)
                     .copied()
                     .ok_or_else(|| Error::PackagePathMissingExport {
-                        name: current,
-                        kind: kind.as_str(&self.definitions),
-                        export: segment,
+                        name: current.to_string(),
+                        kind: kind.as_str(&self.definitions).to_string(),
+                        export: segment.to_string(),
                         span,
                     })?;
 
@@ -1609,7 +1602,7 @@ impl<'a> AstResolver<'a> {
         Ok(kind)
     }
 
-    fn expr(&mut self, state: &mut State<'a>, expr: &'a ast::Expr) -> ResolutionResult<'a, ItemId> {
+    fn expr(&mut self, state: &mut State<'a>, expr: &'a ast::Expr) -> ResolutionResult<ItemId> {
         let mut item = self.primary_expr(state, &expr.primary)?;
 
         for expr in &expr.postfix {
@@ -1623,7 +1616,7 @@ impl<'a> AstResolver<'a> {
         &mut self,
         state: &mut State<'a>,
         expr: &'a ast::PrimaryExpr<'a>,
-    ) -> ResolutionResult<'a, ItemId> {
+    ) -> ResolutionResult<ItemId> {
         match expr {
             ast::PrimaryExpr::New(e) => self.new_expr(state, e),
             ast::PrimaryExpr::Nested(e) => self.expr(state, &e.0),
@@ -1635,7 +1628,7 @@ impl<'a> AstResolver<'a> {
         &mut self,
         state: &mut State<'a>,
         expr: &'a ast::NewExpr<'a>,
-    ) -> ResolutionResult<'a, ItemId> {
+    ) -> ResolutionResult<ItemId> {
         if expr.package.name == self.document.package.name {
             return Err(Error::CannotInstantiateSelf {
                 span: expr.package.span,
@@ -1668,7 +1661,7 @@ impl<'a> AstResolver<'a> {
                     .imports
                     .get(&name)
                     .ok_or_else(|| Error::MissingComponentImport {
-                        package: expr.package.span.as_str(),
+                        package: expr.package.string.to_string(),
                         import: name.clone(),
                         span,
                     })?;
@@ -1705,7 +1698,7 @@ impl<'a> AstResolver<'a> {
             if require_all {
                 return Err(Error::MissingInstantiationArg {
                     name: name.clone(),
-                    package: expr.package.span.as_str(),
+                    package: expr.package.string.to_string(),
                     span: expr.package.span,
                 });
             }
@@ -1736,8 +1729,8 @@ impl<'a> AstResolver<'a> {
         name: String,
         mut kind: ItemKind,
         package: &'a str,
-        span: Span<'a>,
-    ) -> ResolutionResult<'a, ItemId> {
+        span: SourceSpan,
+    ) -> ResolutionResult<ItemId> {
         assert!(state.scopes.is_empty());
 
         // If the item is an instance, we need to recurse on its dependencies
@@ -1765,14 +1758,11 @@ impl<'a> AstResolver<'a> {
         if let Some(import) = state.imports.get(&name) {
             // Check if the implicit import would conflict with an explicit import
             if import.package.is_none() {
-                let (line, column) = line_column(span.source(), import.span.start);
                 return Err(Error::InstantiationArgConflict {
                     name: name.to_owned(),
-                    path: state.document.path,
-                    kind: kind.as_str(&self.definitions),
-                    line,
-                    column,
+                    kind: kind.as_str(&self.definitions).to_string(),
                     span,
+                    import: import.span,
                 });
             };
 
@@ -1781,15 +1771,12 @@ impl<'a> AstResolver<'a> {
             let id = match (kind, state.current.items[import.item].kind()) {
                 (ItemKind::Instance(id), ItemKind::Instance(_)) => id,
                 (_, kind) => {
-                    let (line, column) = line_column(span.source(), import.span.start);
                     return Err(Error::UnmergeableInstantiationArg {
                         name: name.to_owned(),
-                        package: import.package.unwrap(),
-                        path: state.document.path,
-                        kind: kind.as_str(&self.definitions),
-                        line,
-                        column,
+                        package: import.package.unwrap().to_string(),
+                        kind: kind.as_str(&self.definitions).to_string(),
                         span,
+                        instantiation: import.span,
                     });
                 }
             };
@@ -1844,8 +1831,8 @@ impl<'a> AstResolver<'a> {
         state: &mut State<'a>,
         name: &str,
         source_id: InterfaceId,
-        span: Span<'a>,
-    ) -> ResolutionResult<'a, ()> {
+        span: SourceSpan,
+    ) -> ResolutionResult<()> {
         let import = state.imports.get(name).unwrap();
         let import_span = import.span;
         let target_id = match state.current.items[import.item].kind() {
@@ -1882,15 +1869,12 @@ impl<'a> AstResolver<'a> {
                         }
                         (Err(e), _) | (_, Err(e)) => {
                             // Neither is a subtype of the other, so error
-                            let (line, column) = line_column(span.source(), import_span.start);
                             return Err(Error::InstantiationArgMergeFailure {
                                 name: name.to_owned(),
-                                package: import.package.unwrap(),
-                                path: state.document.path,
-                                kind: "instance",
-                                line,
-                                column,
+                                package: import.package.unwrap().to_string(),
+                                kind: "instance".to_string(),
                                 span,
+                                instantiation: import_span,
                                 source: e,
                             });
                         }
@@ -1953,7 +1937,7 @@ impl<'a> AstResolver<'a> {
         state: &mut State<'a>,
         arg: &'a ast::NamedInstantiationArgument<'a>,
         world: WorldId,
-    ) -> ResolutionResult<'a, (String, ItemId, Span<'a>)> {
+    ) -> ResolutionResult<(String, ItemId, SourceSpan)> {
         let item = self.expr(state, &arg.expr)?;
 
         let name = match &arg.name {
@@ -1973,7 +1957,7 @@ impl<'a> AstResolver<'a> {
         state: &mut State<'a>,
         ident: &ast::Ident<'a>,
         world: WorldId,
-    ) -> ResolutionResult<'a, (String, ItemId, Span<'a>)> {
+    ) -> ResolutionResult<(String, ItemId, SourceSpan)> {
         let (item_id, item) = state.local_item(ident)?;
         let world = &self.definitions.worlds[world];
 
@@ -2061,7 +2045,7 @@ impl<'a> AstResolver<'a> {
         state: &mut State<'a>,
         item: ItemId,
         expr: &ast::PostfixExpr<'a>,
-    ) -> ResolutionResult<'a, ItemId> {
+    ) -> ResolutionResult<ItemId> {
         match expr {
             ast::PostfixExpr::Access(expr) => {
                 let exports = self.instance_exports(state, item, expr.span)?;
@@ -2080,8 +2064,8 @@ impl<'a> AstResolver<'a> {
         &self,
         state: &State,
         item: ItemId,
-        span: Span<'a>,
-    ) -> ResolutionResult<'a, &IndexMap<String, ItemKind>> {
+        span: SourceSpan,
+    ) -> ResolutionResult<&IndexMap<String, ItemKind>> {
         match state.current.items[item].kind() {
             ItemKind::Instance(id) => Ok(&self.definitions.interfaces[id].exports),
             ItemKind::Instantiation(id) => {
@@ -2089,7 +2073,7 @@ impl<'a> AstResolver<'a> {
             }
             ItemKind::Type(Type::Interface(_)) => Err(Error::InaccessibleInterface { span }),
             kind => Err(Error::Inaccessible {
-                kind: kind.as_str(&self.definitions),
+                kind: kind.as_str(&self.definitions).to_string(),
                 span,
             }),
         }
@@ -2100,8 +2084,8 @@ impl<'a> AstResolver<'a> {
         state: &mut State<'a>,
         item: ItemId,
         name: String,
-        span: Span<'a>,
-    ) -> ResolutionResult<'a, ItemId> {
+        span: SourceSpan,
+    ) -> ResolutionResult<ItemId> {
         let exports = self.instance_exports(state, item, span)?;
         let kind = exports
             .get(&name)

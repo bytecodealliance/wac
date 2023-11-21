@@ -1,5 +1,10 @@
-`x` (u32) is not an interface
-    --> tests/resolution/fail/invalid-world-interface-import.wac:6:12
-     |
-   6 |     import x;
-     |            ^
+failed to resolve document
+
+  × `x` (u32) is not an interface
+   ╭─[tests/resolution/fail/invalid-world-interface-import.wac:6:12]
+ 5 │ world w {
+ 6 │     import x;
+   ·            ┬
+   ·            ╰── `x` is not an interface
+ 7 │ }
+   ╰────

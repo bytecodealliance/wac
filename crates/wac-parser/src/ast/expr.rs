@@ -1,8 +1,9 @@
 use super::{
-    display, parse_delimited, parse_optional, parse_token, Ident, Lookahead, PackageName, Parse,
+    parse_delimited, parse_optional, parse_token, Ident, Lookahead, PackageName, Parse,
     ParseResult, Peek,
 };
-use crate::lexer::{Lexer, Span, Token};
+use crate::lexer::{Lexer, Token};
+use miette::SourceSpan;
 use serde::Serialize;
 
 /// Represents an expression in the AST.
@@ -16,7 +17,7 @@ pub struct Expr<'a> {
 }
 
 impl<'a> Parse<'a> for Expr<'a> {
-    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<'a, Self> {
+    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<Self> {
         let primary = Parse::parse(lexer)?;
         // Currently, only the access expressions are supported for postfix expressions.
         // As they have the same precedence, we don't need to perform climbing.
@@ -36,8 +37,6 @@ impl<'a> Parse<'a> for Expr<'a> {
     }
 }
 
-display!(Expr, expr);
-
 /// Represents a primary expression in the AST.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -51,7 +50,7 @@ pub enum PrimaryExpr<'a> {
 }
 
 impl<'a> Parse<'a> for PrimaryExpr<'a> {
-    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<'a, Self> {
+    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<Self> {
         let mut lookahead = Lookahead::new(lexer);
         if NewExpr::peek(&mut lookahead) {
             Ok(Self::New(Parse::parse(lexer)?))
@@ -78,7 +77,7 @@ pub struct NewExpr<'a> {
 }
 
 impl<'a> Parse<'a> for NewExpr<'a> {
-    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<'a, Self> {
+    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<Self> {
         parse_token(lexer, Token::NewKeyword)?;
         let package = PackageName::parse(lexer)?;
         parse_token(lexer, Token::OpenBrace)?;
@@ -110,7 +109,7 @@ pub enum InstantiationArgument<'a> {
 }
 
 impl<'a> Parse<'a> for InstantiationArgument<'a> {
-    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<'a, Self> {
+    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<Self> {
         let mut lookahead = Lookahead::new(lexer);
         if NamedInstantiationArgument::peek(&mut lookahead) {
             // Peek again to see if this is really a named instantiation argument.
@@ -142,7 +141,7 @@ pub struct NamedInstantiationArgument<'a> {
 }
 
 impl<'a> Parse<'a> for NamedInstantiationArgument<'a> {
-    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<'a, Self> {
+    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<Self> {
         let name = Parse::parse(lexer)?;
         parse_token(lexer, Token::Colon)?;
         let expr = Parse::parse(lexer)?;
@@ -167,7 +166,7 @@ pub enum InstantiationArgumentName<'a> {
 }
 
 impl<'a> Parse<'a> for InstantiationArgumentName<'a> {
-    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<'a, Self> {
+    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<Self> {
         let mut lookahead = Lookahead::new(lexer);
         if Ident::peek(&mut lookahead) {
             Ok(Self::Ident(Parse::parse(lexer)?))
@@ -187,7 +186,7 @@ impl Peek for InstantiationArgumentName<'_> {
 
 impl<'a> InstantiationArgumentName<'a> {
     /// Gets the span of the instantiation argument name.
-    pub fn span(&self) -> Span<'a> {
+    pub fn span(&self) -> SourceSpan {
         match self {
             Self::Ident(ident) => ident.span,
             Self::String(string) => string.span,
@@ -201,7 +200,7 @@ impl<'a> InstantiationArgumentName<'a> {
 pub struct NestedExpr<'a>(pub Box<Expr<'a>>);
 
 impl<'a> Parse<'a> for NestedExpr<'a> {
-    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<'a, Self> {
+    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<Self> {
         parse_token(lexer, Token::OpenParen)?;
         let expr = Box::new(Parse::parse(lexer)?);
         parse_token(lexer, Token::CloseParen)?;
@@ -227,7 +226,7 @@ pub enum PostfixExpr<'a> {
 
 impl<'a> PostfixExpr<'a> {
     /// Gets the span of the postfix expression.
-    pub fn span(&self) -> Span<'a> {
+    pub fn span(&self) -> SourceSpan {
         match self {
             PostfixExpr::Access(access) => access.span,
             PostfixExpr::NamedAccess(access) => access.span,
@@ -240,17 +239,19 @@ impl<'a> PostfixExpr<'a> {
 #[serde(rename_all = "camelCase")]
 pub struct AccessExpr<'a> {
     /// The span of the access expression.
-    pub span: Span<'a>,
+    pub span: SourceSpan,
     /// The identifier in the expression.
     pub id: Ident<'a>,
 }
 
 impl<'a> Parse<'a> for AccessExpr<'a> {
-    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<'a, Self> {
-        let mut span = parse_token(lexer, Token::Dot)?;
+    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<Self> {
+        let span = parse_token(lexer, Token::Dot)?;
         let id: Ident = Parse::parse(lexer)?;
-        span.end = id.span.end;
-        Ok(Self { span, id })
+        Ok(Self {
+            span: SourceSpan::new(span.offset().into(), (id.span.len() + 1).into()),
+            id,
+        })
     }
 }
 
@@ -265,44 +266,28 @@ impl Peek for AccessExpr<'_> {
 #[serde(rename_all = "camelCase")]
 pub struct NamedAccessExpr<'a> {
     /// The span of the access expression.
-    pub span: Span<'a>,
+    pub span: SourceSpan,
     /// The name string in the expression.
     pub string: super::String<'a>,
 }
 
 impl<'a> Parse<'a> for NamedAccessExpr<'a> {
-    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<'a, Self> {
-        let mut span = parse_token(lexer, Token::OpenBracket)?;
+    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<Self> {
+        let opening = parse_token(lexer, Token::OpenBracket)?;
         let string = Parse::parse(lexer)?;
         let closing = parse_token(lexer, Token::CloseBracket)?;
-        span.end = closing.end;
-        Ok(Self { span, string })
+        Ok(Self {
+            span: SourceSpan::new(
+                opening.offset().into(),
+                ((closing.offset() + closing.len()) - opening.offset()).into(),
+            ),
+            string,
+        })
     }
 }
 
 impl Peek for NamedAccessExpr<'_> {
     fn peek(lookahead: &mut Lookahead) -> bool {
         lookahead.peek(Token::OpenBracket)
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-    use crate::ast::test::roundtrip;
-
-    #[test]
-    fn primary_expr_roundtrip() {
-        roundtrip::<Expr>("x", "x").unwrap();
-        roundtrip::<Expr>("y.x.z", "y.x.z").unwrap();
-        roundtrip::<Expr>("y[\"x\"][\"z\"]", "y[\"x\"][\"z\"]").unwrap();
-        roundtrip::<Expr>("foo[\"bar\"].baz[\"qux\"]", "foo[\"bar\"].baz[\"qux\"]").unwrap();
-        roundtrip::<Expr>("(foo-bar-baz)", "(foo-bar-baz)").unwrap();
-        roundtrip::<Expr>("new foo:bar {}", "new foo:bar {}").unwrap();
-        roundtrip::<Expr>(
-            "new foo:bar { foo, \"bar\": (new baz:qux {...}), \"baz\": foo[\"baz\"].qux }",
-            "new foo:bar {\n    foo,\n    \"bar\": (new baz:qux { ... }),\n    \"baz\": foo[\"baz\"].qux,\n}",
-        )
-        .unwrap();
     }
 }

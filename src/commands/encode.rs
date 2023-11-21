@@ -1,13 +1,12 @@
-use anyhow::{anyhow, bail, Context, Result};
+use crate::fmt_err;
+use anyhow::{bail, Context, Result};
 use clap::Args;
 use std::{
     fs,
     io::{IsTerminal, Write},
     path::PathBuf,
 };
-use wac_parser::{
-    ast::Document, Composition, EncodingOptions, ErrorFormatter, FileSystemPackageResolver,
-};
+use wac_parser::{ast::Document, Composition, EncodingOptions, FileSystemPackageResolver};
 use wasmparser::{Validator, WasmFeatures};
 use wasmprinter::print_bytes;
 
@@ -71,12 +70,7 @@ impl EncodeCommand {
         let contents = fs::read_to_string(&self.path)
             .with_context(|| format!("failed to read file `{path}`", path = self.path.display()))?;
 
-        let document = Document::parse(&contents, &self.path).map_err(|e| {
-            anyhow!(
-                "{e}",
-                e = ErrorFormatter::new(&self.path, e, std::io::stderr().is_terminal())
-            )
-        })?;
+        let document = Document::parse(&contents).map_err(|e| fmt_err(e, &self.path, &contents))?;
 
         let resolved = Composition::from_ast(
             &document,
@@ -85,12 +79,7 @@ impl EncodeCommand {
                 self.deps.into_iter().collect(),
             ))),
         )
-        .map_err(|e| {
-            anyhow!(
-                "{e}",
-                e = ErrorFormatter::new(&self.path, e, std::io::stderr().is_terminal())
-            )
-        })?;
+        .map_err(|e| fmt_err(e, &self.path, &contents))?;
 
         if !self.wat && self.output.is_none() && std::io::stdout().is_terminal() {
             bail!("cannot print binary wasm output to a terminal; pass the `-t` flag to print the text format instead");

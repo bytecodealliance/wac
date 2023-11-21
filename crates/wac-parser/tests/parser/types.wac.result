@@ -1,12 +1,12 @@
 {
   "docs": [],
   "package": {
+    "string": "test:comp",
     "name": "test:comp",
     "version": null,
     "span": {
-      "str": "test:comp",
-      "start": 8,
-      "end": 17
+      "offset": 8,
+      "length": 9
     }
   },
   "statements": [
@@ -17,18 +17,16 @@
             {
               "comment": "Defining an interface",
               "span": {
-                "str": "/// Defining an interface",
-                "start": 20,
-                "end": 45
+                "offset": 20,
+                "length": 25
               }
             }
           ],
           "id": {
             "string": "i",
             "span": {
-              "str": "i",
-              "start": 56,
-              "end": 57
+              "offset": 56,
+              "length": 1
             }
           },
           "items": [
@@ -39,18 +37,16 @@
                     {
                       "comment": "Defining a resource",
                       "span": {
-                        "str": "/// Defining a resource",
-                        "start": 64,
-                        "end": 87
+                        "offset": 64,
+                        "length": 23
                       }
                     }
                   ],
                   "id": {
                     "string": "res",
                     "span": {
-                      "str": "res",
-                      "start": 101,
-                      "end": 104
+                      "offset": 101,
+                      "length": 3
                     }
                   },
                   "methods": [
@@ -58,9 +54,8 @@
                       "constructor": {
                         "docs": [],
                         "span": {
-                          "str": "constructor",
-                          "start": 115,
-                          "end": 126
+                          "offset": 115,
+                          "length": 11
                         },
                         "params": []
                       }
@@ -76,18 +71,16 @@
                     {
                       "comment": "Type alias a",
                       "span": {
-                        "str": "/// Type alias a",
-                        "start": 141,
-                        "end": 157
+                        "offset": 141,
+                        "length": 16
                       }
                     }
                   ],
                   "id": {
                     "string": "a",
                     "span": {
-                      "str": "a",
-                      "start": 167,
-                      "end": 168
+                      "offset": 167,
+                      "length": 1
                     }
                   },
                   "kind": {
@@ -106,18 +99,16 @@
                     {
                       "comment": "Record type",
                       "span": {
-                        "str": "/// Record type",
-                        "start": 183,
-                        "end": 198
+                        "offset": 183,
+                        "length": 15
                       }
                     }
                   ],
                   "id": {
                     "string": "r",
                     "span": {
-                      "str": "r",
-                      "start": 210,
-                      "end": 211
+                      "offset": 210,
+                      "length": 1
                     }
                   },
                   "fields": [
@@ -126,16 +117,14 @@
                       "id": {
                         "string": "x",
                         "span": {
-                          "str": "x",
-                          "start": 222,
-                          "end": 223
+                          "offset": 222,
+                          "length": 1
                         }
                       },
                       "ty": {
                         "u32": {
-                          "str": "u32",
-                          "start": 225,
-                          "end": 228
+                          "offset": 225,
+                          "length": 3
                         }
                       }
                     }
@@ -149,18 +138,16 @@
                   {
                     "comment": "Export func",
                     "span": {
-                      "str": "/// Export func",
-                      "start": 239,
-                      "end": 254
+                      "offset": 239,
+                      "length": 15
                     }
                   }
                 ],
                 "id": {
                   "string": "x",
                   "span": {
-                    "str": "x",
-                    "start": 259,
-                    "end": 260
+                    "offset": 259,
+                    "length": 1
                   }
                 },
                 "ty": {
@@ -177,27 +164,24 @@
                   {
                     "comment": "Export func of type a",
                     "span": {
-                      "str": "/// Export func of type a",
-                      "start": 274,
-                      "end": 299
+                      "offset": 274,
+                      "length": 25
                     }
                   }
                 ],
                 "id": {
                   "string": "y",
                   "span": {
-                    "str": "y",
-                    "start": 304,
-                    "end": 305
+                    "offset": 304,
+                    "length": 1
                   }
                 },
                 "ty": {
                   "ident": {
                     "string": "a",
                     "span": {
-                      "str": "a",
-                      "start": 307,
-                      "end": 308
+                      "offset": 307,
+                      "length": 1
                     }
                   }
                 }
@@ -214,18 +198,16 @@
             {
               "comment": "Defining a second interface",
               "span": {
-                "str": "/// Defining a second interface",
-                "start": 313,
-                "end": 344
+                "offset": 313,
+                "length": 31
               }
             }
           ],
           "id": {
             "string": "i2",
             "span": {
-              "str": "i2",
-              "start": 355,
-              "end": 357
+              "offset": 355,
+              "length": 2
             }
           },
           "items": [
@@ -235,9 +217,8 @@
                   {
                     "comment": "Use type r from i",
                     "span": {
-                      "str": "/// Use type r from i",
-                      "start": 364,
-                      "end": 385
+                      "offset": 364,
+                      "length": 21
                     }
                   }
                 ],
@@ -245,9 +226,8 @@
                   "ident": {
                     "string": "i",
                     "span": {
-                      "str": "i",
-                      "start": 394,
-                      "end": 395
+                      "offset": 394,
+                      "length": 1
                     }
                   }
                 },
@@ -256,9 +236,8 @@
                     "id": {
                       "string": "r",
                       "span": {
-                        "str": "r",
-                        "start": 397,
-                        "end": 398
+                        "offset": 397,
+                        "length": 1
                       }
                     },
                     "asId": null
@@ -272,9 +251,8 @@
                   {
                     "comment": "Use type r from i with alias z",
                     "span": {
-                      "str": "/// Use type r from i with alias z",
-                      "start": 406,
-                      "end": 440
+                      "offset": 406,
+                      "length": 34
                     }
                   }
                 ],
@@ -282,9 +260,8 @@
                   "ident": {
                     "string": "i",
                     "span": {
-                      "str": "i",
-                      "start": 449,
-                      "end": 450
+                      "offset": 449,
+                      "length": 1
                     }
                   }
                 },
@@ -293,17 +270,15 @@
                     "id": {
                       "string": "r",
                       "span": {
-                        "str": "r",
-                        "start": 452,
-                        "end": 453
+                        "offset": 452,
+                        "length": 1
                       }
                     },
                     "asId": {
                       "string": "z",
                       "span": {
-                        "str": "z",
-                        "start": 457,
-                        "end": 458
+                        "offset": 457,
+                        "length": 1
                       }
                     }
                   }
@@ -321,18 +296,16 @@
             {
               "comment": "Defining a world",
               "span": {
-                "str": "/// Defining a world",
-                "start": 464,
-                "end": 484
+                "offset": 464,
+                "length": 20
               }
             }
           ],
           "id": {
             "string": "w1",
             "span": {
-              "str": "w1",
-              "start": 491,
-              "end": 493
+              "offset": 491,
+              "length": 2
             }
           },
           "items": [
@@ -342,19 +315,18 @@
                   {
                     "comment": "Use type r from foo:bar/i",
                     "span": {
-                      "str": "/// Use type r from foo:bar/i",
-                      "start": 500,
-                      "end": 529
+                      "offset": 500,
+                      "length": 29
                     }
                   }
                 ],
                 "path": {
                   "package": {
                     "span": {
-                      "str": "foo:bar/i",
-                      "start": 538,
-                      "end": 547
+                      "offset": 538,
+                      "length": 9
                     },
+                    "string": "foo:bar/i",
                     "name": "foo:bar",
                     "segments": "i",
                     "version": null
@@ -365,9 +337,8 @@
                     "id": {
                       "string": "r",
                       "span": {
-                        "str": "r",
-                        "start": 549,
-                        "end": 550
+                        "offset": 549,
+                        "length": 1
                       }
                     },
                     "asId": null
@@ -381,9 +352,8 @@
                   {
                     "comment": "Import a function",
                     "span": {
-                      "str": "/// Import a function",
-                      "start": 558,
-                      "end": 579
+                      "offset": 558,
+                      "length": 21
                     }
                   }
                 ],
@@ -392,9 +362,8 @@
                     "id": {
                       "string": "a",
                       "span": {
-                        "str": "a",
-                        "start": 591,
-                        "end": 592
+                        "offset": 591,
+                        "length": 1
                       }
                     },
                     "ty": {
@@ -413,9 +382,8 @@
                   {
                     "comment": "Import an interface",
                     "span": {
-                      "str": "/// Import an interface",
-                      "start": 606,
-                      "end": 629
+                      "offset": 606,
+                      "length": 23
                     }
                   }
                 ],
@@ -423,9 +391,8 @@
                   "ident": {
                     "string": "i",
                     "span": {
-                      "str": "i",
-                      "start": 641,
-                      "end": 642
+                      "offset": 641,
+                      "length": 1
                     }
                   }
                 }
@@ -437,9 +404,8 @@
                   {
                     "comment": "Import by name with type `c`",
                     "span": {
-                      "str": "/// Import by name with type `c`",
-                      "start": 648,
-                      "end": 680
+                      "offset": 648,
+                      "length": 32
                     }
                   }
                 ],
@@ -448,18 +414,16 @@
                     "id": {
                       "string": "c",
                       "span": {
-                        "str": "c",
-                        "start": 692,
-                        "end": 693
+                        "offset": 692,
+                        "length": 1
                       }
                     },
                     "ty": {
                       "ident": {
                         "string": "c",
                         "span": {
-                          "str": "c",
-                          "start": 695,
-                          "end": 696
+                          "offset": 695,
+                          "length": 1
                         }
                       }
                     }
@@ -473,9 +437,8 @@
                   {
                     "comment": "Export an inline interface",
                     "span": {
-                      "str": "/// Export an inline interface",
-                      "start": 703,
-                      "end": 733
+                      "offset": 703,
+                      "length": 30
                     }
                   }
                 ],
@@ -484,9 +447,8 @@
                     "id": {
                       "string": "d",
                       "span": {
-                        "str": "d",
-                        "start": 745,
-                        "end": 746
+                        "offset": 745,
+                        "length": 1
                       }
                     },
                     "ty": {
@@ -498,9 +460,8 @@
                               "id": {
                                 "string": "x",
                                 "span": {
-                                  "str": "x",
-                                  "start": 768,
-                                  "end": 769
+                                  "offset": 768,
+                                  "length": 1
                                 }
                               },
                               "ty": {
@@ -524,9 +485,8 @@
                   {
                     "comment": "Export an interface",
                     "span": {
-                      "str": "/// Export an interface",
-                      "start": 790,
-                      "end": 813
+                      "offset": 790,
+                      "length": 23
                     }
                   }
                 ],
@@ -534,9 +494,8 @@
                   "ident": {
                     "string": "i2",
                     "span": {
-                      "str": "i2",
-                      "start": 825,
-                      "end": 827
+                      "offset": 825,
+                      "length": 2
                     }
                   }
                 }
@@ -548,9 +507,8 @@
                   {
                     "comment": "Export by name with type `f`",
                     "span": {
-                      "str": "/// Export by name with type `f`",
-                      "start": 833,
-                      "end": 865
+                      "offset": 833,
+                      "length": 32
                     }
                   }
                 ],
@@ -559,18 +517,16 @@
                     "id": {
                       "string": "f",
                       "span": {
-                        "str": "f",
-                        "start": 877,
-                        "end": 878
+                        "offset": 877,
+                        "length": 1
                       }
                     },
                     "ty": {
                       "ident": {
                         "string": "f",
                         "span": {
-                          "str": "f",
-                          "start": 880,
-                          "end": 881
+                          "offset": 880,
+                          "length": 1
                         }
                       }
                     }
@@ -589,18 +545,16 @@
             {
               "comment": "Defining a second world",
               "span": {
-                "str": "/// Defining a second world",
-                "start": 886,
-                "end": 913
+                "offset": 886,
+                "length": 27
               }
             }
           ],
           "id": {
             "string": "w2",
             "span": {
-              "str": "w2",
-              "start": 920,
-              "end": 922
+              "offset": 920,
+              "length": 2
             }
           },
           "items": [
@@ -610,9 +564,8 @@
                   {
                     "comment": "Include the first world",
                     "span": {
-                      "str": "/// Include the first world",
-                      "start": 929,
-                      "end": 956
+                      "offset": 929,
+                      "length": 27
                     }
                   }
                 ],
@@ -620,9 +573,8 @@
                   "ident": {
                     "string": "w1",
                     "span": {
-                      "str": "w1",
-                      "start": 969,
-                      "end": 971
+                      "offset": 969,
+                      "length": 2
                     }
                   }
                 },
@@ -635,19 +587,18 @@
                   {
                     "comment": "Include a world by path",
                     "span": {
-                      "str": "/// Include a world by path",
-                      "start": 978,
-                      "end": 1005
+                      "offset": 978,
+                      "length": 27
                     }
                   }
                 ],
                 "world": {
                   "package": {
                     "span": {
-                      "str": "foo:bar/baz",
-                      "start": 1018,
-                      "end": 1029
+                      "offset": 1018,
+                      "length": 11
                     },
+                    "string": "foo:bar/baz",
                     "name": "foo:bar",
                     "segments": "baz",
                     "version": null
@@ -668,18 +619,16 @@
               {
                 "comment": "Defining a variant",
                 "span": {
-                  "str": "/// Defining a variant",
-                  "start": 1034,
-                  "end": 1056
+                  "offset": 1034,
+                  "length": 22
                 }
               }
             ],
             "id": {
               "string": "v",
               "span": {
-                "str": "v",
-                "start": 1065,
-                "end": 1066
+                "offset": 1065,
+                "length": 1
               }
             },
             "cases": [
@@ -688,18 +637,16 @@
                 "id": {
                   "string": "a",
                   "span": {
-                    "str": "a",
-                    "start": 1073,
-                    "end": 1074
+                    "offset": 1073,
+                    "length": 1
                   }
                 },
                 "ty": {
                   "ident": {
                     "string": "x",
                     "span": {
-                      "str": "x",
-                      "start": 1075,
-                      "end": 1076
+                      "offset": 1075,
+                      "length": 1
                     }
                   }
                 }
@@ -709,16 +656,14 @@
                 "id": {
                   "string": "b",
                   "span": {
-                    "str": "b",
-                    "start": 1083,
-                    "end": 1084
+                    "offset": 1083,
+                    "length": 1
                   }
                 },
                 "ty": {
                   "string": {
-                    "str": "string",
-                    "start": 1085,
-                    "end": 1091
+                    "offset": 1085,
+                    "length": 6
                   }
                 }
               },
@@ -727,16 +672,14 @@
                 "id": {
                   "string": "c",
                   "span": {
-                    "str": "c",
-                    "start": 1098,
-                    "end": 1099
+                    "offset": 1098,
+                    "length": 1
                   }
                 },
                 "ty": {
                   "u32": {
-                    "str": "u32",
-                    "start": 1100,
-                    "end": 1103
+                    "offset": 1100,
+                    "length": 3
                   }
                 }
               },
@@ -745,9 +688,8 @@
                 "id": {
                   "string": "d",
                   "span": {
-                    "str": "d",
-                    "start": 1110,
-                    "end": 1111
+                    "offset": 1110,
+                    "length": 1
                   }
                 },
                 "ty": null
@@ -765,18 +707,16 @@
               {
                 "comment": "Defining a record",
                 "span": {
-                  "str": "/// Defining a record",
-                  "start": 1116,
-                  "end": 1137
+                  "offset": 1116,
+                  "length": 21
                 }
               }
             ],
             "id": {
               "string": "r",
               "span": {
-                "str": "r",
-                "start": 1145,
-                "end": 1146
+                "offset": 1145,
+                "length": 1
               }
             },
             "fields": [
@@ -785,16 +725,14 @@
                 "id": {
                   "string": "x",
                   "span": {
-                    "str": "x",
-                    "start": 1153,
-                    "end": 1154
+                    "offset": 1153,
+                    "length": 1
                   }
                 },
                 "ty": {
                   "u32": {
-                    "str": "u32",
-                    "start": 1156,
-                    "end": 1159
+                    "offset": 1156,
+                    "length": 3
                   }
                 }
               },
@@ -803,16 +741,14 @@
                 "id": {
                   "string": "y",
                   "span": {
-                    "str": "y",
-                    "start": 1165,
-                    "end": 1166
+                    "offset": 1165,
+                    "length": 1
                   }
                 },
                 "ty": {
                   "string": {
-                    "str": "string",
-                    "start": 1168,
-                    "end": 1174
+                    "offset": 1168,
+                    "length": 6
                   }
                 }
               },
@@ -821,18 +757,16 @@
                 "id": {
                   "string": "z",
                   "span": {
-                    "str": "z",
-                    "start": 1180,
-                    "end": 1181
+                    "offset": 1180,
+                    "length": 1
                   }
                 },
                 "ty": {
                   "ident": {
                     "string": "v",
                     "span": {
-                      "str": "v",
-                      "start": 1183,
-                      "end": 1184
+                      "offset": 1183,
+                      "length": 1
                     }
                   }
                 }
@@ -850,18 +784,16 @@
               {
                 "comment": "Defining flags",
                 "span": {
-                  "str": "/// Defining flags",
-                  "start": 1190,
-                  "end": 1208
+                  "offset": 1190,
+                  "length": 18
                 }
               }
             ],
             "id": {
               "string": "f",
               "span": {
-                "str": "f",
-                "start": 1215,
-                "end": 1216
+                "offset": 1215,
+                "length": 1
               }
             },
             "flags": [
@@ -870,9 +802,8 @@
                 "id": {
                   "string": "a",
                   "span": {
-                    "str": "a",
-                    "start": 1223,
-                    "end": 1224
+                    "offset": 1223,
+                    "length": 1
                   }
                 }
               },
@@ -881,9 +812,8 @@
                 "id": {
                   "string": "b",
                   "span": {
-                    "str": "b",
-                    "start": 1230,
-                    "end": 1231
+                    "offset": 1230,
+                    "length": 1
                   }
                 }
               },
@@ -892,9 +822,8 @@
                 "id": {
                   "string": "c",
                   "span": {
-                    "str": "c",
-                    "start": 1237,
-                    "end": 1238
+                    "offset": 1237,
+                    "length": 1
                   }
                 }
               }
@@ -911,18 +840,16 @@
               {
                 "comment": "Defining an enum",
                 "span": {
-                  "str": "/// Defining an enum",
-                  "start": 1243,
-                  "end": 1263
+                  "offset": 1243,
+                  "length": 20
                 }
               }
             ],
             "id": {
               "string": "e",
               "span": {
-                "str": "e",
-                "start": 1269,
-                "end": 1270
+                "offset": 1269,
+                "length": 1
               }
             },
             "cases": [
@@ -931,9 +858,8 @@
                 "id": {
                   "string": "a",
                   "span": {
-                    "str": "a",
-                    "start": 1277,
-                    "end": 1278
+                    "offset": 1277,
+                    "length": 1
                   }
                 }
               },
@@ -942,9 +868,8 @@
                 "id": {
                   "string": "b",
                   "span": {
-                    "str": "b",
-                    "start": 1284,
-                    "end": 1285
+                    "offset": 1284,
+                    "length": 1
                   }
                 }
               },
@@ -953,9 +878,8 @@
                 "id": {
                   "string": "c",
                   "span": {
-                    "str": "c",
-                    "start": 1291,
-                    "end": 1292
+                    "offset": 1291,
+                    "length": 1
                   }
                 }
               }
@@ -972,18 +896,16 @@
               {
                 "comment": "Type aliases",
                 "span": {
-                  "str": "/// Type aliases",
-                  "start": 1297,
-                  "end": 1313
+                  "offset": 1297,
+                  "length": 16
                 }
               }
             ],
             "id": {
               "string": "t",
               "span": {
-                "str": "t",
-                "start": 1319,
-                "end": 1320
+                "offset": 1319,
+                "length": 1
               }
             },
             "kind": {
@@ -991,9 +913,8 @@
                 "ident": {
                   "string": "e",
                   "span": {
-                    "str": "e",
-                    "start": 1323,
-                    "end": 1324
+                    "offset": 1323,
+                    "length": 1
                   }
                 }
               }
@@ -1010,17 +931,15 @@
             "id": {
               "string": "t2",
               "span": {
-                "str": "t2",
-                "start": 1331,
-                "end": 1333
+                "offset": 1331,
+                "length": 2
               }
             },
             "kind": {
               "type": {
                 "string": {
-                  "str": "string",
-                  "start": 1336,
-                  "end": 1342
+                  "offset": 1336,
+                  "length": 6
                 }
               }
             }
@@ -1036,9 +955,8 @@
             "id": {
               "string": "t3",
               "span": {
-                "str": "t3",
-                "start": 1349,
-                "end": 1351
+                "offset": 1349,
+                "length": 2
               }
             },
             "kind": {
@@ -1048,16 +966,14 @@
                     "id": {
                       "string": "a",
                       "span": {
-                        "str": "a",
-                        "start": 1359,
-                        "end": 1360
+                        "offset": 1359,
+                        "length": 1
                       }
                     },
                     "ty": {
                       "u32": {
-                        "str": "u32",
-                        "start": 1362,
-                        "end": 1365
+                        "offset": 1362,
+                        "length": 3
                       }
                     }
                   },
@@ -1065,18 +981,16 @@
                     "id": {
                       "string": "b",
                       "span": {
-                        "str": "b",
-                        "start": 1367,
-                        "end": 1368
+                        "offset": 1367,
+                        "length": 1
                       }
                     },
                     "ty": {
                       "ident": {
                         "string": "r",
                         "span": {
-                          "str": "r",
-                          "start": 1370,
-                          "end": 1371
+                          "offset": 1370,
+                          "length": 1
                         }
                       }
                     }
@@ -1085,9 +999,8 @@
                 "results": {
                   "scalar": {
                     "u32": {
-                      "str": "u32",
-                      "start": 1376,
-                      "end": 1379
+                      "offset": 1376,
+                      "length": 3
                     }
                   }
                 }
@@ -1105,9 +1018,8 @@
             "id": {
               "string": "t4",
               "span": {
-                "str": "t4",
-                "start": 1386,
-                "end": 1388
+                "offset": 1386,
+                "length": 2
               }
             },
             "kind": {
@@ -1119,16 +1031,14 @@
                       "id": {
                         "string": "a",
                         "span": {
-                          "str": "a",
-                          "start": 1402,
-                          "end": 1403
+                          "offset": 1402,
+                          "length": 1
                         }
                       },
                       "ty": {
                         "u32": {
-                          "str": "u32",
-                          "start": 1405,
-                          "end": 1408
+                          "offset": 1405,
+                          "length": 3
                         }
                       }
                     },
@@ -1136,16 +1046,14 @@
                       "id": {
                         "string": "b",
                         "span": {
-                          "str": "b",
-                          "start": 1410,
-                          "end": 1411
+                          "offset": 1410,
+                          "length": 1
                         }
                       },
                       "ty": {
                         "string": {
-                          "str": "string",
-                          "start": 1413,
-                          "end": 1419
+                          "offset": 1413,
+                          "length": 6
                         }
                       }
                     }

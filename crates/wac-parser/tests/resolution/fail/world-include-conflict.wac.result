@@ -1,5 +1,11 @@
-export `a` from world `w1` conflicts with export of the same name in world `w2` (consider using a `with` clause to use a different name)
-    --> tests/resolution/fail/world-include-conflict.wac:8:13
-     |
-   8 |     include w1;
-     |             ^^
+failed to resolve document
+
+  × export `a` from world `w1` conflicts with export of the same name in world `w2`
+   ╭─[tests/resolution/fail/world-include-conflict.wac:8:13]
+ 7 │ world w2 {
+ 8 │     include w1;
+   ·             ─┬
+   ·              ╰── conflicting name `a`
+ 9 │     export a: interface {
+   ╰────
+  help: consider using a `with` clause to use a different name
