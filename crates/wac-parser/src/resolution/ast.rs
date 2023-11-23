@@ -35,6 +35,13 @@ struct Import<'a> {
     item: ItemId,
 }
 
+struct Export {
+    /// The span where the export was first introduced.
+    span: SourceSpan,
+    /// The exported item.
+    item: ItemId,
+}
+
 struct State<'a> {
     resolver: Option<Box<dyn PackageResolver>>,
     scopes: Vec<Scope>,
@@ -47,6 +54,8 @@ struct State<'a> {
     /// The map of imported items.
     /// This is used to keep track of implicit imports and merge them together.
     imports: IndexMap<String, Import<'a>>,
+    /// The map of exported items.
+    exports: IndexMap<String, Export>,
 }
 
 impl<'a> State<'a> {
@@ -59,6 +68,7 @@ impl<'a> State<'a> {
             package_map: Default::default(),
             aliases: Default::default(),
             imports: Default::default(),
+            exports: Default::default(),
         }
     }
 
@@ -143,7 +153,6 @@ impl<'a> State<'a> {
 pub struct AstResolver<'a> {
     document: &'a ast::Document<'a>,
     definitions: Definitions,
-    exports: IndexMap<String, ItemId>,
 }
 
 impl<'a> AstResolver<'a> {
@@ -151,7 +160,6 @@ impl<'a> AstResolver<'a> {
         Self {
             document,
             definitions: Default::default(),
-            exports: Default::default(),
         }
     }
 
@@ -183,7 +191,11 @@ impl<'a> AstResolver<'a> {
                 .into_iter()
                 .map(|(k, v)| (k, v.item))
                 .collect(),
-            exports: self.exports,
+            exports: state
+                .exports
+                .into_iter()
+                .map(|(k, v)| (k, v.item))
+                .collect(),
         })
     }
 
@@ -268,6 +280,7 @@ impl<'a> AstResolver<'a> {
                         name: name.to_owned(),
                         kind: ExternKind::Import,
                         span,
+                        previous: existing.span,
                     });
                 }
                 _ => unreachable!(),
@@ -298,13 +311,19 @@ impl<'a> AstResolver<'a> {
     ) -> ResolutionResult<()> {
         log::debug!("resolving type statement");
 
-        let (name, item) = match stmt {
-            ast::TypeStatement::Interface(i) => (i.id.string, self.interface_decl(state, i)?),
-            ast::TypeStatement::World(w) => (w.id.string, self.world_decl(state, w)?),
-            ast::TypeStatement::Type(t) => (t.id().string, self.type_decl(state, t)?),
+        let (id, item) = match stmt {
+            ast::TypeStatement::Interface(i) => (i.id, self.interface_decl(state, i)?),
+            ast::TypeStatement::World(w) => (w.id, self.world_decl(state, w)?),
+            ast::TypeStatement::Type(t) => (*t.id(), self.type_decl(state, t)?),
         };
 
-        let prev = self.exports.insert(name.to_owned(), item);
+        let prev = state.exports.insert(
+            id.string.to_owned(),
+            Export {
+                span: id.span,
+                item,
+            },
+        );
         assert!(prev.is_none());
         Ok(())
     }
@@ -387,15 +406,16 @@ impl<'a> AstResolver<'a> {
             }
         }
 
-        if self.exports.contains_key(name) {
+        if let Some(existing) = state.exports.get(name) {
             return Err(Error::DuplicateExternName {
                 name: name.to_owned(),
                 kind: ExternKind::Export,
                 span,
+                previous: existing.span,
             });
         }
 
-        let prev = self.exports.insert(name.to_owned(), item);
+        let prev = state.exports.insert(name.to_owned(), Export { span, item });
         assert!(prev.is_none());
 
         Ok(())

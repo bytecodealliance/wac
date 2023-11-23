@@ -2,8 +2,11 @@ failed to resolve document
 
   × duplicate import `foo`
    ╭─[tests/resolution/fail/import-duplicate-name.wac:4:15]
+ 2 │ 
  3 │ import x with "foo": func();
+   ·               ──┬──
+   ·                 ╰── previous import here
  4 │ import y with "foo": interface {};
    ·               ──┬──
-   ·                 ╰── duplicate name `foo`
+   ·                 ╰── duplicate import name `foo`
    ╰────

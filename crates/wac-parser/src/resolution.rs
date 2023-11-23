@@ -641,8 +641,11 @@ pub enum Error {
         /// The kind of extern name.
         kind: ExternKind,
         /// The span where the error occurred.
-        #[label(primary, "duplicate name `{name}`")]
+        #[label(primary, "duplicate {kind} name `{name}`")]
         span: SourceSpan,
+        /// The span where the error occurred.
+        #[label("previous {kind} here")]
+        previous: SourceSpan,
     },
     /// An invalid extern name was encountered.
     #[error("{kind} name `{name}` is not valid")]
