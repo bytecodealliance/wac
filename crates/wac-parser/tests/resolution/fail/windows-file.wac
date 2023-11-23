@@ -1,0 +1,4 @@
+package foo:bar;
+
+import x: func();
+import x: func();

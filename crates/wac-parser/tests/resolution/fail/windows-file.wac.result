@@ -1,0 +1,5 @@
+duplicate import `x`
+    --> tests/resolution/fail/windows-file.wac:4:8
+     |
+   4 | import x: func();
+     |        ^
