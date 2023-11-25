@@ -1,5 +1,9 @@
-duplicate import `x`
-    --> tests/resolution/fail/windows-file.wac:4:8
-     |
-   4 | import x: func();
-     |        ^
+failed to resolve document
+
+  × duplicate import `x`
+   ╭─[tests/resolution/fail/windows-file.wac:4:8]
+ 3 │ import x: func();
+ 4 │ import x: func();
+   ·        ┬
+   ·        ╰── duplicate name `x`
+   ╰────
