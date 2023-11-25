@@ -27,96 +27,108 @@
     "interfaces": [
       {
         "id": null,
+        "uses": {},
         "exports": {
           "x": {
-            "kind": {
-              "func": 3
-            }
+            "func": 3
           }
-        },
-        "scope": 1
+        }
       },
       {
         "id": "foo:bar/baz",
-        "exports": {},
-        "scope": null
+        "uses": {},
+        "exports": {}
       }
     ],
     "worlds": [
       {
+        "id": null,
+        "uses": {},
         "imports": {},
         "exports": {
           "foo:bar/baz": {
-            "kind": {
-              "instance": 1
-            }
+            "instance": 1
           }
-        },
-        "scope": null
+        }
       },
       {
+        "id": null,
+        "uses": {},
         "imports": {},
         "exports": {
           "baz": {
-            "kind": {
-              "type": {
-                "world": 0
-              }
+            "type": {
+              "world": 0
             }
           }
-        },
-        "scope": null
+        }
       }
     ],
     "modules": []
   },
+  "packages": [
+    {
+      "name": "foo:bar",
+      "version": null,
+      "world": 1,
+      "definitions": {
+        "baz": {
+          "type": {
+            "interface": 1
+          }
+        }
+      }
+    }
+  ],
   "items": [
     {
-      "kind": {
-        "func": 0
-      },
-      "source": {
-        "import": "a"
+      "import": {
+        "name": "a",
+        "kind": {
+          "func": 0
+        }
       }
     },
     {
-      "kind": {
-        "type": {
+      "definition": {
+        "name": "x",
+        "kind": {
+          "type": {
+            "func": 1
+          }
+        }
+      }
+    },
+    {
+      "import": {
+        "name": "b",
+        "kind": {
           "func": 1
         }
-      },
-      "source": "definition"
-    },
-    {
-      "kind": {
-        "func": 1
-      },
-      "source": {
-        "import": "b"
       }
     },
     {
-      "kind": {
-        "func": 2
-      },
-      "source": {
-        "import": "hello-world"
+      "import": {
+        "name": "hello-world",
+        "kind": {
+          "func": 2
+        }
       }
     },
     {
-      "kind": {
-        "instance": 0
-      },
-      "source": {
-        "import": "e"
+      "import": {
+        "name": "e",
+        "kind": {
+          "instance": 0
+        }
       }
     },
     {
-      "kind": {
-        "instance": 1
-      },
-      "source": {
-        "import": "foo:bar/baz"
+      "import": {
+        "name": "foo:bar/baz",
+        "kind": {
+          "instance": 1
+        }
       }
     }
   ],
@@ -128,25 +140,9 @@
     "foo:bar/baz": 5
   },
   "exports": {
+    "x": 1,
     "hello-world": 3,
     "e": 4,
     "foo:bar/baz": 5
-  },
-  "scopes": [
-    {
-      "parent": null,
-      "items": {
-        "a": 0,
-        "x": 1,
-        "b": 2,
-        "d": 3,
-        "e": 4,
-        "f": 5
-      }
-    },
-    {
-      "parent": 0,
-      "items": {}
-    }
-  ]
+  }
 }

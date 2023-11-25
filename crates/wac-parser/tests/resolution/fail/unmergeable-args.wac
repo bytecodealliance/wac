@@ -1,0 +1,4 @@
+package test:comp;
+
+let a = new bar:baz { ... };
+let b = new foo:bar { ... };

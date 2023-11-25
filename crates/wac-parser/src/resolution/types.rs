@@ -1,14 +1,14 @@
-use super::{serialize_arena, serialize_id, serialize_optional_id, FuncKind, ItemKind, ScopeId};
+use super::{
+    package::Package, serialize_arena, serialize_id, serialize_id_key_map, serialize_optional_id,
+    ItemKind,
+};
 use anyhow::{bail, Context, Result};
 use id_arena::{Arena, Id};
 use indexmap::{IndexMap, IndexSet};
 use serde::Serialize;
-use std::{
-    collections::{HashMap, HashSet},
-    fmt,
-};
+use std::{collections::HashSet, fmt};
 
-/// An identifier for value types.
+/// An identifier for defined value types.
 pub type DefinedTypeId = Id<DefinedType>;
 
 /// An identifier for resource types.
@@ -50,14 +50,50 @@ pub struct Definitions {
     pub modules: Arena<Module>,
 }
 
+impl Definitions {
+    /// Resolves a value type to a un-aliased value type.
+    pub fn resolve_type(&self, mut ty: ValueType) -> ValueType {
+        loop {
+            match ty {
+                ValueType::Defined { id, .. } => match &self.types[id] {
+                    DefinedType::Alias(aliased) => ty = *aliased,
+                    _ => return ty,
+                },
+                _ => return ty,
+            }
+        }
+    }
+
+    /// Resolves any aliased resource id to the underlying defined resource id.
+    pub fn resolve_resource_id(&self, mut id: ResourceId) -> ResourceId {
+        while let Some(alias_of) = &self.resources[id].alias_of {
+            id = *alias_of;
+        }
+
+        id
+    }
+
+    /// Resolves any aliased resource id to the underlying defined resource.
+    pub fn resolve_resource(&self, id: ResourceId) -> &Resource {
+        let resolved = self.resolve_resource_id(id);
+        &self.resources[resolved]
+    }
+
+    /// Resolves any aliased resource to the mutable underlying defined resource.
+    pub fn resolve_resource_mut(&mut self, id: ResourceId) -> &mut Resource {
+        let resolved = self.resolve_resource_id(id);
+        &mut self.resources[resolved]
+    }
+}
+
 /// Represent a component model type.
 #[derive(Debug, Clone, Copy, Serialize, Hash, Eq, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub enum Type {
     /// The type is a function type.
     Func(#[serde(serialize_with = "serialize_id")] FuncId),
-    /// The type is a defined value type.
-    Value(#[serde(serialize_with = "serialize_id")] DefinedTypeId),
+    /// The type is a value type.
+    Value(ValueType),
     /// The type is an interface (i.e. instance type).
     Interface(#[serde(serialize_with = "serialize_id")] InterfaceId),
     /// The type is a world (i.e. component type).
@@ -70,7 +106,7 @@ impl Type {
     pub(crate) fn as_str(&self, definitions: &Definitions) -> &'static str {
         match self {
             Type::Func(_) => "function type",
-            Type::Value(ty) => definitions.types[*ty].as_str(definitions),
+            Type::Value(ty) => ty.as_str(definitions),
             Type::Interface(_) => "interface",
             Type::World(_) => "world",
             Type::Module(_) => "module type",
@@ -155,15 +191,50 @@ impl From<wasmparser::PrimitiveValType> for PrimitiveType {
 pub enum ValueType {
     /// A primitive value type.
     Primitive(PrimitiveType),
+    /// The type is a borrow of a resource type.
+    Borrow(ResourceId),
+    /// The type is an owned resource type.
+    Own(ResourceId),
     /// A defined value type.
-    Defined(DefinedTypeId),
+    Defined {
+        /// The id of the defined value type.
+        id: DefinedTypeId,
+        /// Whether or not the defined value type recursively contains a borrow.
+        contains_borrow: bool,
+    },
+}
+
+impl ValueType {
+    /// Checks if the type contains a borrow.
+    ///
+    /// Function results may not return a type containing a borrow.
+    pub(crate) fn contains_borrow(&self) -> bool {
+        match self {
+            ValueType::Primitive(_) | ValueType::Own(_) => false,
+            ValueType::Borrow(_) => true,
+            ValueType::Defined {
+                contains_borrow, ..
+            } => *contains_borrow,
+        }
+    }
+
+    fn as_str(&self, definitions: &Definitions) -> &'static str {
+        match self {
+            Self::Primitive(ty) => ty.as_str(),
+            Self::Borrow(_) => "borrow",
+            Self::Own(_) => "own",
+            Self::Defined { id, .. } => definitions.types[*id].as_str(definitions),
+        }
+    }
 }
 
 impl Serialize for ValueType {
     fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match self {
             Self::Primitive(ty) => ty.serialize(serializer),
-            Self::Defined(ty) => serialize_id(ty, serializer),
+            Self::Borrow(id) => format!("borrow<{id}>", id = id.index()).serialize(serializer),
+            Self::Own(id) => format!("own<{id}>", id = id.index()).serialize(serializer),
+            Self::Defined { id, .. } => serialize_id(id, serializer),
         }
     }
 }
@@ -172,8 +243,6 @@ impl Serialize for ValueType {
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum DefinedType {
-    /// A primitive type.
-    Primitive(PrimitiveType),
     /// A tuple type.
     Tuple(Vec<ValueType>),
     /// A list type.
@@ -187,10 +256,6 @@ pub enum DefinedType {
         /// The result's `err` type.
         err: Option<ValueType>,
     },
-    /// The type is a borrow of a resource type.
-    Borrow(#[serde(serialize_with = "serialize_id")] ResourceId),
-    /// The type is a resource type.
-    Resource(#[serde(serialize_with = "serialize_id")] ResourceId),
     /// The type is a variant type.
     Variant(Variant),
     /// The type is a record type.
@@ -199,52 +264,73 @@ pub enum DefinedType {
     Flags(Flags),
     /// The type is an enum.
     Enum(Enum),
-    /// The type is an alias to another type.
+    /// The type is an alias to another value type.
     Alias(ValueType),
 }
 
 impl DefinedType {
     fn as_str(&self, definitions: &Definitions) -> &'static str {
         match self {
-            DefinedType::Primitive(ty) => ty.as_str(),
             DefinedType::Tuple(_) => "tuple",
             DefinedType::List(_) => "list",
             DefinedType::Option(_) => "option",
             DefinedType::Result { .. } => "result",
-            DefinedType::Borrow(_) => "borrow",
-            DefinedType::Resource(_) => "resource",
             DefinedType::Variant(_) => "variant",
             DefinedType::Record(_) => "record",
             DefinedType::Flags(_) => "flags",
             DefinedType::Enum(_) => "enum",
-            DefinedType::Alias(ValueType::Primitive(ty)) => ty.as_str(),
-            DefinedType::Alias(ValueType::Defined(id)) => {
-                definitions.types[*id].as_str(definitions)
-            }
+            DefinedType::Alias(ty) => ty.as_str(definitions),
         }
     }
 }
 
-/// Represents a resource method.
-#[derive(Debug, Clone, Serialize)]
+/// Represents a kind of function in the component model.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct ResourceMethod {
-    /// The kind of resource method.
-    pub kind: FuncKind,
-    /// The method's type.
-    #[serde(serialize_with = "serialize_id")]
-    pub ty: FuncId,
+pub enum FuncKind {
+    /// The function is a "free" function (i.e. not associated with a resource).
+    Free,
+    /// The function is a method on a resource.
+    Method,
+    /// The function is a static method on a resource.
+    Static,
+    /// The function is a resource constructor.
+    Constructor,
+}
+
+impl fmt::Display for FuncKind {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            FuncKind::Free => write!(f, "function"),
+            FuncKind::Method => write!(f, "method"),
+            FuncKind::Static => write!(f, "static method"),
+            FuncKind::Constructor => write!(f, "constructor"),
+        }
+    }
+}
+
+pub(crate) fn method_extern_name(resource: &str, name: &str, kind: FuncKind) -> String {
+    match kind {
+        FuncKind::Free => unreachable!("a resource method cannot be a free function"),
+        FuncKind::Method => format!("[method]{resource}.{name}"),
+        FuncKind::Static => format!("[static]{resource}.{name}"),
+        FuncKind::Constructor => format!("[constructor]{resource}"),
+    }
 }
 
 /// Represents a resource type.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Resource {
-    /// The resource methods.
-    ///
-    /// The resource's constructor uses an empty name.
-    #[serde(skip_serializing_if = "IndexMap::is_empty")]
-    pub methods: IndexMap<String, ResourceMethod>,
+    /// The name of the resource.
+    pub name: String,
+
+    /// The id of the resource that was aliased.
+    #[serde(
+        serialize_with = "serialize_optional_id",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub alias_of: Option<ResourceId>,
 }
 
 /// Represents a variant.
@@ -274,7 +360,7 @@ pub struct Flags(pub IndexSet<String>);
 pub struct Enum(pub IndexSet<String>);
 
 /// Represents a function type.
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct Func {
     /// The parameters of the function.
@@ -293,73 +379,40 @@ pub enum FuncResult {
     List(IndexMap<String, ValueType>),
 }
 
-/// Represents an external item (imported or exported) from an interface or world.
-#[derive(Debug, Clone, Copy, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub enum Extern {
-    /// The item is a type used from an interface.
-    #[serde(rename_all = "camelCase")]
-    Use {
-        /// The interface the type was sourced from.
-        #[serde(serialize_with = "serialize_id")]
-        interface: InterfaceId,
-        /// The export index on the interface for the type.
-        export_index: usize,
-        /// The value type.
-        #[serde(serialize_with = "serialize_id")]
-        ty: DefinedTypeId,
-    },
-    /// The item is another kind of extern.
-    Kind(ItemKind),
-}
-
-impl Extern {
-    /// Gets the extern kind of the item.
-    pub fn kind(&self) -> ItemKind {
-        match self {
-            Self::Use { ty, .. } => ItemKind::Type(Type::Value(*ty)),
-            Self::Kind(kind) => *kind,
-        }
-    }
-}
-
-/// Represents a map of extern items.
-pub type ExternMap = IndexMap<String, Extern>;
-
 /// Represents an interface (i.e. instance type).
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct Interface {
     /// The identifier of the interface.
     ///
     /// This may be `None` for inline interfaces.
     pub id: Option<String>,
+    /// A map from used interface to set of used type export indexes.
+    #[serde(serialize_with = "serialize_id_key_map")]
+    pub uses: IndexMap<InterfaceId, IndexSet<usize>>,
     /// The exported items of the interface.
-    pub exports: ExternMap,
-    /// The scope associated with a defined interface.
-    ///
-    /// This is `None` for foreign interfaces.
-    #[serde(serialize_with = "serialize_optional_id")]
-    pub scope: Option<ScopeId>,
+    pub exports: IndexMap<String, ItemKind>,
 }
 
 /// Represents a world.
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct World {
-    /// The imported items of the world.
-    pub imports: ExternMap,
-    /// The exported items of the world.
-    pub exports: ExternMap,
-    /// The scope associated with a defined world.
+    /// The identifier of the world.
     ///
-    /// This is `None` for foreign worlds.
-    #[serde(serialize_with = "serialize_optional_id")]
-    pub scope: Option<ScopeId>,
+    /// This may be `None` for worlds representing component types.
+    pub id: Option<String>,
+    /// A map from used interface to set of used type export indexes.
+    #[serde(serialize_with = "serialize_id_key_map")]
+    pub uses: IndexMap<InterfaceId, IndexSet<usize>>,
+    /// The imported items of the world.
+    pub imports: IndexMap<String, ItemKind>,
+    /// The exported items of the world.
+    pub exports: IndexMap<String, ItemKind>,
 }
 
 /// Represents a core module type.
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Default)]
 pub struct Module {
     /// The imports of the module type.
     pub imports: IndexMap<(String, String), CoreExtern>,
@@ -416,7 +469,7 @@ pub enum CoreExtern {
     #[serde(rename_all = "camelCase")]
     Global {
         /// The global's type.
-        content_type: CoreType,
+        val_type: CoreType,
         /// Whether or not the global is mutable.
         mutable: bool,
     },
@@ -460,7 +513,7 @@ impl From<wasmparser::MemoryType> for CoreExtern {
 impl From<wasmparser::GlobalType> for CoreExtern {
     fn from(ty: wasmparser::GlobalType) -> Self {
         Self::Global {
-            content_type: ty.content_type.into(),
+            val_type: ty.content_type.into(),
             mutable: ty.mutable,
         }
     }
@@ -506,6 +559,19 @@ impl From<wasmparser::ValType> for CoreType {
             wasmparser::ValType::F64 => Self::F64,
             wasmparser::ValType::V128 => Self::V128,
             wasmparser::ValType::Ref(ty) => Self::Ref(ty.into()),
+        }
+    }
+}
+
+impl From<CoreType> for wasm_encoder::ValType {
+    fn from(value: CoreType) -> Self {
+        match value {
+            CoreType::I32 => Self::I32,
+            CoreType::I64 => Self::I64,
+            CoreType::F32 => Self::F32,
+            CoreType::F64 => Self::F64,
+            CoreType::V128 => Self::V128,
+            CoreType::Ref(r) => Self::Ref(r.into()),
         }
     }
 }
@@ -560,6 +626,15 @@ impl From<wasmparser::RefType> for CoreRefType {
     }
 }
 
+impl From<CoreRefType> for wasm_encoder::RefType {
+    fn from(value: CoreRefType) -> Self {
+        wasm_encoder::RefType {
+            nullable: value.nullable,
+            heap_type: value.heap_type.into(),
+        }
+    }
+}
+
 /// A heap type of a reference type.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize)]
 pub enum HeapType {
@@ -605,6 +680,24 @@ impl From<wasmparser::HeapType> for HeapType {
     }
 }
 
+impl From<HeapType> for wasm_encoder::HeapType {
+    fn from(value: HeapType) -> Self {
+        match value {
+            HeapType::Concrete(index) => Self::Concrete(index),
+            HeapType::Func => Self::Func,
+            HeapType::Extern => Self::Extern,
+            HeapType::Any => Self::Any,
+            HeapType::None => Self::None,
+            HeapType::NoExtern => Self::NoExtern,
+            HeapType::NoFunc => Self::NoFunc,
+            HeapType::Eq => Self::Eq,
+            HeapType::Struct => Self::Struct,
+            HeapType::Array => Self::Array,
+            HeapType::I31 => Self::I31,
+        }
+    }
+}
+
 /// Represents a core function type in a WebAssembly module.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -641,82 +734,22 @@ impl fmt::Display for CoreFunc {
     }
 }
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq)]
-enum CheckKind {
-    Covariant,
-    Contravariant,
-}
-
-struct ResourceMap {
-    kind: CheckKind,
-    map: HashMap<ResourceId, ResourceId>,
-}
-
-impl ResourceMap {
-    fn new(kind: CheckKind) -> Self {
-        Self {
-            kind,
-            map: Default::default(),
-        }
-    }
-
-    fn insert(&mut self, a: ResourceId, b: ResourceId) {
-        self.map.insert(a, b);
-    }
-
-    fn is_subtype(&self, checker: &SubtypeChecker, a: ResourceId, b: ResourceId) -> Result<()> {
-        if self.map.get(&a) != Some(&b) && self.map.get(&b) != Some(&a) {
-            bail!("mismatched resource types");
-        }
-
-        let a = &checker.definitions.resources[a];
-        let b = &checker.definitions.resources[b];
-
-        for (k, a) in a.methods.iter() {
-            match b.methods.get(k) {
-                Some(b) => {
-                    match self.kind {
-                        CheckKind::Covariant => checker.func(a.ty, b.ty),
-                        CheckKind::Contravariant => checker.func(b.ty, a.ty),
-                    }
-                    .with_context(|| {
-                        if k.is_empty() {
-                            "mismatched type for constructor".to_string()
-                        } else {
-                            format!("mismatched type for method `{k}`")
-                        }
-                    })?;
-                }
-                None => {
-                    if k.is_empty() {
-                        bail!("missing expected constructor");
-                    } else {
-                        bail!("missing expected method `{k}`");
-                    }
-                }
-            }
-        }
-
-        Ok(())
-    }
-}
-
 /// Implements a subtype checker.
 ///
 /// Subtype checking is used to type check instantiation arguments.
 pub struct SubtypeChecker<'a> {
     definitions: &'a Definitions,
+    packages: &'a Arena<Package>,
     cache: HashSet<(ItemKind, ItemKind)>,
-    resource_map: Vec<ResourceMap>,
 }
 
 impl<'a> SubtypeChecker<'a> {
     /// Creates a new subtype checker.
-    pub fn new(definitions: &'a Definitions) -> Self {
+    pub fn new(definitions: &'a Definitions, packages: &'a Arena<Package>) -> Self {
         Self {
             definitions,
+            packages,
             cache: Default::default(),
-            resource_map: Default::default(),
         }
     }
 
@@ -727,22 +760,36 @@ impl<'a> SubtypeChecker<'a> {
         }
 
         let mut check = || match (a, b) {
+            (ItemKind::Resource(a), ItemKind::Resource(b)) => {
+                if a != b {
+                    let a = self.definitions.resolve_resource(a);
+                    let b = self.definitions.resolve_resource(b);
+                    if a.name != b.name {
+                        bail!(
+                            "expected resource `{a}`, found resource `{b}`",
+                            a = a.name,
+                            b = b.name
+                        );
+                    }
+                }
+                Ok(())
+            }
             (ItemKind::Type(a), ItemKind::Type(b)) => self.ty(a, b),
             (ItemKind::Func(a), ItemKind::Func(b)) => self.func(a, b),
             (ItemKind::Instance(a), ItemKind::Instance(b)) => self.interface(a, b),
             (ItemKind::Instantiation(a), ItemKind::Instantiation(b)) => {
-                let a = &self.definitions.worlds[a];
-                let b = &self.definitions.worlds[b];
+                let a = &self.definitions.worlds[self.packages[a].world];
+                let b = &self.definitions.worlds[self.packages[b].world];
                 self.interface_exports(&a.exports, &b.exports)
             }
             (ItemKind::Instantiation(a), ItemKind::Instance(b)) => {
-                let a = &self.definitions.worlds[a];
+                let a = &self.definitions.worlds[self.packages[a].world];
                 let b = &self.definitions.interfaces[b];
                 self.interface_exports(&a.exports, &b.exports)
             }
             (ItemKind::Instance(a), ItemKind::Instantiation(b)) => {
                 let a = &self.definitions.interfaces[a];
-                let b = &self.definitions.worlds[b];
+                let b = &self.definitions.worlds[self.packages[b].world];
                 self.interface_exports(&a.exports, &b.exports)
             }
             (ItemKind::Component(a), ItemKind::Component(b)) => self.world(a, b),
@@ -766,7 +813,7 @@ impl<'a> SubtypeChecker<'a> {
     fn ty(&mut self, a: Type, b: Type) -> Result<()> {
         match (a, b) {
             (Type::Func(a), Type::Func(b)) => return self.func(a, b),
-            (Type::Value(a), Type::Value(b)) => return self.defined_type(a, b),
+            (Type::Value(a), Type::Value(b)) => return self.value_type(a, b),
             (Type::Interface(a), Type::Interface(b)) => return self.interface(a, b),
             (Type::World(a), Type::World(b)) => return self.world(a, b),
             (Type::Module(a), Type::Module(b)) => return self.module(a, b),
@@ -842,51 +889,26 @@ impl<'a> SubtypeChecker<'a> {
         Ok(())
     }
 
-    fn interface_exports(&mut self, a: &ExternMap, b: &ExternMap) -> Result<()> {
-        // Before we do anything, we need to populate a resource mapping
-        let mut map = ResourceMap::new(CheckKind::Covariant);
+    fn interface_exports(
+        &mut self,
+        a: &IndexMap<String, ItemKind>,
+        b: &IndexMap<String, ItemKind>,
+    ) -> Result<()> {
+        // For instance type subtyping, all exports in the other
+        // instance type must be present in this instance type's
+        // exports (i.e. it can export *more* than what this instance
+        // type needs).
         for (k, a) in a.iter() {
             match b.get(k) {
-                Some(b) => match (a.kind(), b.kind()) {
-                    (ItemKind::Type(Type::Value(a)), ItemKind::Type(Type::Value(b))) => {
-                        let a = &self.definitions.types[a];
-                        let b = &self.definitions.types[b];
-                        match (a, b) {
-                            (DefinedType::Resource(a), DefinedType::Resource(b)) => {
-                                map.insert(*a, *b);
-                            }
-                            _ => continue,
-                        }
-                    }
-                    _ => continue,
-                },
-                None => continue,
+                Some(b) => {
+                    self.is_subtype(*a, *b)
+                        .with_context(|| format!("mismatched type for export `{k}`"))?;
+                }
+                None => bail!("instance is missing expected export `{k}`"),
             }
         }
 
-        self.resource_map.push(map);
-
-        let mut check = || {
-            // For instance type subtyping, all exports in the other
-            // instance type must be present in this instance type's
-            // exports (i.e. it can export *more* than what this instance
-            // type needs).
-            for (k, a) in a.iter() {
-                match b.get(k) {
-                    Some(b) => {
-                        self.is_subtype(a.kind(), b.kind())
-                            .with_context(|| format!("mismatched type for export `{k}`"))?;
-                    }
-                    None => bail!("missing expected export `{k}`"),
-                }
-            }
-
-            Ok(())
-        };
-
-        let result = check();
-        self.resource_map.pop();
-        result
+        Ok(())
     }
 
     fn interface(&mut self, a: InterfaceId, b: InterfaceId) -> Result<()> {
@@ -900,68 +922,35 @@ impl<'a> SubtypeChecker<'a> {
     }
 
     fn world(&mut self, a: WorldId, b: WorldId) -> Result<()> {
-        if a == b {
-            return Ok(());
-        }
-
         let a = &self.definitions.worlds[a];
         let b = &self.definitions.worlds[b];
 
-        // Before we do anything, we need to populate a resource mapping
-        let mut map = ResourceMap::new(CheckKind::Contravariant);
+        // For component type subtyping, all exports in the other component
+        // type must be present in this component type's exports (i.e. it
+        // can export *more* than what this component type needs).
+        // However, for imports, the check is reversed (i.e. it is okay
+        // to import *less* than what this component type needs).
         for (k, a) in a.imports.iter() {
             match b.imports.get(k) {
-                Some(b) => match (a.kind(), b.kind()) {
-                    (ItemKind::Type(Type::Value(a)), ItemKind::Type(Type::Value(b))) => {
-                        let a = &self.definitions.types[a];
-                        let b = &self.definitions.types[b];
-                        match (a, b) {
-                            (DefinedType::Resource(a), DefinedType::Resource(b)) => {
-                                map.insert(*a, *b);
-                            }
-                            _ => continue,
-                        }
-                    }
-                    _ => continue,
-                },
-                None => continue,
+                Some(b) => {
+                    self.is_subtype(*b, *a)
+                        .with_context(|| format!("mismatched type for import `{k}`"))?;
+                }
+                None => bail!("missing expected import `{k}`"),
             }
         }
 
-        self.resource_map.push(map);
-
-        let mut check = || {
-            // For component type subtyping, all exports in the other component
-            // type must be present in this component type's exports (i.e. it
-            // can export *more* than what this component type needs).
-            // However, for imports, the check is reversed (i.e. it is okay
-            // to import *less* than what this component type needs).
-            for (k, a) in a.imports.iter() {
-                match b.imports.get(k) {
-                    Some(b) => {
-                        self.is_subtype(b.kind(), a.kind())
-                            .with_context(|| format!("mismatched type for import `{k}`"))?;
-                    }
-                    None => bail!("missing expected import `{k}`"),
+        for (k, b) in b.exports.iter() {
+            match a.exports.get(k) {
+                Some(a) => {
+                    self.is_subtype(*a, *b)
+                        .with_context(|| format!("mismatched type for export `{k}"))?;
                 }
+                None => bail!("component is missing expected export `{k}`"),
             }
+        }
 
-            for (k, b) in b.exports.iter() {
-                match a.exports.get(k) {
-                    Some(a) => {
-                        self.is_subtype(a.kind(), b.kind())
-                            .with_context(|| format!("mismatched type for export `{k}"))?;
-                    }
-                    None => bail!("missing expected export `{k}`"),
-                }
-            }
-
-            Ok(())
-        };
-
-        let result = check();
-        self.resource_map.pop();
-        result
+        Ok(())
     }
 
     fn module(&mut self, a: ModuleId, b: ModuleId) -> Result<()> {
@@ -994,7 +983,7 @@ impl<'a> SubtypeChecker<'a> {
                     Self::core_extern(a, b)
                         .with_context(|| format!("mismatched type for export `{k}"))?;
                 }
-                None => bail!("missing expected export `{k}`"),
+                None => bail!("module is missing expected export `{k}`"),
             }
         }
 
@@ -1067,11 +1056,11 @@ impl<'a> SubtypeChecker<'a> {
             }
             (
                 CoreExtern::Global {
-                    content_type: at,
+                    val_type: at,
                     mutable: am,
                 },
                 CoreExtern::Global {
-                    content_type: bt,
+                    val_type: bt,
                     mutable: bm,
                 },
             ) => {
@@ -1100,45 +1089,39 @@ impl<'a> SubtypeChecker<'a> {
         Ok(())
     }
 
-    fn resolve_alias(&self, mut id: DefinedTypeId) -> DefinedTypeId {
-        loop {
-            let ty = &self.definitions.types[id];
-            if let DefinedType::Alias(ValueType::Defined(next)) = ty {
-                id = *next;
-            } else {
-                return id;
-            }
-        }
-    }
-
     fn value_type(&self, a: ValueType, b: ValueType) -> Result<()> {
-        match (a, b) {
+        match (
+            self.definitions.resolve_type(a),
+            self.definitions.resolve_type(b),
+        ) {
             (ValueType::Primitive(a), ValueType::Primitive(b)) => Self::primitive(a, b),
-            (ValueType::Primitive(a), ValueType::Defined(b)) => {
-                let b = &self.definitions.types[self.resolve_alias(b)];
-                if let DefinedType::Primitive(b) = b {
-                    Self::primitive(a, *b)
-                } else {
+            (ValueType::Defined { id: a, .. }, ValueType::Defined { id: b, .. }) => {
+                self.defined_type(a, b)
+            }
+            (ValueType::Borrow(a), ValueType::Borrow(b))
+            | (ValueType::Own(a), ValueType::Own(b)) => {
+                if a == b {
+                    return Ok(());
+                }
+
+                let a = self.definitions.resolve_resource(a);
+                let b = self.definitions.resolve_resource(b);
+
+                if a.name != b.name {
                     bail!(
-                        "expected {a}, found {b}",
-                        a = a.as_str(),
-                        b = b.as_str(self.definitions)
+                        "expected resource `{a}`, found resource `{b}`",
+                        a = a.name,
+                        b = b.name
                     );
                 }
+
+                Ok(())
             }
-            (ValueType::Defined(a), ValueType::Primitive(b)) => {
-                let a = &self.definitions.types[self.resolve_alias(a)];
-                if let DefinedType::Primitive(a) = a {
-                    Self::primitive(*a, b)
-                } else {
-                    bail!(
-                        "expected {a}, found {b}",
-                        a = a.as_str(self.definitions),
-                        b = b.as_str()
-                    );
-                }
-            }
-            (ValueType::Defined(a), ValueType::Defined(b)) => self.defined_type(a, b),
+            (a, b) => bail!(
+                "expected {a}, found {b}",
+                a = a.as_str(self.definitions),
+                b = b.as_str(self.definitions)
+            ),
         }
     }
 
@@ -1151,10 +1134,9 @@ impl<'a> SubtypeChecker<'a> {
             return Ok(());
         }
 
-        let a = &self.definitions.types[self.resolve_alias(a)];
-        let b = &self.definitions.types[self.resolve_alias(b)];
+        let a = &self.definitions.types[a];
+        let b = &self.definitions.types[b];
         match (a, b) {
-            (DefinedType::Primitive(a), DefinedType::Primitive(b)) => Self::primitive(*a, *b),
             (DefinedType::Tuple(a), DefinedType::Tuple(b)) => self.tuple(a, b),
             (DefinedType::List(a), DefinedType::List(b)) => self
                 .value_type(*a, *b)
@@ -1175,23 +1157,13 @@ impl<'a> SubtypeChecker<'a> {
                 self.result("ok", a_ok, b_ok)?;
                 self.result("err", a_err, b_err)
             }
-            (DefinedType::Borrow(a), DefinedType::Borrow(b))
-            | (DefinedType::Resource(a), DefinedType::Resource(b)) => {
-                if a == b {
-                    return Ok(());
-                }
-
-                if let Some(map) = self.resource_map.last() {
-                    return map.is_subtype(self, *a, *b);
-                }
-
-                bail!("mismatched resource types")
-            }
             (DefinedType::Variant(a), DefinedType::Variant(b)) => self.variant(a, b),
             (DefinedType::Record(a), DefinedType::Record(b)) => self.record(a, b),
             (DefinedType::Flags(a), DefinedType::Flags(b)) => Self::flags(a, b),
             (DefinedType::Enum(a), DefinedType::Enum(b)) => Self::enum_type(a, b),
-            (DefinedType::Alias(_), _) => unreachable!("alias should have been resolved"),
+            (DefinedType::Alias(_), _) | (_, DefinedType::Alias(_)) => {
+                unreachable!("aliases should have been resolved")
+            }
             _ => {
                 bail!(
                     "expected {a}, found {b}",

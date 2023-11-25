@@ -1,0 +1,101 @@
+package test:pkg;
+
+type a = u8;
+type b = s8;
+type c = u16;
+type d = s16;
+type e = u32;
+type f = s32;
+type g = u64;
+type h = s64;
+type i = float32;
+type j = float64;
+type k = bool;
+type l = char;
+type m = string;
+
+record n {
+    a: list<u8>,
+    b: tuple<s8, u16, s16>,
+    c: option<u32>,
+}
+
+variant o {
+    foo,
+    bar(n),
+    baz(tuple<n, n, n>),
+}
+
+flags p {
+    foo,
+    bar,
+    baz,
+}
+
+enum q {
+    a,
+    b,
+    c,
+}
+
+interface r {
+    type a = string;
+    type b = u16;
+    type c = b;
+    resource d {
+        constructor(a: a);
+        a: func(b: b);
+        b: static func(c: c);
+    } 
+
+    f: func(a: a, b: b, c: c, d: d) -> tuple<c, b, d, a>;
+}
+
+interface s {
+    use r.{a, b, c};
+
+    record n {
+        a: list<u8>,
+        b: tuple<s8, u16, s16>,
+        c: option<u32>,
+    }
+
+    variant o {
+        foo,
+        bar(n),
+        baz(tuple<n, n, n>),
+    }
+
+    flags p {
+        foo,
+        bar,
+        baz,
+    }
+
+    f: func(a: a, b: b, c: c) -> tuple<c, b, a>;
+}
+
+world t {
+    use r.{a, b, c};
+
+    import f: func(a: a, b: b, c: c) -> tuple<c, b, a>;
+
+    record n {
+        a: list<u8>,
+        b: tuple<s8, u16, s16>,
+        c: option<u32>,
+    }
+
+    variant o {
+        foo,
+        bar(n),
+        baz(tuple<n, n, n>),
+    }
+
+    flags p {
+        foo,
+        bar,
+        baz,
+    }
+    export f: func(a: a, b: b, c: c) -> tuple<n, o, p>;
+}

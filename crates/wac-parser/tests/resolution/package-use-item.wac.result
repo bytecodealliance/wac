@@ -4,288 +4,242 @@
   "definitions": {
     "types": [
       {
-        "primitive": "u8"
+        "alias": "u8"
       },
       {
-        "primitive": "s64"
+        "alias": "s64"
       },
       {
-        "primitive": "string"
+        "alias": "string"
       },
       {
-        "resource": 0
+        "alias": "u8"
       },
       {
-        "borrow": 0
+        "alias": "s64"
+      },
+      {
+        "alias": "string"
+      },
+      {
+        "alias": "string"
       }
     ],
     "resources": [
-      {}
+      {
+        "name": "x"
+      }
     ],
     "funcs": [],
     "interfaces": [
       {
         "id": "foo:bar/baz",
+        "uses": {},
         "exports": {
           "a": {
-            "kind": {
-              "type": {
-                "value": 0
-              }
+            "type": {
+              "value": 0
             }
           },
           "b": {
-            "kind": {
-              "type": {
-                "value": 1
-              }
+            "type": {
+              "value": 1
             }
           },
           "c": {
-            "kind": {
-              "type": {
-                "value": 2
-              }
+            "type": {
+              "value": 2
             }
           }
-        },
-        "scope": null
+        }
+      },
+      {
+        "id": "foo:bar/baz",
+        "uses": {},
+        "exports": {
+          "a": {
+            "type": {
+              "value": 3
+            }
+          },
+          "b": {
+            "type": {
+              "value": 4
+            }
+          },
+          "c": {
+            "type": {
+              "value": 5
+            }
+          }
+        }
       },
       {
         "id": "foo:bar/qux",
+        "uses": {
+          "1": [
+            2
+          ]
+        },
         "exports": {
           "z": {
-            "use": {
-              "interface": 0,
-              "exportIndex": 2,
-              "ty": 2
+            "type": {
+              "value": 6
             }
           },
           "x": {
-            "kind": {
-              "type": {
-                "value": 3
-              }
-            }
+            "resource": 0
           },
           "y": {
-            "kind": {
-              "type": {
-                "value": 4
-              }
+            "type": {
+              "value": "borrow<0>"
             }
           }
-        },
-        "scope": null
+        }
       },
       {
-        "id": "test:comp/i",
+        "id": "test:comp/i@0.0.1",
+        "uses": {
+          "0": [
+            0,
+            1,
+            2
+          ]
+        },
         "exports": {
           "a": {
-            "use": {
-              "interface": 0,
-              "exportIndex": 0,
-              "ty": 0
+            "type": {
+              "value": 0
             }
           },
           "b": {
-            "use": {
-              "interface": 0,
-              "exportIndex": 1,
-              "ty": 1
+            "type": {
+              "value": 1
             }
           },
           "c": {
-            "use": {
-              "interface": 0,
-              "exportIndex": 2,
-              "ty": 2
+            "type": {
+              "value": 2
             }
           }
-        },
-        "scope": 1
+        }
       }
     ],
     "worlds": [
       {
+        "id": null,
+        "uses": {},
         "imports": {},
         "exports": {
           "foo:bar/baz": {
-            "kind": {
-              "instance": 0
-            }
+            "instance": 0
           }
-        },
-        "scope": null
+        }
       },
       {
+        "id": null,
+        "uses": {},
         "imports": {
           "foo:bar/baz": {
-            "kind": {
-              "instance": 0
-            }
+            "instance": 1
           }
         },
         "exports": {
           "foo:bar/qux": {
-            "kind": {
-              "instance": 1
-            }
+            "instance": 2
           }
-        },
-        "scope": null
+        }
       },
       {
+        "id": null,
+        "uses": {},
         "imports": {},
         "exports": {
           "baz": {
-            "kind": {
-              "type": {
-                "world": 0
-              }
+            "type": {
+              "world": 0
             }
           },
           "qux": {
-            "kind": {
-              "type": {
-                "world": 1
-              }
+            "type": {
+              "world": 1
             }
           }
-        },
-        "scope": null
+        }
       },
       {
+        "id": "test:comp/w@0.0.1",
+        "uses": {
+          "2": [
+            1,
+            2,
+            0
+          ]
+        },
         "imports": {
-          "foo:bar/qux": {
-            "kind": {
-              "instance": 1
-            }
-          },
           "x": {
-            "use": {
-              "interface": 1,
-              "exportIndex": 1,
-              "ty": 3
-            }
+            "resource": 0
           },
           "y": {
-            "use": {
-              "interface": 1,
-              "exportIndex": 2,
-              "ty": 4
-            }
-          },
-          "foo:bar/baz": {
-            "kind": {
-              "instance": 0
+            "type": {
+              "value": "borrow<0>"
             }
           },
           "z": {
-            "use": {
-              "interface": 1,
-              "exportIndex": 0,
-              "ty": 2
+            "type": {
+              "value": 6
             }
           }
         },
-        "exports": {},
-        "scope": 2
+        "exports": {}
       }
     ],
     "modules": []
   },
+  "packages": [
+    {
+      "name": "foo:bar",
+      "version": null,
+      "world": 2,
+      "definitions": {
+        "baz": {
+          "type": {
+            "interface": 0
+          }
+        },
+        "qux": {
+          "type": {
+            "interface": 2
+          }
+        }
+      }
+    }
+  ],
   "items": [
     {
-      "kind": {
-        "type": {
-          "value": 0
+      "definition": {
+        "name": "i",
+        "kind": {
+          "type": {
+            "interface": 3
+          }
         }
-      },
-      "source": "use"
+      }
     },
     {
-      "kind": {
-        "type": {
-          "value": 1
+      "definition": {
+        "name": "w",
+        "kind": {
+          "type": {
+            "world": 3
+          }
         }
-      },
-      "source": "use"
-    },
-    {
-      "kind": {
-        "type": {
-          "value": 2
-        }
-      },
-      "source": "use"
-    },
-    {
-      "kind": {
-        "type": {
-          "interface": 2
-        }
-      },
-      "source": "definition"
-    },
-    {
-      "kind": {
-        "type": {
-          "value": 3
-        }
-      },
-      "source": "use"
-    },
-    {
-      "kind": {
-        "type": {
-          "value": 4
-        }
-      },
-      "source": "use"
-    },
-    {
-      "kind": {
-        "type": {
-          "value": 2
-        }
-      },
-      "source": "use"
-    },
-    {
-      "kind": {
-        "type": {
-          "world": 3
-        }
-      },
-      "source": "definition"
+      }
     }
   ],
   "imports": {},
-  "exports": {},
-  "scopes": [
-    {
-      "parent": null,
-      "items": {
-        "i": 3,
-        "w": 7
-      }
-    },
-    {
-      "parent": 0,
-      "items": {
-        "a": 0,
-        "b": 1,
-        "c": 2
-      }
-    },
-    {
-      "parent": 0,
-      "items": {
-        "x": 4,
-        "y": 5,
-        "z": 6
-      }
-    }
-  ]
+  "exports": {
+    "i": 0,
+    "w": 1
+  }
 }

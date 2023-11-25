@@ -1,0 +1,5 @@
+use of type `x` conflicts with an import of the same name (consider using an `as` clause to use a different name)
+    --> tests/resolution/fail/duplicate-use-in-world.wac:9:12
+     |
+   9 |     use i.{x};
+     |            ^

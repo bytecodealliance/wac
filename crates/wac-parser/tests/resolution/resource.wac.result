@@ -2,21 +2,29 @@
   "package": "test:comp",
   "version": null,
   "definitions": {
-    "types": [
+    "types": [],
+    "resources": [
       {
-        "resource": 0
+        "name": "x"
       },
       {
-        "borrow": 0
+        "name": "x2",
+        "aliasOf": 0
       }
-    ],
-    "resources": [
-      {}
     ],
     "funcs": [
       {
         "params": {
-          "x": 1
+          "x": "borrow<0>"
+        },
+        "results": null
+      },
+      {
+        "params": {
+          "x": "own<0>",
+          "x2": "own<1>",
+          "x3": "borrow<0>",
+          "x4": "borrow<1>"
         },
         "results": null
       }
@@ -24,74 +32,46 @@
     "interfaces": [
       {
         "id": "test:comp/foo",
+        "uses": {},
         "exports": {
           "x": {
-            "kind": {
-              "type": {
-                "value": 0
-              }
-            }
+            "resource": 0
           },
           "f": {
-            "kind": {
-              "type": {
-                "func": 0
-              }
+            "type": {
+              "func": 0
             }
           },
           "f2": {
-            "kind": {
-              "func": 0
-            }
+            "func": 0
+          },
+          "x2": {
+            "resource": 1
+          },
+          "f3": {
+            "func": 1
           }
-        },
-        "scope": 1
+        }
       }
     ],
     "worlds": [],
     "modules": []
   },
+  "packages": [],
   "items": [
     {
-      "kind": {
-        "type": {
-          "value": 0
+      "definition": {
+        "name": "foo",
+        "kind": {
+          "type": {
+            "interface": 0
+          }
         }
-      },
-      "source": "definition"
-    },
-    {
-      "kind": {
-        "type": {
-          "func": 0
-        }
-      },
-      "source": "definition"
-    },
-    {
-      "kind": {
-        "type": {
-          "interface": 0
-        }
-      },
-      "source": "definition"
+      }
     }
   ],
   "imports": {},
-  "exports": {},
-  "scopes": [
-    {
-      "parent": null,
-      "items": {
-        "foo": 2
-      }
-    },
-    {
-      "parent": 0,
-      "items": {
-        "x": 0,
-        "f": 1
-      }
-    }
-  ]
+  "exports": {
+    "foo": 0
+  }
 }

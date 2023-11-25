@@ -1,0 +1,5 @@
+missing instantiation argument `foo` for package `foo:bar`
+    --> tests/resolution/fail/missing-inst-arg.wac:3:13
+     |
+   3 | let x = new foo:bar {};
+     |             ^-----^

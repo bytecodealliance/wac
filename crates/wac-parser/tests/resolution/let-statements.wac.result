@@ -4,67 +4,55 @@
   "definitions": {
     "types": [
       {
-        "resource": 0
-      },
-      {
         "enum": [
           "open",
           "ended"
         ]
       },
       {
-        "resource": 1
-      },
-      {
         "enum": [
           "last-operation-failed",
           "closed"
         ]
       },
       {
-        "resource": 2
-      },
-      {
         "list": "u8"
       },
       {
         "tuple": [
-          5,
-          1
+          2,
+          0
         ]
       },
       {
         "result": {
-          "ok": 6,
+          "ok": 3,
           "err": null
         }
       },
       {
         "tuple": [
           "u64",
-          1
+          0
         ]
       },
       {
         "result": {
-          "ok": 8,
+          "ok": 5,
           "err": null
         }
       },
       {
         "result": {
           "ok": "u64",
-          "err": 3
+          "err": 1
         }
       },
       {
         "result": {
           "ok": null,
-          "err": 3
+          "err": 1
         }
-      },
-      {
-        "resource": 3
       },
       {
         "enum": [
@@ -73,12 +61,9 @@
         ]
       },
       {
-        "resource": 4
-      },
-      {
         "result": {
           "ok": "u64",
-          "err": 13
+          "err": 9
         }
       },
       {
@@ -87,110 +72,57 @@
       {
         "result": {
           "ok": null,
-          "err": 13
+          "err": 9
         }
       }
     ],
     "resources": [
-      {},
       {
-        "methods": {
-          "read": {
-            "kind": "method",
-            "ty": 0
-          },
-          "blocking-read": {
-            "kind": "method",
-            "ty": 0
-          },
-          "skip": {
-            "kind": "method",
-            "ty": 1
-          },
-          "blocking-skip": {
-            "kind": "method",
-            "ty": 1
-          },
-          "subscribe": {
-            "kind": "method",
-            "ty": 2
-          }
-        }
+        "name": "pollable"
       },
       {
-        "methods": {
-          "check-write": {
-            "kind": "method",
-            "ty": 3
-          },
-          "write": {
-            "kind": "method",
-            "ty": 4
-          },
-          "blocking-write-and-flush": {
-            "kind": "method",
-            "ty": 4
-          },
-          "flush": {
-            "kind": "method",
-            "ty": 5
-          },
-          "blocking-flush": {
-            "kind": "method",
-            "ty": 5
-          },
-          "subscribe": {
-            "kind": "method",
-            "ty": 6
-          },
-          "write-zeroes": {
-            "kind": "method",
-            "ty": 7
-          },
-          "blocking-write-zeroes-and-flush": {
-            "kind": "method",
-            "ty": 7
-          },
-          "splice": {
-            "kind": "method",
-            "ty": 8
-          },
-          "blocking-splice": {
-            "kind": "method",
-            "ty": 8
-          },
-          "forward": {
-            "kind": "method",
-            "ty": 9
-          }
-        }
+        "name": "input-stream"
       },
       {
-        "methods": {
-          "check-write": {
-            "kind": "method",
-            "ty": 10
-          },
-          "write": {
-            "kind": "method",
-            "ty": 11
-          },
-          "blocking-write-and-flush": {
-            "kind": "method",
-            "ty": 11
-          },
-          "blocking-flush": {
-            "kind": "method",
-            "ty": 12
-          }
-        }
+        "name": "output-stream"
       },
-      {}
+      {
+        "name": "output-stream"
+      },
+      {
+        "name": "input-stream"
+      }
     ],
     "funcs": [
       {
         "params": {
+          "self": "borrow<1>",
           "len": "u64"
+        },
+        "results": {
+          "scalar": 4
+        }
+      },
+      {
+        "params": {
+          "self": "borrow<1>",
+          "len": "u64"
+        },
+        "results": {
+          "scalar": 6
+        }
+      },
+      {
+        "params": {
+          "self": "borrow<1>"
+        },
+        "results": {
+          "scalar": "own<0>"
+        }
+      },
+      {
+        "params": {
+          "self": "borrow<2>"
         },
         "results": {
           "scalar": 7
@@ -198,87 +130,80 @@
       },
       {
         "params": {
+          "self": "borrow<2>",
+          "contents": 2
+        },
+        "results": {
+          "scalar": 8
+        }
+      },
+      {
+        "params": {
+          "self": "borrow<2>"
+        },
+        "results": {
+          "scalar": 8
+        }
+      },
+      {
+        "params": {
+          "self": "borrow<2>"
+        },
+        "results": {
+          "scalar": "own<0>"
+        }
+      },
+      {
+        "params": {
+          "self": "borrow<2>",
           "len": "u64"
         },
         "results": {
-          "scalar": 9
+          "scalar": 8
         }
       },
       {
-        "params": {},
+        "params": {
+          "self": "borrow<2>",
+          "src": "own<1>",
+          "len": "u64"
+        },
         "results": {
-          "scalar": 0
+          "scalar": 6
         }
       },
       {
-        "params": {},
+        "params": {
+          "self": "borrow<2>",
+          "src": "own<1>"
+        },
+        "results": {
+          "scalar": 6
+        }
+      },
+      {
+        "params": {
+          "self": "borrow<3>"
+        },
         "results": {
           "scalar": 10
         }
       },
       {
         "params": {
-          "contents": 5
+          "self": "borrow<3>",
+          "contents": 11
         },
         "results": {
-          "scalar": 11
-        }
-      },
-      {
-        "params": {},
-        "results": {
-          "scalar": 11
-        }
-      },
-      {
-        "params": {},
-        "results": {
-          "scalar": 0
+          "scalar": 12
         }
       },
       {
         "params": {
-          "len": "u64"
+          "self": "borrow<3>"
         },
         "results": {
-          "scalar": 11
-        }
-      },
-      {
-        "params": {
-          "src": 2,
-          "len": "u64"
-        },
-        "results": {
-          "scalar": 9
-        }
-      },
-      {
-        "params": {
-          "src": 2
-        },
-        "results": {
-          "scalar": 9
-        }
-      },
-      {
-        "params": {},
-        "results": {
-          "scalar": 15
-        }
-      },
-      {
-        "params": {
-          "contents": 16
-        },
-        "results": {
-          "scalar": 17
-        }
-      },
-      {
-        "params": {},
-        "results": {
-          "scalar": 17
+          "scalar": 12
         }
       },
       {
@@ -289,205 +214,248 @@
     "interfaces": [
       {
         "id": "wasi:io/streams@0.2.0-rc-2023-10-18",
+        "uses": {},
         "exports": {
           "pollable": {
-            "kind": {
-              "type": {
-                "value": 0
-              }
-            }
+            "resource": 0
           },
           "stream-status": {
-            "kind": {
-              "type": {
-                "value": 1
-              }
+            "type": {
+              "value": 0
             }
           },
           "input-stream": {
-            "kind": {
-              "type": {
-                "value": 2
-              }
-            }
+            "resource": 1
           },
           "write-error": {
-            "kind": {
-              "type": {
-                "value": 3
-              }
+            "type": {
+              "value": 1
             }
           },
           "output-stream": {
-            "kind": {
-              "type": {
-                "value": 4
-              }
-            }
+            "resource": 2
+          },
+          "[method]input-stream.read": {
+            "func": 0
+          },
+          "[method]input-stream.blocking-read": {
+            "func": 0
+          },
+          "[method]input-stream.skip": {
+            "func": 1
+          },
+          "[method]input-stream.blocking-skip": {
+            "func": 1
+          },
+          "[method]input-stream.subscribe": {
+            "func": 2
+          },
+          "[method]output-stream.check-write": {
+            "func": 3
+          },
+          "[method]output-stream.write": {
+            "func": 4
+          },
+          "[method]output-stream.blocking-write-and-flush": {
+            "func": 4
+          },
+          "[method]output-stream.flush": {
+            "func": 5
+          },
+          "[method]output-stream.blocking-flush": {
+            "func": 5
+          },
+          "[method]output-stream.subscribe": {
+            "func": 6
+          },
+          "[method]output-stream.write-zeroes": {
+            "func": 7
+          },
+          "[method]output-stream.blocking-write-zeroes-and-flush": {
+            "func": 7
+          },
+          "[method]output-stream.splice": {
+            "func": 8
+          },
+          "[method]output-stream.blocking-splice": {
+            "func": 8
+          },
+          "[method]output-stream.forward": {
+            "func": 9
           }
-        },
-        "scope": null
+        }
       },
       {
         "id": "wasi:io/streams@0.2.0-rc-2023-10-18",
+        "uses": {},
         "exports": {
           "output-stream": {
-            "kind": {
-              "type": {
-                "value": 12
-              }
-            }
+            "resource": 3
           },
           "write-error": {
-            "kind": {
-              "type": {
-                "value": 13
-              }
+            "type": {
+              "value": 9
             }
           },
           "input-stream": {
-            "kind": {
-              "type": {
-                "value": 14
-              }
-            }
+            "resource": 4
+          },
+          "[method]output-stream.check-write": {
+            "func": 10
+          },
+          "[method]output-stream.write": {
+            "func": 11
+          },
+          "[method]output-stream.blocking-write-and-flush": {
+            "func": 11
+          },
+          "[method]output-stream.blocking-flush": {
+            "func": 12
           }
-        },
-        "scope": null
+        }
       },
       {
         "id": "foo:bar/baz@0.1.0",
+        "uses": {},
         "exports": {
           "f": {
-            "kind": {
-              "func": 13
-            }
+            "func": 13
           }
-        },
-        "scope": null
+        }
+      },
+      {
+        "id": "foo:bar/baz@0.1.0",
+        "uses": {},
+        "exports": {
+          "f": {
+            "func": 13
+          }
+        }
       }
     ],
     "worlds": [
       {
+        "id": null,
+        "uses": {},
         "imports": {},
         "exports": {
           "wasi:io/streams@0.2.0-rc-2023-10-18": {
-            "kind": {
-              "instance": 0
-            }
+            "instance": 0
           }
-        },
-        "scope": null
+        }
       },
       {
+        "id": null,
+        "uses": {},
         "imports": {},
         "exports": {
           "streams": {
-            "kind": {
-              "type": {
-                "world": 0
-              }
+            "type": {
+              "world": 0
             }
           }
-        },
-        "scope": null
+        }
       },
       {
+        "id": null,
+        "uses": {},
         "imports": {
           "wasi:io/streams@0.2.0-rc-2023-10-18": {
-            "kind": {
-              "instance": 1
-            }
+            "instance": 1
           },
           "foo:bar/baz@0.1.0": {
-            "kind": {
-              "instance": 2
-            }
+            "instance": 2
           }
         },
         "exports": {
           "foo:bar/baz@0.1.0": {
-            "kind": {
-              "instance": 2
-            }
+            "instance": 2
           }
-        },
-        "scope": null
+        }
       }
     ],
     "modules": []
   },
+  "packages": [
+    {
+      "name": "wasi:io",
+      "version": null,
+      "world": 1,
+      "definitions": {
+        "streams": {
+          "type": {
+            "interface": 0
+          }
+        }
+      }
+    },
+    {
+      "name": "foo:bar",
+      "version": null,
+      "world": 2,
+      "definitions": {}
+    }
+  ],
   "items": [
     {
-      "kind": {
-        "instance": 0
-      },
-      "source": {
-        "import": "wasi:io/streams@0.2.0-rc-2023-10-18"
-      }
-    },
-    {
-      "kind": {
-        "instantiation": 2
-      },
-      "source": {
-        "instantiation": {
-          "arguments": {
-            "wasi:io/streams@0.2.0-rc-2023-10-18": 0
-          }
+      "import": {
+        "name": "wasi:io/streams@0.2.0-rc-2023-10-18",
+        "kind": {
+          "instance": 0
         }
       }
     },
     {
-      "kind": {
-        "instance": 2
-      },
-      "source": {
-        "alias": {
-          "item": 1,
-          "export": "foo:bar/baz@0.1.0"
+      "import": {
+        "name": "foo:bar/baz@0.1.0",
+        "kind": {
+          "instance": 3
         }
       }
     },
     {
-      "kind": {
-        "instantiation": 2
-      },
-      "source": {
-        "instantiation": {
-          "arguments": {
-            "wasi:io/streams@0.2.0-rc-2023-10-18": 0,
-            "foo:bar/baz@0.1.0": 2
-          }
+      "instantiation": {
+        "package": 1,
+        "arguments": {
+          "wasi:io/streams@0.2.0-rc-2023-10-18": 0,
+          "foo:bar/baz@0.1.0": 1
         }
       }
     },
     {
-      "kind": {
-        "instance": 2
-      },
-      "source": {
-        "alias": {
-          "item": 3,
-          "export": "foo:bar/baz@0.1.0"
+      "alias": {
+        "item": 2,
+        "export": "foo:bar/baz@0.1.0",
+        "kind": {
+          "instance": 2
+        }
+      }
+    },
+    {
+      "instantiation": {
+        "package": 1,
+        "arguments": {
+          "wasi:io/streams@0.2.0-rc-2023-10-18": 0,
+          "foo:bar/baz@0.1.0": 3
+        }
+      }
+    },
+    {
+      "alias": {
+        "item": 4,
+        "export": "foo:bar/baz@0.1.0",
+        "kind": {
+          "instance": 2
         }
       }
     }
   ],
   "imports": {
-    "wasi:io/streams@0.2.0-rc-2023-10-18": 0
+    "wasi:io/streams@0.2.0-rc-2023-10-18": 0,
+    "foo:bar/baz@0.1.0": 1
   },
   "exports": {
-    "foo:bar/baz@0.1.0": 4,
-    "i": 3
-  },
-  "scopes": [
-    {
-      "parent": null,
-      "items": {
-        "streams": 0,
-        "i": 3
-      }
-    }
-  ]
+    "foo:bar/baz@0.1.0": 5,
+    "i": 4
+  }
 }

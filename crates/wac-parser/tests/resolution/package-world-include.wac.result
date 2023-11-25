@@ -2,36 +2,65 @@
   "package": "test:comp",
   "version": "1.2.3-prerelease",
   "definitions": {
-    "types": [
-      {
-        "resource": 0
-      }
-    ],
+    "types": [],
     "resources": [
       {
-        "methods": {
-          "": {
-            "kind": "constructor",
-            "ty": 0
-          },
-          "a": {
-            "kind": "method",
-            "ty": 1
-          },
-          "b": {
-            "kind": "static",
-            "ty": 2
-          }
-        }
+        "name": "x"
+      },
+      {
+        "name": "x"
+      },
+      {
+        "name": "x",
+        "aliasOf": 1
+      },
+      {
+        "name": "x"
       }
     ],
     "funcs": [
+      {
+        "params": {},
+        "results": {
+          "scalar": "own<0>"
+        }
+      },
+      {
+        "params": {
+          "self": "borrow<0>"
+        },
+        "results": null
+      },
       {
         "params": {},
         "results": null
       },
       {
         "params": {},
+        "results": {
+          "scalar": "own<1>"
+        }
+      },
+      {
+        "params": {
+          "self": "borrow<1>"
+        },
+        "results": null
+      },
+      {
+        "params": {},
+        "results": null
+      },
+      {
+        "params": {},
+        "results": {
+          "scalar": "own<3>"
+        }
+      },
+      {
+        "params": {
+          "self": "borrow<3>"
+        },
         "results": null
       },
       {
@@ -42,134 +71,171 @@
     "interfaces": [
       {
         "id": "foo:bar/i",
+        "uses": {},
         "exports": {
           "x": {
-            "kind": {
-              "type": {
-                "value": 0
-              }
-            }
+            "resource": 0
+          },
+          "[constructor]x": {
+            "func": 0
+          },
+          "[method]x.a": {
+            "func": 1
+          },
+          "[static]x.b": {
+            "func": 2
           }
-        },
-        "scope": null
+        }
+      },
+      {
+        "id": "foo:bar/i",
+        "uses": {},
+        "exports": {
+          "x": {
+            "resource": 1
+          },
+          "[constructor]x": {
+            "func": 3
+          },
+          "[method]x.a": {
+            "func": 4
+          },
+          "[static]x.b": {
+            "func": 5
+          }
+        }
+      },
+      {
+        "id": "foo:bar/i",
+        "uses": {},
+        "exports": {
+          "x": {
+            "resource": 3
+          },
+          "[constructor]x": {
+            "func": 6
+          },
+          "[method]x.a": {
+            "func": 7
+          },
+          "[static]x.b": {
+            "func": 8
+          }
+        }
       }
     ],
     "worlds": [
       {
+        "id": null,
+        "uses": {},
         "imports": {},
         "exports": {
           "foo:bar/i": {
-            "kind": {
-              "instance": 0
-            }
+            "instance": 0
           }
-        },
-        "scope": null
+        }
       },
       {
-        "imports": {
-          "foo:bar/i": {
-            "kind": {
-              "instance": 0
-            }
-          },
-          "x": {
-            "use": {
-              "interface": 0,
-              "exportIndex": 0,
-              "ty": 0
-            }
-          }
-        },
-        "exports": {
-          "foo:bar/i": {
-            "kind": {
-              "instance": 0
-            }
-          }
-        },
-        "scope": null
-      },
-      {
+        "id": null,
+        "uses": {},
         "imports": {},
         "exports": {
           "foo:bar/baz": {
-            "kind": {
-              "component": 1
-            }
+            "component": 2
           }
-        },
-        "scope": null
+        }
       },
       {
+        "id": "foo:bar/baz",
+        "uses": {
+          "1": [
+            0
+          ]
+        },
+        "imports": {
+          "foo:bar/i": {
+            "instance": 1
+          },
+          "x": {
+            "resource": 2
+          }
+        },
+        "exports": {
+          "foo:bar/i": {
+            "instance": 2
+          }
+        }
+      },
+      {
+        "id": null,
+        "uses": {},
         "imports": {},
         "exports": {
           "i": {
-            "kind": {
-              "type": {
-                "world": 0
-              }
+            "type": {
+              "world": 0
             }
           },
           "baz": {
-            "kind": {
-              "type": {
-                "world": 2
-              }
+            "type": {
+              "world": 1
             }
           }
-        },
-        "scope": null
+        }
       },
       {
+        "id": "test:comp/w@1.2.3-prerelease",
+        "uses": {},
         "imports": {
           "foo:bar/i": {
-            "kind": {
-              "instance": 0
-            }
+            "instance": 1
           },
           "x": {
-            "use": {
-              "interface": 0,
-              "exportIndex": 0,
-              "ty": 0
-            }
+            "resource": 2
           }
         },
         "exports": {
           "foo:bar/i": {
-            "kind": {
-              "instance": 0
-            }
+            "instance": 2
           }
-        },
-        "scope": 1
+        }
       }
     ],
     "modules": []
   },
+  "packages": [
+    {
+      "name": "foo:bar",
+      "version": null,
+      "world": 3,
+      "definitions": {
+        "i": {
+          "type": {
+            "interface": 0
+          }
+        },
+        "baz": {
+          "type": {
+            "world": 2
+          }
+        }
+      }
+    }
+  ],
   "items": [
     {
-      "kind": {
-        "type": {
-          "world": 4
+      "definition": {
+        "name": "w",
+        "kind": {
+          "type": {
+            "world": 4
+          }
         }
-      },
-      "source": "definition"
+      }
     }
   ],
   "imports": {},
-  "exports": {},
-  "scopes": [
-    {
-      "parent": null,
-      "items": {
-        "w": 0
-      }
-    },
-    {
-      "parent": 0,
-      "items": {}
-    }
-  ]
+  "exports": {
+    "w": 0
+  }
 }

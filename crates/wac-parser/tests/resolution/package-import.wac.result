@@ -4,35 +4,25 @@
   "definitions": {
     "types": [
       {
-        "primitive": "string"
-      },
-      {
-        "resource": 0
-      },
-      {
-        "borrow": 0
+        "alias": "string"
       }
     ],
     "resources": [
       {
-        "methods": {
-          "x": {
-            "kind": "method",
-            "ty": 0
-          }
-        }
+        "name": "r"
       }
     ],
     "funcs": [
       {
         "params": {
-          "r": 1
+          "self": "borrow<0>",
+          "r": "own<0>"
         },
         "results": null
       },
       {
         "params": {
-          "r": 2
+          "r": "borrow<0>"
         },
         "results": null
       }
@@ -40,65 +30,72 @@
     "interfaces": [
       {
         "id": "foo:bar/i",
+        "uses": {},
         "exports": {
           "x": {
-            "kind": {
-              "type": {
-                "value": 0
-              }
+            "type": {
+              "value": 0
             }
           },
           "r": {
-            "kind": {
-              "type": {
-                "value": 1
-              }
-            }
+            "resource": 0
+          },
+          "[method]r.x": {
+            "func": 0
           },
           "y": {
-            "kind": {
-              "func": 1
-            }
+            "func": 1
           }
-        },
-        "scope": null
+        }
       }
     ],
     "worlds": [
       {
+        "id": null,
+        "uses": {},
         "imports": {},
         "exports": {
           "foo:bar/i": {
-            "kind": {
-              "instance": 0
-            }
+            "instance": 0
           }
-        },
-        "scope": null
+        }
       },
       {
+        "id": null,
+        "uses": {},
         "imports": {},
         "exports": {
           "i": {
-            "kind": {
-              "type": {
-                "world": 0
-              }
+            "type": {
+              "world": 0
             }
           }
-        },
-        "scope": null
+        }
       }
     ],
     "modules": []
   },
+  "packages": [
+    {
+      "name": "foo:bar",
+      "version": null,
+      "world": 1,
+      "definitions": {
+        "i": {
+          "type": {
+            "interface": 0
+          }
+        }
+      }
+    }
+  ],
   "items": [
     {
-      "kind": {
-        "instance": 0
-      },
-      "source": {
-        "import": "foo:bar/i"
+      "import": {
+        "name": "foo:bar/i",
+        "kind": {
+          "instance": 0
+        }
       }
     }
   ],
@@ -107,13 +104,5 @@
   },
   "exports": {
     "foo:bar/i": 0
-  },
-  "scopes": [
-    {
-      "parent": null,
-      "items": {
-        "i": 0
-      }
-    }
-  ]
+  }
 }

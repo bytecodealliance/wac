@@ -19,7 +19,7 @@ keywords = ["webassembly", "wasm", "components", "component-model"]
 repository = "https://github.com/bytecodealliance/wac"
 
 [dependencies]
-wac-parser = { workspace = true }
+wac-parser = { workspace = true, default-features = false}
 anyhow = { workspace = true }
 clap = { workspace = true }
 pretty_env_logger = { workspace = true }
@@ -28,6 +28,9 @@ tokio = { workspace = true }
 owo-colors = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
+wat = { workspace = true }
+wasmparser = { workspace = true }
+wasmprinter = { workspace = true }
 
 [features]
 default = []
@@ -38,6 +41,9 @@ wac-parser = { path = "crates/wac-parser", default-features = false }
 wit-parser = "0.13.0"
 wasmparser = "0.116.1"
 wit-component = "0.18.0"
+wasm-encoder = "0.36.2"
+wasmprinter = "0.2.72"
+wasm-metadata = "0.10.11"
 anyhow = "1.0.75"
 clap = { version = "4.4.7", features = ["derive"] }
 semver = { version = "1.0.20", features = ["serde"] }

@@ -11,18 +11,12 @@
         }
       },
       {
-        "resource": 0
-      },
-      {
-        "resource": 1
-      },
-      {
         "alias": "u32"
       },
       {
         "variant": {
           "cases": {
-            "a": 3,
+            "a": 1,
             "b": "string",
             "c": "u32",
             "d": null
@@ -34,7 +28,7 @@
           "fields": {
             "x": "u32",
             "y": "string",
-            "z": 4
+            "z": 2
           }
         }
       },
@@ -53,21 +47,18 @@
         ]
       },
       {
-        "alias": 7
+        "alias": 5
       },
       {
         "alias": "string"
       }
     ],
     "resources": [
-      {},
       {
-        "methods": {
-          "": {
-            "kind": "constructor",
-            "ty": 5
-          }
-        }
+        "name": "r"
+      },
+      {
+        "name": "res"
       }
     ],
     "funcs": [
@@ -93,12 +84,14 @@
       },
       {
         "params": {},
-        "results": null
+        "results": {
+          "scalar": "own<1>"
+        }
       },
       {
         "params": {
           "a": "u32",
-          "b": 5
+          "b": 3
         },
         "results": {
           "scalar": "u32"
@@ -117,461 +110,371 @@
     "interfaces": [
       {
         "id": "test:comp/i",
+        "uses": {},
         "exports": {
           "a": {
-            "kind": {
-              "type": {
-                "func": 0
-              }
+            "type": {
+              "func": 0
             }
           },
           "r": {
-            "kind": {
-              "type": {
-                "value": 0
-              }
+            "type": {
+              "value": 0
             }
           },
           "x": {
-            "kind": {
-              "func": 1
-            }
+            "func": 1
           },
           "y": {
-            "kind": {
-              "func": 0
-            }
+            "func": 0
           }
-        },
-        "scope": 1
+        }
       },
       {
         "id": "test:comp/i2",
+        "uses": {
+          "0": [
+            1
+          ]
+        },
         "exports": {
           "r": {
-            "use": {
-              "interface": 0,
-              "exportIndex": 1,
-              "ty": 0
+            "type": {
+              "value": 0
             }
           },
           "z": {
-            "use": {
-              "interface": 0,
-              "exportIndex": 1,
-              "ty": 0
+            "type": {
+              "value": 0
             }
           }
-        },
-        "scope": 2
+        }
       },
       {
         "id": "foo:bar/i",
+        "uses": {},
         "exports": {
           "r": {
-            "kind": {
-              "type": {
-                "value": 1
-              }
-            }
+            "resource": 0
           }
-        },
-        "scope": null
+        }
       },
       {
         "id": null,
+        "uses": {},
         "exports": {
           "x": {
-            "kind": {
-              "func": 4
-            }
+            "func": 4
           }
-        },
-        "scope": 4
+        }
       }
     ],
     "worlds": [
       {
+        "id": null,
+        "uses": {},
         "imports": {},
         "exports": {
           "foo:bar/i": {
-            "kind": {
-              "instance": 2
-            }
+            "instance": 2
           }
-        },
-        "scope": null
+        }
       },
       {
-        "imports": {},
-        "exports": {},
-        "scope": null
-      },
-      {
+        "id": null,
+        "uses": {},
         "imports": {},
         "exports": {
           "foo:bar/baz": {
-            "kind": {
-              "component": 1
-            }
+            "component": 2
           }
-        },
-        "scope": null
+        }
       },
       {
+        "id": "foo:bar/baz",
+        "uses": {},
+        "imports": {},
+        "exports": {}
+      },
+      {
+        "id": null,
+        "uses": {},
         "imports": {},
         "exports": {
           "i": {
-            "kind": {
-              "type": {
-                "world": 0
-              }
+            "type": {
+              "world": 0
             }
           },
           "baz": {
-            "kind": {
-              "type": {
-                "world": 2
-              }
+            "type": {
+              "world": 1
             }
           }
-        },
-        "scope": null
+        }
       },
       {
+        "id": "test:comp/w1",
+        "uses": {
+          "2": [
+            0
+          ]
+        },
         "imports": {
-          "foo:bar/i": {
-            "kind": {
-              "instance": 2
-            }
-          },
           "r": {
-            "use": {
-              "interface": 2,
-              "exportIndex": 0,
-              "ty": 1
-            }
+            "resource": 0
           },
           "a": {
-            "kind": {
-              "func": 3
-            }
+            "func": 3
           },
           "test:comp/i": {
-            "kind": {
-              "instance": 0
-            }
+            "instance": 0
           },
           "c": {
-            "kind": {
-              "func": 2
-            }
+            "func": 2
           }
         },
         "exports": {
           "d": {
-            "kind": {
-              "type": {
-                "interface": 3
-              }
+            "type": {
+              "interface": 3
             }
           },
           "test:comp/i2": {
-            "kind": {
-              "instance": 1
-            }
+            "instance": 1
           },
           "f": {
-            "kind": {
-              "func": 2
-            }
+            "func": 2
           }
-        },
-        "scope": 3
+        }
       },
       {
+        "id": "test:comp/w2",
+        "uses": {},
         "imports": {
-          "foo:bar/i": {
-            "kind": {
-              "instance": 2
-            }
-          },
-          "r": {
-            "use": {
-              "interface": 2,
-              "exportIndex": 0,
-              "ty": 1
-            }
-          },
-          "a": {
-            "kind": {
-              "func": 3
-            }
-          },
-          "test:comp/i": {
-            "kind": {
-              "instance": 0
-            }
-          },
-          "c": {
-            "kind": {
-              "func": 2
-            }
-          }
-        },
-        "exports": {
           "res": {
-            "kind": {
-              "type": {
-                "value": 2
-              }
-            }
+            "resource": 1
           },
+          "[constructor]res": {
+            "func": 5
+          },
+          "r": {
+            "resource": 0
+          },
+          "a": {
+            "func": 3
+          },
+          "test:comp/i": {
+            "instance": 0
+          },
+          "c": {
+            "func": 2
+          }
+        },
+        "exports": {
           "d": {
-            "kind": {
-              "type": {
-                "interface": 3
-              }
+            "type": {
+              "interface": 3
             }
           },
           "test:comp/i2": {
-            "kind": {
-              "instance": 1
-            }
+            "instance": 1
           },
           "f": {
-            "kind": {
-              "func": 2
-            }
+            "func": 2
           }
-        },
-        "scope": 5
+        }
       }
     ],
     "modules": []
   },
+  "packages": [
+    {
+      "name": "foo:bar",
+      "version": null,
+      "world": 3,
+      "definitions": {
+        "i": {
+          "type": {
+            "interface": 2
+          }
+        },
+        "baz": {
+          "type": {
+            "world": 2
+          }
+        }
+      }
+    }
+  ],
   "items": [
     {
-      "kind": {
-        "type": {
-          "func": 0
+      "definition": {
+        "name": "i",
+        "kind": {
+          "type": {
+            "interface": 0
+          }
         }
-      },
-      "source": "definition"
+      }
     },
     {
-      "kind": {
-        "type": {
-          "value": 0
+      "definition": {
+        "name": "i2",
+        "kind": {
+          "type": {
+            "interface": 1
+          }
         }
-      },
-      "source": "definition"
+      }
     },
     {
-      "kind": {
-        "type": {
-          "interface": 0
+      "definition": {
+        "name": "c",
+        "kind": {
+          "type": {
+            "func": 2
+          }
         }
-      },
-      "source": "definition"
+      }
     },
     {
-      "kind": {
-        "type": {
-          "value": 0
+      "definition": {
+        "name": "f",
+        "kind": {
+          "type": {
+            "func": 2
+          }
         }
-      },
-      "source": "use"
+      }
     },
     {
-      "kind": {
-        "type": {
-          "value": 0
+      "definition": {
+        "name": "w1",
+        "kind": {
+          "type": {
+            "world": 4
+          }
         }
-      },
-      "source": "use"
+      }
     },
     {
-      "kind": {
-        "type": {
-          "interface": 1
+      "definition": {
+        "name": "w2",
+        "kind": {
+          "type": {
+            "world": 5
+          }
         }
-      },
-      "source": "definition"
+      }
     },
     {
-      "kind": {
-        "type": {
-          "func": 2
+      "definition": {
+        "name": "x",
+        "kind": {
+          "type": {
+            "value": 1
+          }
         }
-      },
-      "source": "definition"
+      }
     },
     {
-      "kind": {
-        "type": {
-          "func": 2
+      "definition": {
+        "name": "v",
+        "kind": {
+          "type": {
+            "value": 2
+          }
         }
-      },
-      "source": "definition"
+      }
     },
     {
-      "kind": {
-        "type": {
-          "value": 1
+      "definition": {
+        "name": "r",
+        "kind": {
+          "type": {
+            "value": 3
+          }
         }
-      },
-      "source": "use"
+      }
     },
     {
-      "kind": {
-        "type": {
-          "world": 4
+      "definition": {
+        "name": "flags",
+        "kind": {
+          "type": {
+            "value": 4
+          }
         }
-      },
-      "source": "definition"
+      }
     },
     {
-      "kind": {
-        "type": {
-          "value": 2
+      "definition": {
+        "name": "e",
+        "kind": {
+          "type": {
+            "value": 5
+          }
         }
-      },
-      "source": "definition"
+      }
     },
     {
-      "kind": {
-        "type": {
-          "world": 5
+      "definition": {
+        "name": "t",
+        "kind": {
+          "type": {
+            "value": 6
+          }
         }
-      },
-      "source": "definition"
+      }
     },
     {
-      "kind": {
-        "type": {
-          "value": 3
+      "definition": {
+        "name": "t2",
+        "kind": {
+          "type": {
+            "value": 7
+          }
         }
-      },
-      "source": "definition"
+      }
     },
     {
-      "kind": {
-        "type": {
-          "value": 4
+      "definition": {
+        "name": "t3",
+        "kind": {
+          "type": {
+            "func": 6
+          }
         }
-      },
-      "source": "definition"
+      }
     },
     {
-      "kind": {
-        "type": {
-          "value": 5
+      "definition": {
+        "name": "t4",
+        "kind": {
+          "type": {
+            "func": 7
+          }
         }
-      },
-      "source": "definition"
-    },
-    {
-      "kind": {
-        "type": {
-          "value": 6
-        }
-      },
-      "source": "definition"
-    },
-    {
-      "kind": {
-        "type": {
-          "value": 7
-        }
-      },
-      "source": "definition"
-    },
-    {
-      "kind": {
-        "type": {
-          "value": 8
-        }
-      },
-      "source": "definition"
-    },
-    {
-      "kind": {
-        "type": {
-          "value": 9
-        }
-      },
-      "source": "definition"
-    },
-    {
-      "kind": {
-        "type": {
-          "func": 6
-        }
-      },
-      "source": "definition"
-    },
-    {
-      "kind": {
-        "type": {
-          "func": 7
-        }
-      },
-      "source": "definition"
+      }
     }
   ],
   "imports": {},
-  "exports": {},
-  "scopes": [
-    {
-      "parent": null,
-      "items": {
-        "i": 2,
-        "i2": 5,
-        "c": 6,
-        "f": 7,
-        "w1": 9,
-        "w2": 11,
-        "x": 12,
-        "v": 13,
-        "r": 14,
-        "flags": 15,
-        "e": 16,
-        "t": 17,
-        "t2": 18,
-        "t3": 19,
-        "t4": 20
-      }
-    },
-    {
-      "parent": 0,
-      "items": {
-        "a": 0,
-        "r": 1
-      }
-    },
-    {
-      "parent": 0,
-      "items": {
-        "r": 3,
-        "z": 4
-      }
-    },
-    {
-      "parent": 0,
-      "items": {
-        "r": 8
-      }
-    },
-    {
-      "parent": 3,
-      "items": {}
-    },
-    {
-      "parent": 0,
-      "items": {
-        "res": 10
-      }
-    }
-  ]
+  "exports": {
+    "i": 0,
+    "i2": 1,
+    "c": 2,
+    "f": 3,
+    "w1": 4,
+    "w2": 5,
+    "x": 6,
+    "v": 7,
+    "r": 8,
+    "flags": 9,
+    "e": 10,
+    "t": 11,
+    "t2": 12,
+    "t3": 13,
+    "t4": 14
+  }
 }

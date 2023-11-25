@@ -5,5 +5,4 @@ mismatched instantiation argument `x`
      |                       ^
 
 Caused by:
-    0: mismatched type for export `r`
-    1: missing expected constructor
+    instance is missing expected export `[constructor]r`

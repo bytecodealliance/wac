@@ -8,35 +8,32 @@
     "interfaces": [],
     "worlds": [
       {
+        "id": null,
+        "uses": {},
         "imports": {},
-        "exports": {},
-        "scope": null
+        "exports": {}
       }
     ],
     "modules": []
   },
+  "packages": [
+    {
+      "name": "foo:bar",
+      "version": null,
+      "world": 0,
+      "definitions": {}
+    }
+  ],
   "items": [
     {
-      "kind": {
-        "instantiation": 0
-      },
-      "source": {
-        "instantiation": {
-          "arguments": {}
-        }
+      "instantiation": {
+        "package": 0,
+        "arguments": {}
       }
     }
   ],
   "imports": {},
   "exports": {
     "i": 0
-  },
-  "scopes": [
-    {
-      "parent": null,
-      "items": {
-        "i": 0
-      }
-    }
-  ]
+  }
 }

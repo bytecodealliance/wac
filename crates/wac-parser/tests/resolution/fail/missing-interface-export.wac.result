@@ -5,4 +5,4 @@ mismatched instantiation argument `x`
      |                       ^
 
 Caused by:
-    missing expected export `f`
+    instance is missing expected export `f`

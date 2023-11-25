@@ -753,6 +753,9 @@ dependencies = [
  "serde_json",
  "tokio",
  "wac-parser",
+ "wasmparser",
+ "wasmprinter",
+ "wat",
 ]
 
 [[package]]
@@ -772,7 +775,10 @@ dependencies = [
  "serde",
  "serde_json",
  "thiserror",
+ "wasm-encoder",
+ "wasm-metadata",
  "wasmparser",
+ "wasmprinter",
  "wat",
  "wit-component",
  "wit-parser",
@@ -811,6 +817,16 @@ checksum = "a58e28b80dd8340cb07b8242ae654756161f6fc8d0038123d679b7b99964fa50"
 dependencies = [
  "indexmap",
  "semver",
+]
+
+[[package]]
+name = "wasmprinter"
+version = "0.2.72"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9aff4df0cdf1906ec040e97d78c3fc8fd26d3f8d70adaac81f07f80957b63b54"
+dependencies = [
+ "anyhow",
+ "wasmparser",
 ]
 
 [[package]]

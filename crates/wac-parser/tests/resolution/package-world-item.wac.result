@@ -4,26 +4,20 @@
   "definitions": {
     "types": [
       {
-        "resource": 0
-      },
-      {
-        "primitive": "string"
+        "alias": "string"
       }
     ],
     "resources": [
       {
-        "methods": {
-          "": {
-            "kind": "constructor",
-            "ty": 0
-          }
-        }
+        "name": "z"
       }
     ],
     "funcs": [
       {
         "params": {},
-        "results": null
+        "results": {
+          "scalar": "own<0>"
+        }
       },
       {
         "params": {},
@@ -33,127 +27,133 @@
     "interfaces": [
       {
         "id": "foo:bar/baz",
+        "uses": {},
         "exports": {
           "z": {
-            "kind": {
-              "type": {
-                "value": 0
-              }
-            }
+            "resource": 0
+          },
+          "[constructor]z": {
+            "func": 0
           },
           "x": {
-            "kind": {
-              "func": 1
-            }
+            "func": 1
           }
-        },
-        "scope": null
+        }
       },
       {
         "id": "bar:baz/qux",
+        "uses": {},
         "exports": {
           "x": {
-            "kind": {
-              "type": {
-                "value": 1
-              }
+            "type": {
+              "value": 0
             }
           }
-        },
-        "scope": null
+        }
       }
     ],
     "worlds": [
       {
+        "id": null,
+        "uses": {},
         "imports": {},
         "exports": {
           "foo:bar/baz": {
-            "kind": {
-              "instance": 0
-            }
+            "instance": 0
           }
-        },
-        "scope": null
+        }
       },
       {
+        "id": null,
+        "uses": {},
         "imports": {},
         "exports": {
           "baz": {
-            "kind": {
-              "type": {
-                "world": 0
-              }
+            "type": {
+              "world": 0
             }
           }
-        },
-        "scope": null
+        }
       },
       {
+        "id": null,
+        "uses": {},
         "imports": {},
         "exports": {
           "bar:baz/qux": {
-            "kind": {
-              "instance": 1
-            }
+            "instance": 1
           }
-        },
-        "scope": null
+        }
       },
       {
+        "id": null,
+        "uses": {},
         "imports": {},
         "exports": {
           "qux": {
-            "kind": {
-              "type": {
-                "world": 2
-              }
+            "type": {
+              "world": 2
             }
           }
-        },
-        "scope": null
+        }
       },
       {
+        "id": "test:comp/w",
+        "uses": {},
         "imports": {
           "foo:bar/baz": {
-            "kind": {
-              "instance": 0
-            }
+            "instance": 0
           }
         },
         "exports": {
           "bar:baz/qux": {
-            "kind": {
-              "instance": 1
-            }
+            "instance": 1
           }
-        },
-        "scope": 1
+        }
       }
     ],
     "modules": []
   },
-  "items": [
+  "packages": [
     {
-      "kind": {
-        "type": {
-          "world": 4
+      "name": "foo:bar",
+      "version": null,
+      "world": 1,
+      "definitions": {
+        "baz": {
+          "type": {
+            "interface": 0
+          }
         }
-      },
-      "source": "definition"
-    }
-  ],
-  "imports": {},
-  "exports": {},
-  "scopes": [
-    {
-      "parent": null,
-      "items": {
-        "w": 0
       }
     },
     {
-      "parent": 0,
-      "items": {}
+      "name": "bar:baz",
+      "version": null,
+      "world": 3,
+      "definitions": {
+        "qux": {
+          "type": {
+            "interface": 1
+          }
+        }
+      }
     }
-  ]
+  ],
+  "items": [
+    {
+      "definition": {
+        "name": "w",
+        "kind": {
+          "type": {
+            "world": 4
+          }
+        }
+      }
+    }
+  ],
+  "imports": {},
+  "exports": {
+    "w": 0
+  }
 }

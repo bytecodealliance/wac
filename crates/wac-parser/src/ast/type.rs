@@ -61,6 +61,19 @@ pub enum TypeDecl<'a> {
     Alias(TypeAlias<'a>),
 }
 
+impl TypeDecl<'_> {
+    /// Gets the identifier of the type being declared.
+    pub fn id(&self) -> &Ident {
+        match self {
+            Self::Variant(variant) => &variant.id,
+            Self::Record(record) => &record.id,
+            Self::Flags(flags) => &flags.id,
+            Self::Enum(e) => &e.id,
+            Self::Alias(alias) => &alias.id,
+        }
+    }
+}
+
 impl<'a> Parse<'a> for TypeDecl<'a> {
     fn parse(lexer: &mut Lexer<'a>) -> ParseResult<'a, Self> {
         let mut lookahead = Lookahead::new(lexer);
@@ -428,8 +441,8 @@ pub struct Method<'a> {
     pub id: Ident<'a>,
     /// Wether or not the method is static.
     pub is_static: bool,
-    /// The function type reference.
-    pub ty: FuncTypeRef<'a>,
+    /// The function type of the method.
+    pub ty: FuncType<'a>,
 }
 
 impl<'a> Parse<'a> for Method<'a> {
@@ -614,94 +627,110 @@ impl<'a> Parse<'a> for TypeAliasKind<'a> {
 #[serde(rename_all = "camelCase")]
 pub enum Type<'a> {
     /// A `u8` type.
-    U8,
+    U8(Span<'a>),
     /// A `s8` type.
-    S8,
+    S8(Span<'a>),
     /// A `u16` type.
-    U16,
+    U16(Span<'a>),
     /// A `s16` type.
-    S16,
+    S16(Span<'a>),
     /// A `u32` type.
-    U32,
+    U32(Span<'a>),
     /// A `s32` type.
-    S32,
+    S32(Span<'a>),
     /// A `u64` type.
-    U64,
+    U64(Span<'a>),
     /// A `s64` type.
-    S64,
+    S64(Span<'a>),
     /// A `float32` type.
-    Float32,
+    Float32(Span<'a>),
     /// A `float64` type.
-    Float64,
+    Float64(Span<'a>),
     /// A `char` type.
-    Char,
+    Char(Span<'a>),
     /// A `bool` type.
-    Bool,
+    Bool(Span<'a>),
     /// A `string` type.
-    String,
+    String(Span<'a>),
     /// A tuple type.
-    Tuple(Vec<Type<'a>>),
+    Tuple(Vec<Type<'a>>, Span<'a>),
     /// A list type.
-    List(Box<Type<'a>>),
+    List(Box<Type<'a>>, Span<'a>),
     /// An option type.
-    Option(Box<Type<'a>>),
+    Option(Box<Type<'a>>, Span<'a>),
     /// A result type.
     Result {
         /// The `ok` of the result type.
         ok: Option<Box<Type<'a>>>,
         /// The `err` of the result type.
         err: Option<Box<Type<'a>>>,
+        /// The span of the result type.
+        span: Span<'a>,
     },
     /// A borrow type.
-    Borrow(Ident<'a>),
+    Borrow(Ident<'a>, Span<'a>),
     /// An identifier to a value type.
     Ident(Ident<'a>),
+}
+
+impl<'a> Type<'a> {
+    /// Gets the span of the type.
+    pub fn span(&self) -> Span<'a> {
+        match self {
+            Self::U8(span)
+            | Self::S8(span)
+            | Self::U16(span)
+            | Self::S16(span)
+            | Self::U32(span)
+            | Self::S32(span)
+            | Self::U64(span)
+            | Self::S64(span)
+            | Self::Float32(span)
+            | Self::Float64(span)
+            | Self::Char(span)
+            | Self::Bool(span)
+            | Self::String(span)
+            | Self::Tuple(_, span)
+            | Self::List(_, span)
+            | Self::Option(_, span)
+            | Self::Result { span, .. }
+            | Self::Borrow(_, span) => *span,
+            Self::Ident(ident) => ident.span,
+        }
+    }
 }
 
 impl<'a> Parse<'a> for Type<'a> {
     fn parse(lexer: &mut Lexer<'a>) -> ParseResult<'a, Self> {
         let mut lookahead = Lookahead::new(lexer);
         if lookahead.peek(Token::U8Keyword) {
-            lexer.next();
-            Ok(Self::U8)
+            Ok(Self::U8(lexer.next().unwrap().1))
         } else if lookahead.peek(Token::S8Keyword) {
-            lexer.next();
-            Ok(Self::S8)
+            Ok(Self::S8(lexer.next().unwrap().1))
         } else if lookahead.peek(Token::U16Keyword) {
-            lexer.next();
-            Ok(Self::U16)
+            Ok(Self::U16(lexer.next().unwrap().1))
         } else if lookahead.peek(Token::S16Keyword) {
-            lexer.next();
-            Ok(Self::S16)
+            Ok(Self::S16(lexer.next().unwrap().1))
         } else if lookahead.peek(Token::U32Keyword) {
-            lexer.next();
-            Ok(Self::U32)
+            Ok(Self::U32(lexer.next().unwrap().1))
         } else if lookahead.peek(Token::S32Keyword) {
-            lexer.next();
-            Ok(Self::S32)
+            Ok(Self::S32(lexer.next().unwrap().1))
         } else if lookahead.peek(Token::U64Keyword) {
-            lexer.next();
-            Ok(Self::U64)
+            Ok(Self::U64(lexer.next().unwrap().1))
         } else if lookahead.peek(Token::S64Keyword) {
-            lexer.next();
-            Ok(Self::S64)
+            Ok(Self::S64(lexer.next().unwrap().1))
         } else if lookahead.peek(Token::Float32Keyword) {
-            lexer.next();
-            Ok(Self::Float32)
+            Ok(Self::Float32(lexer.next().unwrap().1))
         } else if lookahead.peek(Token::Float64Keyword) {
-            lexer.next();
-            Ok(Self::Float64)
+            Ok(Self::Float64(lexer.next().unwrap().1))
         } else if lookahead.peek(Token::CharKeyword) {
-            lexer.next();
-            Ok(Self::Char)
+            Ok(Self::Char(lexer.next().unwrap().1))
         } else if lookahead.peek(Token::BoolKeyword) {
-            lexer.next();
-            Ok(Self::Bool)
+            Ok(Self::Bool(lexer.next().unwrap().1))
         } else if lookahead.peek(Token::StringKeyword) {
-            lexer.next();
-            Ok(Self::String)
+            Ok(Self::String(lexer.next().unwrap().1))
         } else if lookahead.peek(Token::TupleKeyword) {
-            lexer.next();
+            let mut span = lexer.next().unwrap().1;
             parse_token(lexer, Token::OpenAngle)?;
 
             // There must be at least one type in the tuple.
@@ -712,22 +741,25 @@ impl<'a> Parse<'a> for Type<'a> {
 
             let types = parse_delimited(lexer, &[Token::CloseAngle], true)?;
             assert!(!types.is_empty());
-            parse_token(lexer, Token::CloseAngle)?;
-            Ok(Self::Tuple(types))
+            let close = parse_token(lexer, Token::CloseAngle)?;
+            span.end = close.end;
+            Ok(Self::Tuple(types, span))
         } else if lookahead.peek(Token::ListKeyword) {
-            lexer.next();
+            let mut span = lexer.next().unwrap().1;
             parse_token(lexer, Token::OpenAngle)?;
             let ty = Box::new(Parse::parse(lexer)?);
-            parse_token(lexer, Token::CloseAngle)?;
-            Ok(Self::List(ty))
+            let close = parse_token(lexer, Token::CloseAngle)?;
+            span.end = close.end;
+            Ok(Self::List(ty, span))
         } else if lookahead.peek(Token::OptionKeyword) {
-            lexer.next();
+            let mut span = lexer.next().unwrap().1;
             parse_token(lexer, Token::OpenAngle)?;
             let ty = Box::new(Parse::parse(lexer)?);
-            parse_token(lexer, Token::CloseAngle)?;
-            Ok(Self::Option(ty))
+            let close = parse_token(lexer, Token::CloseAngle)?;
+            span.end = close.end;
+            Ok(Self::Option(ty, span))
         } else if lookahead.peek(Token::ResultKeyword) {
-            lexer.next();
+            let mut span = lexer.next().unwrap().1;
             let (ok, err) = match parse_optional(lexer, Token::OpenAngle, |lexer| {
                 let mut lookahead = Lookahead::new(lexer);
                 let ok = if lookahead.peek(Token::Underscore) {
@@ -752,19 +784,21 @@ impl<'a> Parse<'a> for Type<'a> {
                 })?
                 .unwrap_or(None);
 
-                parse_token(lexer, Token::CloseAngle)?;
+                let close = parse_token(lexer, Token::CloseAngle)?;
+                span.end = close.end;
                 Ok((ok, err))
             })? {
                 Some((ok, err)) => (ok, err),
                 None => (None, None),
             };
-            Ok(Self::Result { ok, err })
+            Ok(Self::Result { ok, err, span })
         } else if lookahead.peek(Token::BorrowKeyword) {
-            lexer.next();
+            let mut span = lexer.next().unwrap().1;
             parse_token(lexer, Token::OpenAngle)?;
             let id = Parse::parse(lexer)?;
-            parse_token(lexer, Token::CloseAngle)?;
-            Ok(Self::Borrow(id))
+            let close = parse_token(lexer, Token::CloseAngle)?;
+            span.end = close.end;
+            Ok(Self::Borrow(id, span))
         } else if Ident::peek(&mut lookahead) {
             Ok(Self::Ident(Parse::parse(lexer)?))
         } else {
@@ -1390,8 +1424,6 @@ mod test {
     set-foo: func(foo: string);
     /// A static method
     id: static func() -> u32;
-    /// A method
-    baz: x;
 }}"#,
             r#"interface i {
     resource foo-bar {
@@ -1406,9 +1438,6 @@ mod test {
 
         /// A static method
         id: static func() -> u32;
-
-        /// A method
-        baz: x;
     }
 }"#,
         )
