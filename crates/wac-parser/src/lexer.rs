@@ -145,7 +145,7 @@ fn detect_invalid_input(source: &str) -> Result<(), (Error, Span)> {
 /// Represents a WAC token.
 #[derive(Logos, Debug, Clone, Copy, PartialEq, Eq)]
 #[logos(error = Error)]
-#[logos(skip r"[ \t\n\f]+")]
+#[logos(skip r"[ \t\r\n\f]+")]
 #[logos(subpattern id = r"%?[a-z][a-z0-9]*(-[a-z][a-z0-9]*)*")]
 #[logos(subpattern package_name = r"(?&id)(:(?&id))+")]
 #[logos(subpattern semver = r"[0-9a-zA-Z-\.\+]+")]
