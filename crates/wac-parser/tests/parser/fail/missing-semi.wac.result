@@ -1,5 +1,9 @@
-expected `;`, found end of input
-    --> tests/parser/fail/missing-semi.wac:3:13
-     |
-   3 | type x = u32
-     |             ^
+failed to parse document
+
+  × expected `;`, found end of input
+   ╭─[tests/parser/fail/missing-semi.wac:3:12]
+ 2 │ 
+ 3 │ type x = u32
+   ·            ┬
+   ·            ╰── unexpected end of input
+   ╰────

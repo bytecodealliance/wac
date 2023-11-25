@@ -1,6 +1,5 @@
+use super::{parse_token, DocComment, Expr, Ident, Lookahead, Parse, ParseResult, Peek};
 use crate::lexer::{Lexer, Token};
-
-use super::{display, parse_token, DocComment, Expr, Ident, Lookahead, Parse, ParseResult, Peek};
 use serde::Serialize;
 
 /// Represents a let statement in the AST.
@@ -16,7 +15,7 @@ pub struct LetStatement<'a> {
 }
 
 impl<'a> Parse<'a> for LetStatement<'a> {
-    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<'a, Self> {
+    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<Self> {
         let docs = Parse::parse(lexer)?;
         parse_token(lexer, Token::LetKeyword)?;
         let id = Parse::parse(lexer)?;
@@ -33,31 +32,48 @@ impl Peek for LetStatement<'_> {
     }
 }
 
-display!(LetStatement, let_statement);
-
 #[cfg(test)]
 mod test {
-    use super::*;
     use crate::ast::test::roundtrip;
 
     #[test]
     fn let_statement_roundtrip() {
-        roundtrip::<LetStatement>("let x= y;", "let x = y;").unwrap();
-        roundtrip::<LetStatement>("let x =y.x.z;", "let x = y.x.z;").unwrap();
-        roundtrip::<LetStatement>("let x=y[\"x\"][\"z\"];", "let x = y[\"x\"][\"z\"];").unwrap();
-        roundtrip::<LetStatement>(
-            "let x = foo[\"bar\"].baz[\"qux\"];",
-            "let x = foo[\"bar\"].baz[\"qux\"];",
+        roundtrip(
+            "package foo:bar; let x= y;",
+            "package foo:bar;\n\nlet x = y;\n",
+        )
+        .unwrap();
+        roundtrip(
+            "package foo:bar; let x =y.x.z;",
+            "package foo:bar;\n\nlet x = y.x.z;\n",
+        )
+        .unwrap();
+        roundtrip(
+            "package foo:bar; let x=y[\"x\"][\"z\"];",
+            "package foo:bar;\n\nlet x = y[\"x\"][\"z\"];\n",
+        )
+        .unwrap();
+        roundtrip(
+            "package foo:bar; let x = foo[\"bar\"].baz[\"qux\"];",
+            "package foo:bar;\n\nlet x = foo[\"bar\"].baz[\"qux\"];\n",
         )
         .unwrap();
 
-        roundtrip::<LetStatement>("let x = (y);", "let x = (y);").unwrap();
+        roundtrip(
+            "package foo:bar; let x = (y);",
+            "package foo:bar;\n\nlet x = (y);\n",
+        )
+        .unwrap();
 
-        roundtrip::<LetStatement>("let x = new foo:bar {};", "let x = new foo:bar {};").unwrap();
+        roundtrip(
+            "package foo:bar; let x = new foo:bar {};",
+            "package foo:bar;\n\nlet x = new foo:bar {};\n",
+        )
+        .unwrap();
 
-        roundtrip::<LetStatement>(
-            "let x = new foo:bar { foo, \"bar\": (new baz:qux {...}), \"baz\": foo[\"baz\"].qux };",
-            "let x = new foo:bar {\n    foo,\n    \"bar\": (new baz:qux { ... }),\n    \"baz\": foo[\"baz\"].qux,\n};",
+        roundtrip(
+            "package foo:bar; let x = new foo:bar { foo, \"bar\": (new baz:qux {...}), \"baz\": foo[\"baz\"].qux };",
+            "package foo:bar;\n\nlet x = new foo:bar {\n    foo,\n    \"bar\": (new baz:qux { ... }),\n    \"baz\": foo[\"baz\"].qux,\n};\n",
         )
         .unwrap();
     }

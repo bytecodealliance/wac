@@ -1,5 +1,10 @@
-`x` (u32) is not a function type
-    --> tests/resolution/fail/invalid-func-type-ref.wac:6:8
-     |
-   6 |     x: x;
-     |        ^
+failed to resolve document
+
+  × `x` (u32) is not a function type
+   ╭─[tests/resolution/fail/invalid-func-type-ref.wac:6:8]
+ 5 │ 
+ 6 │     x: x;
+   ·        ┬
+   ·        ╰── `x` is not a function type
+ 7 │ }
+   ╰────

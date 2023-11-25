@@ -1,12 +1,12 @@
 {
   "docs": [],
   "package": {
+    "string": "test:comp",
     "name": "test:comp",
     "version": null,
     "span": {
-      "str": "test:comp",
-      "start": 8,
-      "end": 17
+      "offset": 8,
+      "length": 9
     }
   },
   "statements": [
@@ -17,9 +17,8 @@
           "id": {
             "string": "foo",
             "span": {
-              "str": "foo",
-              "start": 30,
-              "end": 33
+              "offset": 30,
+              "length": 3
             }
           },
           "items": [
@@ -30,18 +29,16 @@
                     {
                       "comment": "Resource without methods",
                       "span": {
-                        "str": "/// Resource without methods",
-                        "start": 40,
-                        "end": 68
+                        "offset": 40,
+                        "length": 28
                       }
                     }
                   ],
                   "id": {
                     "string": "r1",
                     "span": {
-                      "str": "r1",
-                      "start": 82,
-                      "end": 84
+                      "offset": 82,
+                      "length": 2
                     }
                   },
                   "methods": []
@@ -55,18 +52,16 @@
                     {
                       "comment": "Resource with only constructor",
                       "span": {
-                        "str": "/// Resource with only constructor",
-                        "start": 91,
-                        "end": 125
+                        "offset": 91,
+                        "length": 34
                       }
                     }
                   ],
                   "id": {
                     "string": "r2",
                     "span": {
-                      "str": "r2",
-                      "start": 139,
-                      "end": 141
+                      "offset": 139,
+                      "length": 2
                     }
                   },
                   "methods": [
@@ -76,16 +71,14 @@
                           {
                             "comment": "Constructor",
                             "span": {
-                              "str": "/// Constructor",
-                              "start": 152,
-                              "end": 167
+                              "offset": 152,
+                              "length": 15
                             }
                           }
                         ],
                         "span": {
-                          "str": "constructor",
-                          "start": 176,
-                          "end": 187
+                          "offset": 176,
+                          "length": 11
                         },
                         "params": []
                       }
@@ -101,18 +94,16 @@
                     {
                       "comment": "Resource with constructor, instance method, and static method",
                       "span": {
-                        "str": "/// Resource with constructor, instance method, and static method",
-                        "start": 202,
-                        "end": 267
+                        "offset": 202,
+                        "length": 65
                       }
                     }
                   ],
                   "id": {
                     "string": "r3",
                     "span": {
-                      "str": "r3",
-                      "start": 281,
-                      "end": 283
+                      "offset": 281,
+                      "length": 2
                     }
                   },
                   "methods": [
@@ -122,32 +113,28 @@
                           {
                             "comment": "Constructor",
                             "span": {
-                              "str": "/// Constructor",
-                              "start": 294,
-                              "end": 309
+                              "offset": 294,
+                              "length": 15
                             }
                           }
                         ],
                         "span": {
-                          "str": "constructor",
-                          "start": 318,
-                          "end": 329
+                          "offset": 318,
+                          "length": 11
                         },
                         "params": [
                           {
                             "id": {
                               "string": "a",
                               "span": {
-                                "str": "a",
-                                "start": 330,
-                                "end": 331
+                                "offset": 330,
+                                "length": 1
                               }
                             },
                             "ty": {
                               "u32": {
-                                "str": "u32",
-                                "start": 333,
-                                "end": 336
+                                "offset": 333,
+                                "length": 3
                               }
                             }
                           }
@@ -160,18 +147,16 @@
                           {
                             "comment": "Method",
                             "span": {
-                              "str": "/// Method",
-                              "start": 347,
-                              "end": 357
+                              "offset": 347,
+                              "length": 10
                             }
                           }
                         ],
                         "id": {
                           "string": "a",
                           "span": {
-                            "str": "a",
-                            "start": 366,
-                            "end": 367
+                            "offset": 366,
+                            "length": 1
                           }
                         },
                         "isStatic": false,
@@ -181,16 +166,14 @@
                               "id": {
                                 "string": "b",
                                 "span": {
-                                  "str": "b",
-                                  "start": 374,
-                                  "end": 375
+                                  "offset": 374,
+                                  "length": 1
                                 }
                               },
                               "ty": {
                                 "u32": {
-                                  "str": "u32",
-                                  "start": 377,
-                                  "end": 380
+                                  "offset": 377,
+                                  "length": 3
                                 }
                               }
                             }
@@ -205,18 +188,16 @@
                           {
                             "comment": "Static method",
                             "span": {
-                              "str": "/// Static method",
-                              "start": 391,
-                              "end": 408
+                              "offset": 391,
+                              "length": 17
                             }
                           }
                         ],
                         "id": {
                           "string": "b",
                           "span": {
-                            "str": "b",
-                            "start": 417,
-                            "end": 418
+                            "offset": 417,
+                            "length": 1
                           }
                         },
                         "isStatic": true,
@@ -226,16 +207,14 @@
                               "id": {
                                 "string": "c",
                                 "span": {
-                                  "str": "c",
-                                  "start": 432,
-                                  "end": 433
+                                  "offset": 432,
+                                  "length": 1
                                 }
                               },
                               "ty": {
                                 "u32": {
-                                  "str": "u32",
-                                  "start": 435,
-                                  "end": 438
+                                  "offset": 435,
+                                  "length": 3
                                 }
                               }
                             }
@@ -259,9 +238,8 @@
           "id": {
             "string": "bar",
             "span": {
-              "str": "bar",
-              "start": 456,
-              "end": 459
+              "offset": 456,
+              "length": 3
             }
           },
           "items": [
@@ -272,18 +250,16 @@
                     {
                       "comment": "Resource without methods",
                       "span": {
-                        "str": "/// Resource without methods",
-                        "start": 466,
-                        "end": 494
+                        "offset": 466,
+                        "length": 28
                       }
                     }
                   ],
                   "id": {
                     "string": "r1",
                     "span": {
-                      "str": "r1",
-                      "start": 508,
-                      "end": 510
+                      "offset": 508,
+                      "length": 2
                     }
                   },
                   "methods": []
@@ -297,18 +273,16 @@
                     {
                       "comment": "Resource with only constructor",
                       "span": {
-                        "str": "/// Resource with only constructor",
-                        "start": 517,
-                        "end": 551
+                        "offset": 517,
+                        "length": 34
                       }
                     }
                   ],
                   "id": {
                     "string": "r2",
                     "span": {
-                      "str": "r2",
-                      "start": 565,
-                      "end": 567
+                      "offset": 565,
+                      "length": 2
                     }
                   },
                   "methods": [
@@ -318,16 +292,14 @@
                           {
                             "comment": "Constructor",
                             "span": {
-                              "str": "/// Constructor",
-                              "start": 578,
-                              "end": 593
+                              "offset": 578,
+                              "length": 15
                             }
                           }
                         ],
                         "span": {
-                          "str": "constructor",
-                          "start": 602,
-                          "end": 613
+                          "offset": 602,
+                          "length": 11
                         },
                         "params": []
                       }
@@ -343,18 +315,16 @@
                     {
                       "comment": "Resource with constructor, instance method, and static method",
                       "span": {
-                        "str": "/// Resource with constructor, instance method, and static method",
-                        "start": 628,
-                        "end": 693
+                        "offset": 628,
+                        "length": 65
                       }
                     }
                   ],
                   "id": {
                     "string": "r3",
                     "span": {
-                      "str": "r3",
-                      "start": 707,
-                      "end": 709
+                      "offset": 707,
+                      "length": 2
                     }
                   },
                   "methods": [
@@ -364,32 +334,28 @@
                           {
                             "comment": "Constructor",
                             "span": {
-                              "str": "/// Constructor",
-                              "start": 720,
-                              "end": 735
+                              "offset": 720,
+                              "length": 15
                             }
                           }
                         ],
                         "span": {
-                          "str": "constructor",
-                          "start": 744,
-                          "end": 755
+                          "offset": 744,
+                          "length": 11
                         },
                         "params": [
                           {
                             "id": {
                               "string": "a",
                               "span": {
-                                "str": "a",
-                                "start": 756,
-                                "end": 757
+                                "offset": 756,
+                                "length": 1
                               }
                             },
                             "ty": {
                               "u32": {
-                                "str": "u32",
-                                "start": 759,
-                                "end": 762
+                                "offset": 759,
+                                "length": 3
                               }
                             }
                           }
@@ -402,18 +368,16 @@
                           {
                             "comment": "Method",
                             "span": {
-                              "str": "/// Method",
-                              "start": 773,
-                              "end": 783
+                              "offset": 773,
+                              "length": 10
                             }
                           }
                         ],
                         "id": {
                           "string": "a",
                           "span": {
-                            "str": "a",
-                            "start": 792,
-                            "end": 793
+                            "offset": 792,
+                            "length": 1
                           }
                         },
                         "isStatic": false,
@@ -423,16 +387,14 @@
                               "id": {
                                 "string": "b",
                                 "span": {
-                                  "str": "b",
-                                  "start": 800,
-                                  "end": 801
+                                  "offset": 800,
+                                  "length": 1
                                 }
                               },
                               "ty": {
                                 "u32": {
-                                  "str": "u32",
-                                  "start": 803,
-                                  "end": 806
+                                  "offset": 803,
+                                  "length": 3
                                 }
                               }
                             }
@@ -447,18 +409,16 @@
                           {
                             "comment": "Static method",
                             "span": {
-                              "str": "/// Static method",
-                              "start": 817,
-                              "end": 834
+                              "offset": 817,
+                              "length": 17
                             }
                           }
                         ],
                         "id": {
                           "string": "b",
                           "span": {
-                            "str": "b",
-                            "start": 843,
-                            "end": 844
+                            "offset": 843,
+                            "length": 1
                           }
                         },
                         "isStatic": true,
@@ -468,16 +428,14 @@
                               "id": {
                                 "string": "c",
                                 "span": {
-                                  "str": "c",
-                                  "start": 858,
-                                  "end": 859
+                                  "offset": 858,
+                                  "length": 1
                                 }
                               },
                               "ty": {
                                 "u32": {
-                                  "str": "u32",
-                                  "start": 861,
-                                  "end": 864
+                                  "offset": 861,
+                                  "length": 3
                                 }
                               }
                             }

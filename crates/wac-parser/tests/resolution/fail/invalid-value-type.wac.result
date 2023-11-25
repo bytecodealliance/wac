@@ -1,5 +1,9 @@
-`i` (interface) cannot be used as a value type
-    --> tests/resolution/fail/invalid-value-type.wac:7:18
-     |
-   7 | type x = func(i: i);
-     |                  ^
+failed to resolve document
+
+  × `i` (interface) cannot be used as a value type
+   ╭─[tests/resolution/fail/invalid-value-type.wac:7:18]
+ 6 │ 
+ 7 │ type x = func(i: i);
+   ·                  ┬
+   ·                  ╰── `i` not a value type
+   ╰────

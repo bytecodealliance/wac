@@ -1,10 +1,12 @@
-mismatched instantiation argument `x`
-    --> tests/resolution/fail/no-err-result-type.wac:7:23
-     |
-   7 | let i = new foo:bar { x };
-     |                       ^
+failed to resolve document
 
-Caused by:
-    0: mismatched type for export `f`
-    1: mismatched type for function result
-    2: expected no `err` for result type
+  × mismatched instantiation argument `x`
+  ├─▶ mismatched type for export `f`
+  ├─▶ mismatched type for function result
+  ╰─▶ expected no `err` for result type
+   ╭─[tests/resolution/fail/no-err-result-type.wac:7:23]
+ 6 │ 
+ 7 │ let i = new foo:bar { x };
+   ·                       ┬
+   ·                       ╰── mismatched argument `x`
+   ╰────

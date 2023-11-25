@@ -1,5 +1,10 @@
-`x` (function type) is not a world
-    --> tests/resolution/fail/invalid-world-include.wac:6:13
-     |
-   6 |     include x;
-     |             ^
+failed to resolve document
+
+  × `x` (function type) is not a world
+   ╭─[tests/resolution/fail/invalid-world-include.wac:6:13]
+ 5 │ world w {
+ 6 │     include x;
+   ·             ┬
+   ·             ╰── `x` is not a world
+ 7 │ }
+   ╰────

@@ -1,17 +1,14 @@
 //! Module for resolving WAC documents.
 
 use self::{encoding::Encoder, package::Package};
-use crate::{lexer::Span, resolution::ast::AstResolver, Spanned};
+use crate::resolution::ast::AstResolver;
 use anyhow::Context;
 use id_arena::{Arena, Id};
 use indexmap::IndexMap;
+use miette::{Diagnostic, SourceSpan};
 use semver::Version;
 use serde::{Serialize, Serializer};
-use std::{
-    collections::HashMap,
-    fmt, fs,
-    path::{Path, PathBuf},
-};
+use std::{collections::HashMap, fmt, fs, path::PathBuf};
 use wit_parser::Resolve;
 
 mod ast;
@@ -115,7 +112,7 @@ impl fmt::Display for ExternKind {
     }
 }
 
-struct InterfaceNameDisplay<'a>(Option<&'a str>);
+struct InterfaceNameDisplay<'a>(&'a Option<String>);
 
 impl fmt::Display for InterfaceNameDisplay<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -126,7 +123,7 @@ impl fmt::Display for InterfaceNameDisplay<'_> {
     }
 }
 
-struct ParentPathDisplay<'a>(Option<&'static str>, &'a str);
+struct ParentPathDisplay<'a>(&'a Option<String>, &'a str);
 
 impl fmt::Display for ParentPathDisplay<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -140,39 +137,40 @@ impl fmt::Display for ParentPathDisplay<'_> {
 }
 
 /// Represents a resolution error.
-#[derive(thiserror::Error, Debug)]
-pub enum Error<'a> {
+#[derive(thiserror::Error, Diagnostic, Debug)]
+#[diagnostic(code("failed to resolve document"))]
+pub enum Error {
     /// An undefined name was encountered.
     #[error("undefined name `{name}`")]
     UndefinedName {
         /// The name that was undefined.
-        name: &'a str,
+        name: String,
         /// The span where the error occurred.
-        span: Span<'a>,
+        #[label(primary, "undefined name `{name}`")]
+        span: SourceSpan,
     },
     /// A duplicate name was encountered.
-    #[error("`{name}` was previously defined at {path}:{line}:{column}", path = .path.display())]
+    #[error("`{name}` is already defined")]
     DuplicateName {
         /// The duplicate name.
-        name: &'a str,
-        /// The path to the source file.
-        path: &'a Path,
-        /// The line where the identifier was previously defined.
-        line: usize,
-        /// The column where the identifier was previously defined.
-        column: usize,
+        name: String,
         /// The span where the error occurred.
-        span: Span<'a>,
+        #[label(primary, "`{name}` redefined here")]
+        span: SourceSpan,
+        /// The span where the name was previously defined.
+        #[label("`{name}` previously defined here")]
+        previous: SourceSpan,
     },
     /// Duplicate interface export.
-    #[error("duplicate interface export `{name}`{iface}", iface = InterfaceNameDisplay(*.interface_name))]
+    #[error("duplicate interface export `{name}`{iface}", iface = InterfaceNameDisplay(.interface_name))]
     DuplicateInterfaceExport {
         /// The name of the duplicate export.
-        name: &'a str,
+        name: String,
         /// The name of the interface.
-        interface_name: Option<&'a str>,
+        interface_name: Option<String>,
         /// The span where the error occurred.
-        span: Span<'a>,
+        #[label(primary, "duplicate export `{name}`")]
+        span: SourceSpan,
     },
     /// Duplicate world item.
     #[error("{kind} `{name}` conflicts with existing {kind} of the same name in world `{world}`")]
@@ -182,227 +180,251 @@ pub enum Error<'a> {
         /// The name of the item.
         name: String,
         /// The name of the world.
-        world: &'a str,
+        world: String,
         /// The span where the error occurred.
-        span: Span<'a>,
+        #[label(primary, "conflicting name `{name}`")]
+        span: SourceSpan,
     },
     /// The name is not a function type or interface.
     #[error("`{name}` ({kind}) is not a function type or interface")]
     NotFuncOrInterface {
         /// The name that is not a function type or interface.
-        name: &'a str,
+        name: String,
         /// The kind of the item.
-        kind: &'static str,
+        kind: String,
         /// The span where the error occurred.
-        span: Span<'a>,
+        #[label(primary, "`{name}` is not a function type or interface")]
+        span: SourceSpan,
     },
     /// The name is not an interface.
     #[error("`{name}` ({kind}) is not an interface")]
     NotInterface {
         /// The name that is not an interface.
-        name: &'a str,
+        name: String,
         /// The kind of the item.
-        kind: &'static str,
+        kind: String,
         /// The span where the error occurred.
-        span: Span<'a>,
+        #[label(primary, "`{name}` is not an interface")]
+        span: SourceSpan,
     },
     /// Duplicate name in a world include.
     #[error("duplicate `{name}` in world include `with` clause")]
     DuplicateWorldIncludeName {
         /// The name of the duplicate include.
-        name: &'a str,
+        name: String,
         /// The span where the error occurred.
-        span: Span<'a>,
+        #[label(primary, "duplicate name `{name}`")]
+        span: SourceSpan,
     },
     /// The name is not a world.
     #[error("`{name}` ({kind}) is not a world")]
     NotWorld {
         /// The name that is not a world.
-        name: &'a str,
+        name: String,
         /// The kind of the item.
-        kind: &'static str,
+        kind: String,
         /// The span where the error occurred.
-        span: Span<'a>,
+        #[label(primary, "`{name}` is not a world")]
+        span: SourceSpan,
     },
     /// Missing source item for `with` clause in world include.
     #[error("world `{world}` does not have an import or export named `{name}`")]
     MissingWorldInclude {
         /// The name of the world.
-        world: &'a str,
+        world: String,
         /// The name of the missing item.
-        name: &'a str,
+        name: String,
         /// The span where the error occurred.
-        span: Span<'a>,
+        #[label(primary, "no import or export named `{name}`")]
+        span: SourceSpan,
     },
     /// A conflict was encountered in a world include.
-    #[error("{kind} `{name}` from world `{from}` conflicts with {kind} of the same name in world `{to}`{hint}")]
+    #[error("{kind} `{name}` from world `{from}` conflicts with {kind} of the same name in world `{to}`")]
     WorldIncludeConflict {
         /// The extern kind of the item.
         kind: ExternKind,
         /// The name of the item.
         name: String,
         /// The name of the source world.
-        from: &'a str,
+        from: String,
         /// The name of the target world.
-        to: &'a str,
+        to: String,
         /// The span where the error occurred.
-        span: Span<'a>,
-        /// The hint for the error.
-        hint: &'static str,
+        #[label(primary, "conflicting name `{name}`")]
+        span: SourceSpan,
+        /// The help for the error.
+        #[help]
+        help: Option<String>,
     },
     /// A name is not a type defined in an interface.
-    #[error("type `{name}` is not defined in interface `{interface_name}`")]
+    #[error("a type named `{name}` is not defined in interface `{interface_name}`")]
     UndefinedInterfaceType {
         /// The name of the type.
-        name: &'a str,
+        name: String,
         /// The name of the interface.
-        interface_name: &'a str,
+        interface_name: String,
         /// The span where the error occurred.
-        span: Span<'a>,
+        #[label(primary, "`{name}` is not a type in interface `{interface_name}`")]
+        span: SourceSpan,
     },
     /// A name is not a value type defined in an interface.
     #[error("`{name}` ({kind}) is not a value type in interface `{interface_name}`")]
     NotInterfaceValueType {
         /// The name that is not a value type.
-        name: &'a str,
+        name: String,
         /// The kind of the item.
-        kind: &'static str,
+        kind: String,
         /// The name of the interface.
-        interface_name: &'a str,
+        interface_name: String,
         /// The span where the error occurred.
-        span: Span<'a>,
+        #[label(primary, "`{name}` is not a value type")]
+        span: SourceSpan,
     },
     /// A duplicate resource constructor was encountered.
     #[error("duplicate constructor for resource `{resource}`")]
     DuplicateResourceConstructor {
         /// The name of the resource.
-        resource: &'a str,
+        resource: String,
         /// The span where the error occurred.
-        span: Span<'a>,
+        #[label(primary, "duplicate constructor")]
+        span: SourceSpan,
     },
     /// A duplicate resource method was encountered.
     #[error("duplicate method `{name}` for resource `{resource}`")]
     DuplicateResourceMethod {
         /// The name of the method.
-        name: &'a str,
+        name: String,
         /// The name of the resource.
-        resource: &'a str,
+        resource: String,
         /// The span where the error occurred.
-        span: Span<'a>,
+        #[label(primary, "duplicate method `{name}`")]
+        span: SourceSpan,
     },
     /// A duplicate variant case was encountered.
     #[error("duplicate case `{case}` for variant type `{name}`")]
     DuplicateVariantCase {
         /// The name of the case.
-        case: &'a str,
+        case: String,
         /// The name of the variant type.
-        name: &'a str,
+        name: String,
         /// The span where the error occurred.
-        span: Span<'a>,
+        #[label(primary, "duplicate case `{case}`")]
+        span: SourceSpan,
     },
     /// A duplicate record field was encountered.
     #[error("duplicate field `{field}` for record type `{name}`")]
     DuplicateRecordField {
         /// The name of the field.
-        field: &'a str,
+        field: String,
         /// The name of the record type.
-        name: &'a str,
+        name: String,
         /// The span where the error occurred.
-        span: Span<'a>,
+        #[label(primary, "duplicate field `{field}`")]
+        span: SourceSpan,
     },
     /// A duplicate enum case was encountered.
     #[error("duplicate case `{case}` for enum type `{name}`")]
     DuplicateEnumCase {
         /// The name of the case.
-        case: &'a str,
+        case: String,
         /// The name of the enum type.
-        name: &'a str,
+        name: String,
         /// The span where the error occurred.
-        span: Span<'a>,
+        #[label(primary, "duplicate case `{case}`")]
+        span: SourceSpan,
     },
     /// A duplicate flag was encountered.
     #[error("duplicate flag `{flag}` for flags type `{name}`")]
     DuplicateFlag {
         /// The name of the flag.
-        flag: &'a str,
+        flag: String,
         /// The name of the flags type.
-        name: &'a str,
+        name: String,
         /// The span where the error occurred.
-        span: Span<'a>,
+        #[label(primary, "duplicate flag `{flag}`")]
+        span: SourceSpan,
     },
     /// The name cannot be used as an alias type.
     #[error("`{name}` ({kind}) cannot be used in a type alias")]
     InvalidAliasType {
         /// The name that cannot be used as an alias type.
-        name: &'a str,
+        name: String,
         /// The kind of the item.
-        kind: &'static str,
+        kind: String,
         /// The span where the error occurred.
-        span: Span<'a>,
+        #[label(primary, "`{name}` cannot be aliased")]
+        span: SourceSpan,
     },
     /// The name is not a function type.
     #[error("`{name}` ({kind}) is not a function type")]
     NotFuncType {
         /// The name that is not a function type.
-        name: &'a str,
+        name: String,
         /// The kind of the item.
-        kind: &'static str,
+        kind: String,
         /// The span where the error occurred.
-        span: Span<'a>,
+        #[label(primary, "`{name}` is not a function type")]
+        span: SourceSpan,
     },
     /// The name is not a resource type.
     #[error("`{name}` ({kind}) is not a resource type")]
     NotResourceType {
         /// The name that is not a resource type.
-        name: &'a str,
+        name: String,
         /// The kind of the item.
-        kind: &'static str,
+        kind: String,
         /// The span where the error occurred.
-        span: Span<'a>,
+        #[label(primary, "`{name}` is not a resource type")]
+        span: SourceSpan,
     },
     /// The name is not a value type.
     #[error("`{name}` ({kind}) cannot be used as a value type")]
     NotValueType {
         /// The name that is not a value type.
-        name: &'a str,
+        name: String,
         /// The kind of the item.
-        kind: &'static str,
+        kind: String,
         /// The span where the error occurred.
-        span: Span<'a>,
+        #[label(primary, "`{name}` not a value type")]
+        span: SourceSpan,
     },
     /// A duplicate function parameter was encountered.
     #[error("duplicate {kind} parameter `{name}`")]
     DuplicateParameter {
         /// The name of the parameter.
-        name: &'a str,
+        name: String,
         /// The kind of the function.
         kind: FuncKind,
         /// The span where the error occurred.
-        span: Span<'a>,
+        #[label(primary, "duplicate parameter `{name}`")]
+        span: SourceSpan,
     },
     /// A duplicate result was encountered.
     #[error("duplicate {kind} result `{name}`")]
     DuplicateResult {
         /// The name of the result.
-        name: &'a str,
+        name: String,
         /// The kind of the function.
         kind: FuncKind,
         /// The span where the error occurred.
-        span: Span<'a>,
+        #[label(primary, "duplicate result `{name}`")]
+        span: SourceSpan,
     },
     /// A borrow type was encountered in a function result.
     #[error("function result cannot recursively contain a borrow type")]
     BorrowInResult {
         /// The span where the error occurred.
-        span: Span<'a>,
+        #[label(primary, "borrow type in result")]
+        span: SourceSpan,
     },
     /// A package failed to resolve.
     #[error("failed to resolve package `{name}`")]
     PackageResolutionFailure {
         /// The name of the package.
-        name: &'a str,
+        name: String,
         /// The span where the error occurred.
-        span: Span<'a>,
+        #[label(primary, "package `{name}` failed to resolve")]
+        span: SourceSpan,
         /// The underlying error.
         #[source]
         source: anyhow::Error,
@@ -411,9 +433,10 @@ pub enum Error<'a> {
     #[error("failed to parse package `{name}`")]
     PackageParseFailure {
         /// The name of the package.
-        name: &'a str,
+        name: String,
         /// The span where the error occurred.
-        span: Span<'a>,
+        #[label(primary, "package `{name}` failed to parse")]
+        span: SourceSpan,
         /// The underlying error.
         #[source]
         source: anyhow::Error,
@@ -422,45 +445,49 @@ pub enum Error<'a> {
     #[error("unknown package `{name}`")]
     UnknownPackage {
         /// The name of the package.
-        name: &'a str,
+        name: String,
         /// The span where the error occurred.
-        span: Span<'a>,
+        #[label(primary, "unknown package `{name}`")]
+        span: SourceSpan,
     },
     /// A package is missing an export.
-    #[error("{prev}package `{name}` has no export named `{export}`", prev = ParentPathDisplay(*.kind, .path))]
+    #[error("{prev}package `{name}` has no export named `{export}`", prev = ParentPathDisplay(.kind, .path))]
     PackageMissingExport {
         /// The name of the package.
-        name: &'a str,
+        name: String,
         /// The name of the export.
-        export: &'a str,
+        export: String,
         /// The kind of the item being accessed.
-        kind: Option<&'static str>,
+        kind: Option<String>,
         /// The path to the current item.
         path: String,
         /// The span where the error occurred.
-        span: Span<'a>,
+        #[label(primary, "unknown export `{export}`")]
+        span: SourceSpan,
     },
     /// A missing export in a package path was encountered.
     #[error("`{name}` ({kind}) has no export named `{export}`")]
     PackagePathMissingExport {
         /// The name that has no matching export.
-        name: &'a str,
+        name: String,
         /// The kind of the item.
-        kind: &'static str,
+        kind: String,
         /// The name of the export.
-        export: &'a str,
+        export: String,
         /// The span where the error occurred.
-        span: Span<'a>,
+        #[label(primary, "unknown export `{export}`")]
+        span: SourceSpan,
     },
     /// A missing import on a component was encountered.
     #[error("component `{package}` has no import named `{import}`")]
     MissingComponentImport {
         /// The name of the package.
-        package: &'a str,
+        package: String,
         /// The name of the import.
         import: String,
         /// The span where the error occurred.
-        span: Span<'a>,
+        #[label(primary, "unknown import `{import}`")]
+        span: SourceSpan,
     },
     /// A mismatched instantiation argument was encountered.
     #[error("mismatched instantiation argument `{name}`")]
@@ -468,7 +495,8 @@ pub enum Error<'a> {
         /// The name of the argument.
         name: String,
         /// The span where the error occurred.
-        span: Span<'a>,
+        #[label(primary, "mismatched argument `{name}`")]
+        span: SourceSpan,
         /// The source of the error.
         #[source]
         source: anyhow::Error,
@@ -479,7 +507,8 @@ pub enum Error<'a> {
         /// The name of the argument.
         name: String,
         /// The span where the error occurred.
-        span: Span<'a>,
+        #[label(primary, "duplicate argument `{name}`")]
+        span: SourceSpan,
     },
     /// A missing instantiation argument was encountered.
     #[error("missing instantiation argument `{name}` for package `{package}`")]
@@ -487,94 +516,89 @@ pub enum Error<'a> {
         /// The name of the argument.
         name: String,
         /// The name of the package.
-        package: &'a str,
+        package: String,
         /// The span where the error occurred.
-        span: Span<'a>,
+        #[label(primary, "missing argument `{name}`")]
+        span: SourceSpan,
     },
     /// An instantiation argument conflict was encountered.
-    #[error("implicit instantiation argument `{name}` ({kind}) conflicts with an explicit import at {path}:{line}:{column}", path = .path.display())]
+    #[error("implicit instantiation argument `{name}` ({kind}) conflicts with an explicit import")]
     InstantiationArgConflict {
         /// The name of the argument.
         name: String,
-        /// The path of the source file.
-        path: &'a Path,
         /// The kind of the argument.
-        kind: &'static str,
-        /// The line of the original instantiation.
-        line: usize,
-        /// The column of the original instantiation.
-        column: usize,
+        kind: String,
         /// The span where the error occurred.
-        span: Span<'a>,
+        #[label(primary, "conflicting instantiation here")]
+        span: SourceSpan,
+        /// The span where the explicit import occurred.
+        #[label("explicit import here")]
+        import: SourceSpan,
     },
     /// An explicitly imported item conflicts with an implicit import from an instantiation.
-    #[error("import name `{name}` conflicts with an instance that was implicitly imported by the instantiation of `{package}` at {path}:{line}:{column}", path = .path.display())]
+    #[error("import name `{name}` conflicts with an instance that was implicitly imported by an instantiation of `{package}`")]
     ImportConflict {
         /// The name of the argument.
         name: String,
         /// The package that first introduced the import.
-        package: &'a str,
-        /// The path of the source file.
-        path: &'a Path,
-        /// The line of the original instantiation.
-        line: usize,
-        /// The column of the original instantiation.
-        column: usize,
+        package: String,
         /// The span where the error occurred.
-        span: Span<'a>,
+        #[label(primary, "conflicting import here")]
+        span: SourceSpan,
+        /// The span where the previous instantiation occurred.
+        #[label("previous instantiation here")]
+        instantiation: SourceSpan,
     },
     /// An instantiation argument conflict was encountered.
-    #[error("failed to merge instantiation argument `{name}` with an instance that was implicitly imported by the instantiation of `{package}` at {path}:{line}:{column}", path = .path.display())]
+    #[error("failed to merge instantiation argument `{name}` with an instance that was implicitly imported by the instantiation of `{package}`")]
     InstantiationArgMergeFailure {
         /// The name of the argument.
         name: String,
         /// The name of the package that first introduced the import.
-        package: &'a str,
-        /// The path of the source file.
-        path: &'a Path,
+        package: String,
         /// The kind of the argument.
-        kind: &'static str,
-        /// The line of the original instantiation.
-        line: usize,
-        /// The column of the original instantiation.
-        column: usize,
+        kind: String,
         /// The span where the error occurred.
-        span: Span<'a>,
+        #[label(primary, "conflicting instantiation here")]
+        span: SourceSpan,
+        /// The span where the previous instantiation occurred.
+        #[label("previous instantiation here")]
+        instantiation: SourceSpan,
         /// The underlying merge error.
         #[source]
         source: anyhow::Error,
     },
     /// An unmergeable instantiation argument was encountered.
-    #[error("implicit instantiation argument `{name}` ({kind}) conflicts with an implicitly imported argument from the instantiation of `{package}` at {path}:{line}:{column}", path = .path.display())]
+    #[error("implicit instantiation argument `{name}` ({kind}) conflicts with an implicitly imported argument from the instantiation of `{package}`")]
     UnmergeableInstantiationArg {
         /// The name of the argument.
         name: String,
         /// The name of the package that first introduced the import.
-        package: &'a str,
-        /// The path of the source file.
-        path: &'a Path,
+        package: String,
         /// The kind of the argument.
-        kind: &'static str,
-        /// The line of the original instantiation.
-        line: usize,
-        /// The column of the original instantiation.
-        column: usize,
+        kind: String,
         /// The span where the error occurred.
-        span: Span<'a>,
+        #[label(primary, "conflicting instantiation here")]
+        span: SourceSpan,
+        /// The span where the previous instantiation occurred.
+        #[label("previous instantiation here")]
+        instantiation: SourceSpan,
     },
     /// An access expression on an inaccessible value was encountered.
     #[error("a {kind} cannot be accessed")]
     Inaccessible {
         /// The kind of the item.
-        kind: &'static str,
+        kind: String,
         /// The span where the error occurred.
-        span: Span<'a>,
+        #[label(primary, "a {kind} cannot be accessed")]
+        span: SourceSpan,
     },
     /// An access on an interface was encountered.
     #[error("an interface cannot be accessed")]
     InaccessibleInterface {
         /// The span where the error occurred.
-        span: Span<'a>,
+        #[label(primary, "an interface cannot be accessed")]
+        span: SourceSpan,
     },
     /// An instance is missing an export.
     #[error("the instance has no export named `{name}`")]
@@ -582,31 +606,32 @@ pub enum Error<'a> {
         /// The name of the export.
         name: String,
         /// The span where the error occurred.
-        span: Span<'a>,
+        #[label(primary, "unknown export `{name}`")]
+        span: SourceSpan,
     },
     /// An export requires a with clause.
     #[error("export statement requires a `with` clause as the export name cannot be inferred")]
     ExportRequiresWith {
         /// The span where the error occurred.
-        span: Span<'a>,
+        #[label(primary, "a `with` clause is required")]
+        span: SourceSpan,
     },
     /// An export conflicts with a definition.
-    #[error("export `{name}` conflicts with {kind} definition at {path}:{line}:{column}{hint}", path = .path.display())]
+    #[error("export `{name}` conflicts with {kind} definition")]
     ExportConflict {
         /// The name of the export.
         name: String,
-        /// The path of the source file.
-        path: &'a Path,
         /// The kind of the definition.
-        kind: &'static str,
-        /// The line of the definition.
-        line: usize,
-        /// The column of the definition.
-        column: usize,
-        /// The hint of the error.
-        hint: &'static str,
+        kind: String,
         /// The span where the error occurred.
-        span: Span<'a>,
+        #[label(primary, "conflicting export of `{name}`")]
+        span: SourceSpan,
+        /// The span of the previous definition.
+        #[label("previous definition is here")]
+        definition: SourceSpan,
+        /// The help of the error.
+        #[help]
+        help: Option<String>,
     },
     /// A duplicate extern name was encountered.
     #[error("duplicate {kind} `{name}`")]
@@ -616,7 +641,11 @@ pub enum Error<'a> {
         /// The kind of extern name.
         kind: ExternKind,
         /// The span where the error occurred.
-        span: Span<'a>,
+        #[label(primary, "duplicate {kind} name `{name}`")]
+        span: SourceSpan,
+        /// The span where the error occurred.
+        #[label("previous {kind} here")]
+        previous: SourceSpan,
     },
     /// An invalid extern name was encountered.
     #[error("{kind} name `{name}` is not valid")]
@@ -626,7 +655,8 @@ pub enum Error<'a> {
         /// The kind of extern.
         kind: ExternKind,
         /// The span where the error occurred.
-        span: Span<'a>,
+        #[label(primary, "invalid name `{name}`")]
+        span: SourceSpan,
         /// The underlying validation error.
         #[source]
         source: anyhow::Error,
@@ -635,78 +665,27 @@ pub enum Error<'a> {
     #[error("cannot instantiate the package being defined")]
     CannotInstantiateSelf {
         /// The span where the error occurred.
-        span: Span<'a>,
+        #[label(primary, "cannot instantiate self")]
+        span: SourceSpan,
     },
     /// A use of a type conflicts with an extern item.
-    #[error("use of type `{name}` conflicts with an {kind} of the same name{hint}")]
+    #[error("use of type `{name}` conflicts with an {kind} of the same name")]
     UseConflict {
         /// The name of the used type.
-        name: &'a str,
+        name: String,
         /// The extern kind of the conflicting item.
         kind: ExternKind,
-        /// The hint for the error.
-        hint: &'static str,
         /// The span where the error occurred.
-        span: Span<'a>,
+        #[label(primary, "conflicting name `{name}`")]
+        span: SourceSpan,
+        /// The help message for the error.
+        #[help]
+        help: Option<String>,
     },
-}
-
-impl Spanned for Error<'_> {
-    fn span(&self) -> Span {
-        match self {
-            Error::UndefinedName { span, .. }
-            | Error::DuplicateName { span, .. }
-            | Error::DuplicateInterfaceExport { span, .. }
-            | Error::DuplicateWorldItem { span, .. }
-            | Error::NotFuncOrInterface { span, .. }
-            | Error::NotInterface { span, .. }
-            | Error::DuplicateWorldIncludeName { span, .. }
-            | Error::NotWorld { span, .. }
-            | Error::MissingWorldInclude { span, .. }
-            | Error::WorldIncludeConflict { span, .. }
-            | Error::UndefinedInterfaceType { span, .. }
-            | Error::NotInterfaceValueType { span, .. }
-            | Error::DuplicateResourceConstructor { span, .. }
-            | Error::DuplicateResourceMethod { span, .. }
-            | Error::DuplicateVariantCase { span, .. }
-            | Error::DuplicateRecordField { span, .. }
-            | Error::DuplicateEnumCase { span, .. }
-            | Error::DuplicateFlag { span, .. }
-            | Error::InvalidAliasType { span, .. }
-            | Error::NotFuncType { span, .. }
-            | Error::NotResourceType { span, .. }
-            | Error::NotValueType { span, .. }
-            | Error::DuplicateParameter { span, .. }
-            | Error::DuplicateResult { span, .. }
-            | Error::BorrowInResult { span }
-            | Error::PackageResolutionFailure { span, .. }
-            | Error::PackageParseFailure { span, .. }
-            | Error::UnknownPackage { span, .. }
-            | Error::PackageMissingExport { span, .. }
-            | Error::PackagePathMissingExport { span, .. }
-            | Error::MissingComponentImport { span, .. }
-            | Error::MismatchedInstantiationArg { span, .. }
-            | Error::DuplicateInstantiationArg { span, .. }
-            | Error::MissingInstantiationArg { span, .. }
-            | Error::InstantiationArgConflict { span, .. }
-            | Error::ImportConflict { span, .. }
-            | Error::InstantiationArgMergeFailure { span, .. }
-            | Error::UnmergeableInstantiationArg { span, .. }
-            | Error::Inaccessible { span, .. }
-            | Error::InaccessibleInterface { span, .. }
-            | Error::MissingInstanceExport { span, .. }
-            | Error::ExportRequiresWith { span }
-            | Error::ExportConflict { span, .. }
-            | Error::DuplicateExternName { span, .. }
-            | Error::InvalidExternName { span, .. }
-            | Error::CannotInstantiateSelf { span }
-            | Error::UseConflict { span, .. } => *span,
-        }
-    }
 }
 
 /// Represents a resolution result.
-pub type ResolutionResult<'a, T> = std::result::Result<T, Error<'a>>;
+pub type ResolutionResult<T> = std::result::Result<T, Error>;
 
 /// A trait implemented by package resolvers.
 ///
@@ -985,7 +964,7 @@ impl Composition {
     pub fn from_ast<'a>(
         document: &'a crate::ast::Document<'a>,
         resolver: Option<Box<dyn PackageResolver>>,
-    ) -> ResolutionResult<'a, Self> {
+    ) -> ResolutionResult<Self> {
         AstResolver::new(document).resolve(resolver)
     }
 

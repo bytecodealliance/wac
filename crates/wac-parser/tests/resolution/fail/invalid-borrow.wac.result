@@ -1,5 +1,9 @@
-`x` (u32) is not a resource type
-    --> tests/resolution/fail/invalid-borrow.wac:5:17
-     |
-   5 | type y = borrow<x>;
-     |                 ^
+failed to resolve document
+
+  × `x` (u32) is not a resource type
+   ╭─[tests/resolution/fail/invalid-borrow.wac:5:17]
+ 4 │ 
+ 5 │ type y = borrow<x>;
+   ·                 ┬
+   ·                 ╰── `x` is not a resource type
+   ╰────

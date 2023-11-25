@@ -1,5 +1,10 @@
-use of type `b` conflicts with an export of the same name
-    --> tests/resolution/fail/invalid-use-alias.wac:9:17
-     |
-   9 |     use a.{a as b};
-     |                 ^
+failed to resolve document
+
+  × use of type `b` conflicts with an export of the same name
+    ╭─[tests/resolution/fail/invalid-use-alias.wac:9:17]
+  8 │     type b = u32;
+  9 │     use a.{a as b};
+    ·                 ┬
+    ·                 ╰── conflicting name `b`
+ 10 │ }
+    ╰────

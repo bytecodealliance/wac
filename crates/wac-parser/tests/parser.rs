@@ -10,7 +10,10 @@ use std::{
     process::exit,
     sync::atomic::{AtomicUsize, Ordering},
 };
-use wac_parser::{ast::Document, ErrorFormatter};
+use support::fmt_err;
+use wac_parser::ast::Document;
+
+mod support;
 
 fn find_tests() -> Vec<PathBuf> {
     let mut tests = Vec::new();
@@ -77,7 +80,7 @@ fn compare_result(test: &Path, result: &str, should_fail: bool) -> Result<()> {
 fn run_test(test: &Path, ntests: &AtomicUsize) -> Result<()> {
     let should_fail = test.parent().map(|p| p.ends_with("fail")).unwrap_or(false);
     let source = std::fs::read_to_string(test)?.replace("\r\n", "\n");
-    let result = match Document::parse(&source, test) {
+    let result = match Document::parse(&source) {
         Ok(doc) => {
             if should_fail {
                 bail!("the parse was successful but it was expected to fail");
@@ -87,13 +90,11 @@ fn run_test(test: &Path, ntests: &AtomicUsize) -> Result<()> {
         }
         Err(e) => {
             if !should_fail {
-                bail!(
-                    "the parse failed but it was expected to succeed: {e}",
-                    e = ErrorFormatter::new(test, e, false)
-                );
+                return Err(anyhow!(fmt_err(e, test, &source))
+                    .context("the parse failed but it was expected to succeed"));
             }
 
-            format!("{e}", e = ErrorFormatter::new(test, e, false))
+            fmt_err(e, test, &source)
         }
     };
 

@@ -1,5 +1,12 @@
-`x` was previously defined at tests/resolution/fail/redefined-name.wac:3:6
-    --> tests/resolution/fail/redefined-name.wac:4:6
-     |
-   4 | type x = string;
-     |      ^
+failed to resolve document
+
+  × `x` is already defined
+   ╭─[tests/resolution/fail/redefined-name.wac:4:6]
+ 2 │ 
+ 3 │ type x = u32;
+   ·      ┬
+   ·      ╰── `x` previously defined here
+ 4 │ type x = string;
+   ·      ┬
+   ·      ╰── `x` redefined here
+   ╰────

@@ -1,5 +1,10 @@
-duplicate constructor parameter `a`
-    --> tests/resolution/fail/duplicate-resource-constructor-param.wac:5:29
-     |
-   5 |         constructor(a: u32, a: string);
-     |                             ^
+failed to resolve document
+
+  × duplicate constructor parameter `a`
+   ╭─[tests/resolution/fail/duplicate-resource-constructor-param.wac:5:29]
+ 4 │     resource x {
+ 5 │         constructor(a: u32, a: string);
+   ·                             ┬
+   ·                             ╰── duplicate parameter `a`
+ 6 │     }
+   ╰────

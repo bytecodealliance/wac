@@ -1,65 +1,11 @@
 //! Module for the lexer implementation.
 
 use logos::{Logos, SpannedIter};
-use serde::{Serialize, Serializer};
+use miette::SourceSpan;
 use std::fmt;
 
-/// Represents a span in a source string.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct Span<'a> {
-    source: &'a str,
-    /// The start of the span.
-    pub start: usize,
-    /// The end of the span.
-    pub end: usize,
-}
-
-impl<'a> Span<'a> {
-    fn from_lexer<T>(lexer: &logos::Lexer<'a, T>) -> Self
-    where
-        T: logos::Logos<'a, Source = str>,
-    {
-        let source = lexer.source();
-        let span = lexer.span();
-        Self {
-            source,
-            start: span.start,
-            end: span.end,
-        }
-    }
-
-    pub(crate) fn from_span(source: &'a str, span: &logos::Span) -> Self {
-        Self {
-            source,
-            start: span.start,
-            end: span.end,
-        }
-    }
-
-    /// Gets the source code associated with the span.
-    pub fn source(&self) -> &'a str {
-        self.source
-    }
-
-    /// Returns the spanned string.
-    pub fn as_str(&self) -> &'a str {
-        &self.source[self.start..self.end]
-    }
-}
-
-impl Serialize for Span<'_> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        use serde::ser::SerializeStruct;
-
-        let mut s = serializer.serialize_struct("Span", 3)?;
-        s.serialize_field("str", self.as_str())?;
-        s.serialize_field("start", &self.start)?;
-        s.serialize_field("end", &self.end)?;
-        s.end()
-    }
+fn to_source_span(span: logos::Span) -> SourceSpan {
+    SourceSpan::new(span.start.into(), (span.end - span.start).into())
 }
 
 /// Represents a lexer error.
@@ -92,7 +38,7 @@ impl From<()> for Error {
     }
 }
 
-fn detect_invalid_input(source: &str) -> Result<(), (Error, Span)> {
+fn detect_invalid_input(source: &str) -> Result<(), (Error, SourceSpan)> {
     for (offset, ch) in source.char_indices() {
         match ch {
             '\r' | '\t' | '\n' => {}
@@ -106,7 +52,7 @@ fn detect_invalid_input(source: &str) -> Result<(), (Error, Span)> {
             | '\u{2067}' | '\u{2068}' | '\u{2069}' => {
                 return Err((
                     Error::DisallowedBidirectionalOverride(ch),
-                    Span::from_span(source, &(offset..offset + ch.len_utf8())),
+                    SourceSpan::new(offset.into(), ch.len_utf8().into()),
                 ));
             }
 
@@ -121,7 +67,7 @@ fn detect_invalid_input(source: &str) -> Result<(), (Error, Span)> {
             | '\u{17b4}' | '\u{17b5}' => {
                 return Err((
                     Error::DiscouragedUnicodeCodepoint(ch),
-                    Span::from_span(source, &(offset..offset + ch.len_utf8())),
+                    SourceSpan::new(offset.into(), ch.len_utf8().into()),
                 ));
             }
 
@@ -131,7 +77,7 @@ fn detect_invalid_input(source: &str) -> Result<(), (Error, Span)> {
             ch if ch.is_control() => {
                 return Err((
                     Error::DisallowedControlCode(ch),
-                    Span::from_span(source, &(offset..offset + ch.len_utf8())),
+                    SourceSpan::new(offset.into(), ch.len_utf8().into()),
                 ));
             }
 
@@ -494,47 +440,54 @@ mod helpers {
 }
 
 /// The result type for the lexer.
-pub type LexerResult<'a, T> = Result<T, Error>;
+pub type LexerResult<T> = Result<T, Error>;
 
 /// Implements a WAC lexer.
 pub struct Lexer<'a>(SpannedIter<'a, Token>);
 
 impl<'a> Lexer<'a> {
     /// Creates a new lexer for the given source string.
-    pub fn new(source: &'a str) -> Result<Self, (Error, Span<'a>)> {
+    pub fn new(source: &'a str) -> Result<Self, (Error, SourceSpan)> {
         detect_invalid_input(source)?;
         Ok(Self(Token::lexer(source).spanned()))
     }
 
-    /// Source from which this lexer is reading tokens.
-    pub fn source<'b>(&'b self) -> &'a str {
-        self.0.source()
+    /// Gets the source string of the given span.
+    pub fn source(&self, span: SourceSpan) -> &'a str {
+        &self.0.source()[span.offset()..span.offset() + span.len()]
     }
 
     /// Gets the current span of the lexer.
-    pub fn span<'b>(&'b self) -> Span<'a> {
-        Span::from_lexer(&self.0)
+    pub fn span(&self) -> SourceSpan {
+        let mut span = self.0.span();
+        if span.end == self.0.source().len() {
+            // Currently miette silently fails to display a label
+            // if the span is at the end of the source; this means
+            // we can't properly show the "end of input" span.
+            // For now, have the span point at the last byte in the source.
+            // See: https://github.com/zkat/miette/issues/219
+            span.start -= 1;
+            span.end = span.start + 1;
+        }
+
+        to_source_span(span)
     }
 
     /// Peeks at the next token.
-    pub fn peek<'b>(&'b self) -> Option<(LexerResult<'a, Token>, Span<'a>)> {
+    pub fn peek(&self) -> Option<(LexerResult<Token>, SourceSpan)> {
         let mut lexer = self.0.clone().spanned();
-        lexer
-            .next()
-            .map(|(r, s)| (r, Span::from_span(self.0.source(), &s)))
+        lexer.next().map(|(r, s)| (r, to_source_span(s)))
     }
 
     /// Peeks at the token after the next token.
-    pub fn peek2<'b>(&'b self) -> Option<(LexerResult<'a, Token>, Span<'a>)> {
+    pub fn peek2(&self) -> Option<(LexerResult<Token>, SourceSpan)> {
         let mut lexer = self.0.clone().spanned();
         lexer.next();
-        lexer
-            .next()
-            .map(|(r, s)| (r, Span::from_span(self.0.source(), &s)))
+        lexer.next().map(|(r, s)| (r, to_source_span(s)))
     }
 
     /// Consumes available documentation comment tokens.
-    pub fn comments<'b>(&'b self) -> Result<Vec<(&'a str, Span<'a>)>, (Error, Span<'a>)> {
+    pub fn comments<'b>(&'b self) -> Result<Vec<(&'a str, SourceSpan)>, (Error, SourceSpan)> {
         let mut comments = Vec::new();
         let mut lexer = self.0.clone().morph::<helpers::CommentToken>().spanned();
         while let Some((Ok(token), span)) = lexer.next() {
@@ -550,14 +503,7 @@ impl<'a> Lexer<'a> {
                     } else {
                         continue;
                     };
-                    comments.push((
-                        c,
-                        Span {
-                            source: self.0.source(),
-                            start: span.start,
-                            end: span.end,
-                        },
-                    ));
+                    comments.push((c, to_source_span(span)));
                 }
             }
         }
@@ -566,12 +512,10 @@ impl<'a> Lexer<'a> {
 }
 
 impl<'a> Iterator for Lexer<'a> {
-    type Item = (LexerResult<'a, Token>, Span<'a>);
+    type Item = (LexerResult<Token>, SourceSpan);
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.0
-            .next()
-            .map(|(r, s)| (r, Span::from_span(self.0.source(), &s)))
+        self.0.next().map(|(r, s)| (r, to_source_span(s)))
     }
 }
 

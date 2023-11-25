@@ -1,7 +1,8 @@
-use anyhow::{anyhow, Context, Result};
+use crate::fmt_err;
+use anyhow::{Context, Result};
 use clap::Args;
-use std::{fs, io::IsTerminal, path::PathBuf};
-use wac_parser::{ast::Document, Composition, ErrorFormatter, FileSystemPackageResolver};
+use std::{fs, path::PathBuf};
+use wac_parser::{ast::Document, Composition, FileSystemPackageResolver};
 
 fn parse<T, U>(s: &str) -> Result<(T, U)>
 where
@@ -43,12 +44,7 @@ impl ResolveCommand {
         let contents = fs::read_to_string(&self.path)
             .with_context(|| format!("failed to read file `{path}`", path = self.path.display()))?;
 
-        let document = Document::parse(&contents, &self.path).map_err(|e| {
-            anyhow!(
-                "{e}",
-                e = ErrorFormatter::new(&self.path, e, std::io::stderr().is_terminal())
-            )
-        })?;
+        let document = Document::parse(&contents).map_err(|e| fmt_err(e, &self.path, &contents))?;
 
         let resolved = Composition::from_ast(
             &document,
@@ -57,12 +53,7 @@ impl ResolveCommand {
                 self.deps.into_iter().collect(),
             ))),
         )
-        .map_err(|e| {
-            anyhow!(
-                "{e}",
-                e = ErrorFormatter::new(&self.path, e, std::io::stderr().is_terminal())
-            )
-        })?;
+        .map_err(|e| fmt_err(e, &self.path, &contents))?;
 
         serde_json::to_writer_pretty(std::io::stdout(), &resolved)?;
         println!();

@@ -10,7 +10,10 @@ use std::{
     process::exit,
     sync::atomic::{AtomicUsize, Ordering},
 };
-use wac_parser::{ast::Document, Composition, ErrorFormatter, FileSystemPackageResolver};
+use support::fmt_err;
+use wac_parser::{ast::Document, Composition, FileSystemPackageResolver};
+
+mod support;
 
 #[cfg(not(feature = "wat"))]
 compile_error!("the `wat` feature must be enabled for this test to run");
@@ -80,8 +83,9 @@ fn compare_result(test: &Path, result: &str, should_fail: bool) -> Result<()> {
 fn run_test(test: &Path, ntests: &AtomicUsize) -> Result<()> {
     let should_fail = test.parent().map(|p| p.ends_with("fail")).unwrap_or(false);
     let source = std::fs::read_to_string(test)?.replace("\r\n", "\n");
-    let document = Document::parse(&source, test)
-        .map_err(|e| anyhow!("{e}", e = ErrorFormatter::new(test, e, false)))?;
+
+    let document = Document::parse(&source).map_err(|e| anyhow!(fmt_err(e, test, &source)))?;
+
     let result = match Composition::from_ast(
         &document,
         Some(Box::new(FileSystemPackageResolver::new(
@@ -98,13 +102,11 @@ fn run_test(test: &Path, ntests: &AtomicUsize) -> Result<()> {
         }
         Err(e) => {
             if !should_fail {
-                bail!(
-                    "the resolution failed but it was expected to succeed: {e}",
-                    e = ErrorFormatter::new(test, e, false)
-                );
+                return Err(anyhow!(fmt_err(e, test, &source))
+                    .context("the resolution failed but it was expected to succeed"));
             }
 
-            format!("{e}", e = ErrorFormatter::new(test, e, false))
+            fmt_err(e, test, &source)
         }
     };
 

@@ -1,10 +1,12 @@
-mismatched instantiation argument `x`
-    --> tests/resolution/fail/mismatched-func-scalar-result.wac:7:23
-     |
-   7 | let i = new foo:bar { x };
-     |                       ^
+failed to resolve document
 
-Caused by:
-    0: mismatched type for export `f`
-    1: mismatched type for function result
-    2: expected u8, found string
+  × mismatched instantiation argument `x`
+  ├─▶ mismatched type for export `f`
+  ├─▶ mismatched type for function result
+  ╰─▶ expected u8, found string
+   ╭─[tests/resolution/fail/mismatched-func-scalar-result.wac:7:23]
+ 6 │ 
+ 7 │ let i = new foo:bar { x };
+   ·                       ┬
+   ·                       ╰── mismatched argument `x`
+   ╰────

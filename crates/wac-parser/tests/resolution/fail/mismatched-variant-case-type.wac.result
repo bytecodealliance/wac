@@ -1,11 +1,13 @@
-mismatched instantiation argument `x`
-    --> tests/resolution/fail/mismatched-variant-case-type.wac:11:23
-     |
-  11 | let i = new foo:bar { x };
-     |                       ^
+failed to resolve document
 
-Caused by:
-    0: mismatched type for export `v`
-    1: mismatched type for variant case `c`
-    2: mismatched type for tuple item 1
-    3: expected u16, found string
+  × mismatched instantiation argument `x`
+  ├─▶ mismatched type for export `v`
+  ├─▶ mismatched type for variant case `c`
+  ├─▶ mismatched type for tuple item 1
+  ╰─▶ expected u16, found string
+    ╭─[tests/resolution/fail/mismatched-variant-case-type.wac:11:23]
+ 10 │ 
+ 11 │ let i = new foo:bar { x };
+    ·                       ┬
+    ·                       ╰── mismatched argument `x`
+    ╰────

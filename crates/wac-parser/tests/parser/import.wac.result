@@ -1,12 +1,12 @@
 {
   "docs": [],
   "package": {
+    "string": "test:comp",
     "name": "test:comp",
     "version": null,
     "span": {
-      "str": "test:comp",
-      "start": 8,
-      "end": 17
+      "offset": 8,
+      "length": 9
     }
   },
   "statements": [
@@ -16,18 +16,16 @@
           {
             "comment": "Import by func type",
             "span": {
-              "str": "/// Import by func type",
-              "start": 20,
-              "end": 43
+              "offset": 20,
+              "length": 23
             }
           }
         ],
         "id": {
           "string": "a",
           "span": {
-            "str": "a",
-            "start": 51,
-            "end": 52
+            "offset": 51,
+            "length": 1
           }
         },
         "with": null,
@@ -45,18 +43,16 @@
           {
             "comment": "Import by ident",
             "span": {
-              "str": "/// Import by ident",
-              "start": 63,
-              "end": 82
+              "offset": 63,
+              "length": 19
             }
           }
         ],
         "id": {
           "string": "b",
           "span": {
-            "str": "b",
-            "start": 90,
-            "end": 91
+            "offset": 90,
+            "length": 1
           }
         },
         "with": null,
@@ -64,9 +60,8 @@
           "ident": {
             "string": "x",
             "span": {
-              "str": "x",
-              "start": 93,
-              "end": 94
+              "offset": 93,
+              "length": 1
             }
           }
         }
@@ -78,28 +73,26 @@
           {
             "comment": "Import by package path",
             "span": {
-              "str": "/// Import by package path",
-              "start": 97,
-              "end": 123
+              "offset": 97,
+              "length": 26
             }
           }
         ],
         "id": {
           "string": "c",
           "span": {
-            "str": "c",
-            "start": 131,
-            "end": 132
+            "offset": 131,
+            "length": 1
           }
         },
         "with": null,
         "ty": {
           "package": {
             "span": {
-              "str": "foo:bar/baz",
-              "start": 134,
-              "end": 145
+              "offset": 134,
+              "length": 11
             },
+            "string": "foo:bar/baz",
             "name": "foo:bar",
             "segments": "baz",
             "version": null
@@ -113,26 +106,23 @@
           {
             "comment": "Import by func type with kebab name",
             "span": {
-              "str": "/// Import by func type with kebab name ",
-              "start": 148,
-              "end": 188
+              "offset": 148,
+              "length": 40
             }
           }
         ],
         "id": {
           "string": "d",
           "span": {
-            "str": "d",
-            "start": 196,
-            "end": 197
+            "offset": 196,
+            "length": 1
           }
         },
         "with": {
           "value": "hello-world",
           "span": {
-            "str": "\"hello-world\"",
-            "start": 203,
-            "end": 216
+            "offset": 203,
+            "length": 13
           }
         },
         "ty": {
@@ -142,16 +132,14 @@
                 "id": {
                   "string": "name",
                   "span": {
-                    "str": "name",
-                    "start": 223,
-                    "end": 227
+                    "offset": 223,
+                    "length": 4
                   }
                 },
                 "ty": {
                   "string": {
-                    "str": "string",
-                    "start": 229,
-                    "end": 235
+                    "offset": 229,
+                    "length": 6
                   }
                 }
               }
@@ -167,18 +155,16 @@
           {
             "comment": "Import by inline interface",
             "span": {
-              "str": "/// Import by inline interface",
-              "start": 239,
-              "end": 269
+              "offset": 239,
+              "length": 30
             }
           }
         ],
         "id": {
           "string": "e",
           "span": {
-            "str": "e",
-            "start": 277,
-            "end": 278
+            "offset": 277,
+            "length": 1
           }
         },
         "with": null,
@@ -191,9 +177,8 @@
                   "id": {
                     "string": "x",
                     "span": {
-                      "str": "x",
-                      "start": 296,
-                      "end": 297
+                      "offset": 296,
+                      "length": 1
                     }
                   },
                   "ty": {
@@ -215,28 +200,26 @@
           {
             "comment": "Import by package path with version",
             "span": {
-              "str": "/// Import by package path with version",
-              "start": 311,
-              "end": 350
+              "offset": 311,
+              "length": 39
             }
           }
         ],
         "id": {
           "string": "f",
           "span": {
-            "str": "f",
-            "start": 358,
-            "end": 359
+            "offset": 358,
+            "length": 1
           }
         },
         "with": null,
         "ty": {
           "package": {
             "span": {
-              "str": "foo:bar/baz@1.0.0",
-              "start": 361,
-              "end": 378
+              "offset": 361,
+              "length": 17
             },
+            "string": "foo:bar/baz@1.0.0",
             "name": "foo:bar",
             "segments": "baz",
             "version": "1.0.0"

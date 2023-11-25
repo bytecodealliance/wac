@@ -1,5 +1,14 @@
-export `x` conflicts with u32 definition at tests/resolution/fail/export-conflict-alias.wac:5:6 (consider using a `with` clause to use a different name)
-    --> tests/resolution/fail/export-conflict-alias.wac:7:1
-     |
-   7 | export f;
-     | ^----^
+failed to resolve document
+
+  × export `x` conflicts with u32 definition
+   ╭─[tests/resolution/fail/export-conflict-alias.wac:7:1]
+ 4 │ 
+ 5 │ type x = u32;
+   ·      ┬
+   ·      ╰── previous definition is here
+ 6 │ 
+ 7 │ export f;
+   · ───┬──
+   ·    ╰── conflicting export of `x`
+   ╰────
+  help: consider using a `with` clause to use a different name

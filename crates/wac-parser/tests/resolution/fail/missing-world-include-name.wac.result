@@ -1,5 +1,10 @@
-world `w1` does not have an import or export named `a`
-    --> tests/resolution/fail/missing-world-include-name.wac:8:23
-     |
-   8 |     include w1 with { a as b };
-     |                       ^
+failed to resolve document
+
+  × world `w1` does not have an import or export named `a`
+   ╭─[tests/resolution/fail/missing-world-include-name.wac:8:23]
+ 7 │ world w2 {
+ 8 │     include w1 with { a as b };
+   ·                       ┬
+   ·                       ╰── no import or export named `a`
+ 9 │ }
+   ╰────

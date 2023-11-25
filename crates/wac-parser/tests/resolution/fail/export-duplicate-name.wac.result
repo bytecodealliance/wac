@@ -1,5 +1,12 @@
-duplicate export `x`
-    --> tests/resolution/fail/export-duplicate-name.wac:5:15
-     |
-   5 | export f with "x";
-     |               ^-^
+failed to resolve document
+
+  × duplicate export `x`
+   ╭─[tests/resolution/fail/export-duplicate-name.wac:5:15]
+ 3 │ import f: func();
+ 4 │ export f with "x";
+   ·               ─┬─
+   ·                ╰── previous export here
+ 5 │ export f with "x";
+   ·               ─┬─
+   ·                ╰── duplicate export name `x`
+   ╰────

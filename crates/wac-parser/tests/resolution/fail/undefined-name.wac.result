@@ -1,5 +1,9 @@
-undefined name `x`
-    --> tests/resolution/fail/undefined-name.wac:3:10
-     |
-   3 | type x = x;
-     |          ^
+failed to resolve document
+
+  × undefined name `x`
+   ╭─[tests/resolution/fail/undefined-name.wac:3:10]
+ 2 │ 
+ 3 │ type x = x;
+   ·          ┬
+   ·          ╰── undefined name `x`
+   ╰────

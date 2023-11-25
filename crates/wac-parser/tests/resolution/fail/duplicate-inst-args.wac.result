@@ -1,5 +1,9 @@
-duplicate instantiation argument `foo`
-    --> tests/resolution/fail/duplicate-inst-args.wac:5:33
-     |
-   5 | let x = new foo:bar { foo: bar, foo: bar };
-     |                                 ^-^
+failed to resolve document
+
+  × duplicate instantiation argument `foo`
+   ╭─[tests/resolution/fail/duplicate-inst-args.wac:5:33]
+ 4 │ 
+ 5 │ let x = new foo:bar { foo: bar, foo: bar };
+   ·                                 ─┬─
+   ·                                  ╰── duplicate argument `foo`
+   ╰────

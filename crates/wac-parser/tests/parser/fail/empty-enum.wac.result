@@ -1,5 +1,9 @@
-enum must contain at least one case
-    --> tests/parser/fail/empty-enum.wac:3:9
-     |
-   3 | enum e {}
-     |         ^
+failed to parse document
+
+  × enum must contain at least one case
+   ╭─[tests/parser/fail/empty-enum.wac:3:9]
+ 2 │ 
+ 3 │ enum e {}
+   ·         ┬
+   ·         ╰── empty enum
+   ╰────

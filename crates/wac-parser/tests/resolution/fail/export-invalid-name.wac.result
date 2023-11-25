@@ -1,8 +1,10 @@
-export name `INVALID!` is not valid
-    --> tests/resolution/fail/export-invalid-name.wac:4:15
-     |
-   4 | export f with "INVALID!";
-     |               ^--------^
+failed to resolve document
 
-Caused by:
-    `INVALID!` is not in kebab case
+  × export name `INVALID!` is not valid
+  ╰─▶ `INVALID!` is not in kebab case
+   ╭─[tests/resolution/fail/export-invalid-name.wac:4:15]
+ 3 │ import f: func();
+ 4 │ export f with "INVALID!";
+   ·               ─────┬────
+   ·                    ╰── invalid name `INVALID!`
+   ╰────

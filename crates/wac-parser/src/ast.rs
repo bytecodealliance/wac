@@ -1,11 +1,9 @@
 //! Module for the AST implementation.
 
-use crate::{
-    lexer::{self, Lexer, LexerResult, Span, Token},
-    Spanned,
-};
+use crate::lexer::{self, Lexer, LexerResult, Token};
+use miette::{Diagnostic, SourceSpan};
 use serde::Serialize;
-use std::{fmt, path::Path};
+use std::fmt;
 
 mod export;
 mod expr;
@@ -61,15 +59,17 @@ impl fmt::Display for Expected<'_> {
 }
 
 /// Represents a parse error.
-#[derive(thiserror::Error, Debug)]
-pub enum Error<'a> {
+#[derive(thiserror::Error, Diagnostic, Debug)]
+#[diagnostic(code("failed to parse document"))]
+pub enum Error {
     /// A lexer error occurred.
     #[error("{error}")]
     Lexer {
         /// The lexer error that occurred.
         error: crate::lexer::Error,
         /// The span where the error occurred.
-        span: Span<'a>,
+        #[label(primary)]
+        span: SourceSpan,
     },
     /// An unexpected token was encountered when a single token was expected.
     #[error("expected {expected}, found {found}", found = Found(*.found))]
@@ -79,7 +79,8 @@ pub enum Error<'a> {
         /// The found token (`None` for end of input).
         found: Option<Token>,
         /// The span of the found token.
-        span: Span<'a>,
+        #[label(primary, "unexpected {found}", found = Found(*.found))]
+        span: SourceSpan,
     },
     /// An unexpected token was encountered when either one of two tokens was expected.
     #[error("expected {first} or {second}, found {found}", found = Found(*.found))]
@@ -91,7 +92,8 @@ pub enum Error<'a> {
         /// The found token.
         found: Option<Token>,
         /// The span of the found token.
-        span: Span<'a>,
+        #[label(primary, "unexpected {found}", found = Found(*.found))]
+        span: SourceSpan,
     },
     /// An unexpected token was encountered when multiple tokens were expected.
     #[error("expected either {expected}, found {found}", expected = Expected { expected, count: *.count }, found = Found(*.found))]
@@ -103,7 +105,8 @@ pub enum Error<'a> {
         /// The found token.
         found: Option<Token>,
         /// The span of the found token.
-        span: Span<'a>,
+        #[label(primary, "unexpected {found}", found = Found(*.found))]
+        span: SourceSpan,
     },
     /// An empty type was encountered.
     #[error("{ty} must contain at least one {kind}")]
@@ -113,42 +116,31 @@ pub enum Error<'a> {
         /// The kind of item that was empty (e.g. "field", "case", etc.)
         kind: &'static str,
         /// The span of the empty type.
-        span: Span<'a>,
+        #[label(primary, "empty {ty}")]
+        span: SourceSpan,
     },
     /// An invalid semantic version was encountered.
     #[error("`{version}` is not a valid semantic version")]
     InvalidVersion {
         /// The invalid version.
-        version: &'a str,
+        version: std::string::String,
         /// The span of the version.
-        span: Span<'a>,
+        #[label(primary, "invalid version")]
+        span: SourceSpan,
     },
 }
 
-impl Spanned for Error<'_> {
-    fn span(&self) -> Span<'_> {
-        match self {
-            Error::Lexer { span, .. }
-            | Error::Expected { span, .. }
-            | Error::ExpectedEither { span, .. }
-            | Error::ExpectedMultiple { span, .. }
-            | Error::EmptyType { span, .. }
-            | Error::InvalidVersion { span, .. } => *span,
-        }
-    }
-}
-
 /// Represents a parse result.
-pub type ParseResult<'a, T> = Result<T, Error<'a>>;
+pub type ParseResult<T> = Result<T, Error>;
 
-impl<'a> From<(lexer::Error, Span<'a>)> for Error<'a> {
-    fn from((e, s): (lexer::Error, Span<'a>)) -> Self {
+impl From<(lexer::Error, SourceSpan)> for Error {
+    fn from((e, s): (lexer::Error, SourceSpan)) -> Self {
         Self::Lexer { error: e, span: s }
     }
 }
 
 /// Expects a given token from the lexer.
-pub fn parse_token<'a>(lexer: &mut Lexer<'a>, expected: Token) -> ParseResult<'a, Span<'a>> {
+pub fn parse_token(lexer: &mut Lexer, expected: Token) -> ParseResult<SourceSpan> {
     let (result, span) = lexer.next().ok_or_else(|| Error::Expected {
         expected,
         found: None,
@@ -173,9 +165,9 @@ pub fn parse_optional<'a, F, R>(
     lexer: &mut Lexer<'a>,
     expected: Token,
     cb: F,
-) -> ParseResult<'a, Option<R>>
+) -> ParseResult<Option<R>>
 where
-    F: FnOnce(&mut Lexer<'a>) -> ParseResult<'a, R>,
+    F: FnOnce(&mut Lexer<'a>) -> ParseResult<R>,
 {
     match lexer.peek() {
         Some((Ok(token), _)) => {
@@ -194,19 +186,19 @@ where
 /// Used to look ahead one token in the lexer.
 ///
 /// The lookahead stores up to 10 attempted tokens.
-pub struct Lookahead<'a> {
-    next: Option<(LexerResult<'a, Token>, Span<'a>)>,
-    source: &'a str,
+pub struct Lookahead {
+    next: Option<(LexerResult<Token>, SourceSpan)>,
     attempts: [Option<Token>; 10],
+    span: SourceSpan,
     count: usize,
 }
 
-impl<'a> Lookahead<'a> {
+impl Lookahead {
     /// Creates a new lookahead from the given lexer.
-    pub fn new(lexer: &Lexer<'a>) -> Self {
+    pub fn new(lexer: &Lexer) -> Self {
         Self {
             next: lexer.peek(),
-            source: lexer.source(),
+            span: lexer.span(),
             attempts: Default::default(),
             count: 0,
         }
@@ -230,14 +222,11 @@ impl<'a> Lookahead<'a> {
     /// Returns an error based on the attempted tokens.
     ///
     /// Panics if no peeks were attempted.
-    pub fn error(self) -> Error<'a> {
+    pub fn error(self) -> Error {
         let (found, span) = match self.next {
             Some((Ok(token), span)) => (Some(token), span),
             Some((Err(e), s)) => return (e, s).into(),
-            None => (
-                None,
-                Span::from_span(self.source, &(self.source.len()..self.source.len())),
-            ),
+            None => (None, self.span),
         };
 
         match self.count {
@@ -264,14 +253,14 @@ impl<'a> Lookahead<'a> {
 }
 
 pub(crate) trait Parse<'a>: Sized {
-    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<'a, Self>;
+    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<Self>;
 }
 
 fn parse_delimited<'a, T: Parse<'a> + Peek>(
     lexer: &mut Lexer<'a>,
     until: &[Token],
     with_commas: bool,
-) -> ParseResult<'a, Vec<T>> {
+) -> ParseResult<Vec<T>> {
     assert!(
         !until.is_empty(),
         "must have at least one token to parse until"
@@ -304,26 +293,10 @@ trait Peek {
     fn peek(lookahead: &mut Lookahead) -> bool;
 }
 
-macro_rules! display {
-    ($name:ident, $method:ident) => {
-        impl std::fmt::Display for $name<'_> {
-            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                let mut printer = crate::ast::DocumentPrinter::new(f, None);
-                printer.$method(self)
-            }
-        }
-    };
-}
-
-pub(crate) use display;
-
 /// Represents a top-level WAC document.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Document<'a> {
-    /// The path to the document, used for error reporting.
-    #[serde(skip)]
-    pub path: &'a Path,
     /// The doc comments for the package.
     pub docs: Vec<DocComment<'a>>,
     /// The package name of the document.
@@ -336,7 +309,7 @@ impl<'a> Document<'a> {
     /// Parses the given source string as a document.
     ///
     /// The given path is used for error reporting.
-    pub fn parse(source: &'a str, path: &'a Path) -> ParseResult<'a, Self> {
+    pub fn parse(source: &'a str) -> ParseResult<Self> {
         let mut lexer = Lexer::new(source).map_err(Error::from)?;
 
         let docs = Parse::parse(&mut lexer)?;
@@ -352,15 +325,12 @@ impl<'a> Document<'a> {
 
         assert!(lexer.next().is_none(), "expected all tokens to be consumed");
         Ok(Self {
-            path,
             docs,
             package,
             statements,
         })
     }
 }
-
-display!(Document, document);
 
 /// Represents a statement in the AST.
 #[derive(Debug, Clone, Serialize)]
@@ -376,7 +346,7 @@ pub enum Statement<'a> {
 }
 
 impl<'a> Parse<'a> for Statement<'a> {
-    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<'a, Self> {
+    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<Self> {
         let mut lookahead = Lookahead::new(lexer);
         if ImportStatement::peek(&mut lookahead) {
             Ok(Self::Import(Parse::parse(lexer)?))
@@ -399,13 +369,13 @@ pub struct Ident<'a> {
     /// The identifier string.
     pub string: &'a str,
     /// The span of the identifier.
-    pub span: Span<'a>,
+    pub span: SourceSpan,
 }
 
 impl<'a> Parse<'a> for Ident<'a> {
-    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<'a, Self> {
+    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<Self> {
         let span = parse_token(lexer, Token::Ident)?;
-        let id = span.as_str();
+        let id = lexer.source(span);
         Ok(Self {
             string: id.strip_prefix('%').unwrap_or(id),
             span,
@@ -426,13 +396,13 @@ pub struct String<'a> {
     /// The value of the string (without quotes).
     pub value: &'a str,
     /// The span of the string.
-    pub span: Span<'a>,
+    pub span: SourceSpan,
 }
 
 impl<'a> Parse<'a> for String<'a> {
-    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<'a, Self> {
+    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<Self> {
         let span = parse_token(lexer, Token::String)?;
-        let s = span.as_str();
+        let s = lexer.source(span);
         Ok(Self {
             value: s.strip_prefix('"').unwrap().strip_suffix('"').unwrap(),
             span,
@@ -453,11 +423,11 @@ pub struct DocComment<'a> {
     /// The comment string.
     pub comment: &'a str,
     /// The span of the comment.
-    pub span: Span<'a>,
+    pub span: SourceSpan,
 }
 
 impl<'a> Parse<'a> for Vec<DocComment<'a>> {
-    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<'a, Vec<DocComment<'a>>> {
+    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<Vec<DocComment<'a>>> {
         Ok(lexer
             .comments()
             .map_err(Error::from)?
@@ -480,19 +450,19 @@ mod test {
     /// as the output string, since the input string may contain
     /// extra whitespace and comments that are not preserved in
     /// the AST.
-    pub(crate) fn roundtrip<'a, T: Parse<'a> + fmt::Display>(
-        source: &'a str,
-        expected: &str,
-    ) -> ParseResult<'a, ()> {
-        let mut lexer = Lexer::new(source).map_err(Error::from)?;
-        let node: T = Parse::parse(&mut lexer)?;
-        assert_eq!(node.to_string(), expected, "unexpected AST output");
+    pub(crate) fn roundtrip(source: &str, expected: &str) -> ParseResult<()> {
+        let doc = Document::parse(source)?;
+        let mut s = std::string::String::new();
+        DocumentPrinter::new(&mut s, source, None)
+            .document(&doc)
+            .unwrap();
+        assert_eq!(s, expected, "unexpected AST output");
         Ok(())
     }
 
     #[test]
     fn document_roundtrip() {
-        let document = Document::parse(
+        roundtrip(
             r#"/* ignore me */
 /// Doc comment for the package!
 package test:foo:bar@1.0.0;
@@ -521,12 +491,6 @@ let x = new foo:bar { };
 /// Doc comment #10!
 export x with "foo";
 "#,
-            Path::new("test"),
-        )
-        .unwrap();
-
-        assert_eq!(
-            document.to_string(),
             r#"/// Doc comment for the package!
 package test:foo:bar@1.0.0;
 
@@ -561,7 +525,8 @@ let x = new foo:bar {};
 
 /// Doc comment #10!
 export x with "foo";
-"#
-        );
+"#,
+        )
+        .unwrap()
     }
 }

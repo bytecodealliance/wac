@@ -1,12 +1,12 @@
 {
   "docs": [],
   "package": {
+    "string": "test:comp",
     "name": "test:comp",
     "version": null,
     "span": {
-      "str": "test:comp",
-      "start": 8,
-      "end": 17
+      "offset": 8,
+      "length": 9
     }
   },
   "statements": [
@@ -18,26 +18,23 @@
               {
                 "comment": "u8",
                 "span": {
-                  "str": "/// u8",
-                  "start": 20,
-                  "end": 26
+                  "offset": 20,
+                  "length": 6
                 }
               }
             ],
             "id": {
               "string": "a",
               "span": {
-                "str": "a",
-                "start": 32,
-                "end": 33
+                "offset": 32,
+                "length": 1
               }
             },
             "kind": {
               "type": {
                 "u8": {
-                  "str": "u8",
-                  "start": 36,
-                  "end": 38
+                  "offset": 36,
+                  "length": 2
                 }
               }
             }
@@ -53,26 +50,23 @@
               {
                 "comment": "s8",
                 "span": {
-                  "str": "/// s8",
-                  "start": 40,
-                  "end": 46
+                  "offset": 40,
+                  "length": 6
                 }
               }
             ],
             "id": {
               "string": "b",
               "span": {
-                "str": "b",
-                "start": 52,
-                "end": 53
+                "offset": 52,
+                "length": 1
               }
             },
             "kind": {
               "type": {
                 "s8": {
-                  "str": "s8",
-                  "start": 56,
-                  "end": 58
+                  "offset": 56,
+                  "length": 2
                 }
               }
             }
@@ -88,26 +82,23 @@
               {
                 "comment": "u16",
                 "span": {
-                  "str": "/// u16",
-                  "start": 60,
-                  "end": 67
+                  "offset": 60,
+                  "length": 7
                 }
               }
             ],
             "id": {
               "string": "c",
               "span": {
-                "str": "c",
-                "start": 73,
-                "end": 74
+                "offset": 73,
+                "length": 1
               }
             },
             "kind": {
               "type": {
                 "u16": {
-                  "str": "u16",
-                  "start": 77,
-                  "end": 80
+                  "offset": 77,
+                  "length": 3
                 }
               }
             }
@@ -123,26 +114,23 @@
               {
                 "comment": "s16",
                 "span": {
-                  "str": "/// s16",
-                  "start": 82,
-                  "end": 89
+                  "offset": 82,
+                  "length": 7
                 }
               }
             ],
             "id": {
               "string": "d",
               "span": {
-                "str": "d",
-                "start": 95,
-                "end": 96
+                "offset": 95,
+                "length": 1
               }
             },
             "kind": {
               "type": {
                 "s16": {
-                  "str": "s16",
-                  "start": 99,
-                  "end": 102
+                  "offset": 99,
+                  "length": 3
                 }
               }
             }
@@ -158,26 +146,23 @@
               {
                 "comment": "u32",
                 "span": {
-                  "str": "/// u32",
-                  "start": 104,
-                  "end": 111
+                  "offset": 104,
+                  "length": 7
                 }
               }
             ],
             "id": {
               "string": "e",
               "span": {
-                "str": "e",
-                "start": 117,
-                "end": 118
+                "offset": 117,
+                "length": 1
               }
             },
             "kind": {
               "type": {
                 "u32": {
-                  "str": "u32",
-                  "start": 121,
-                  "end": 124
+                  "offset": 121,
+                  "length": 3
                 }
               }
             }
@@ -193,26 +178,23 @@
               {
                 "comment": "s32",
                 "span": {
-                  "str": "/// s32",
-                  "start": 126,
-                  "end": 133
+                  "offset": 126,
+                  "length": 7
                 }
               }
             ],
             "id": {
               "string": "f",
               "span": {
-                "str": "f",
-                "start": 139,
-                "end": 140
+                "offset": 139,
+                "length": 1
               }
             },
             "kind": {
               "type": {
                 "s32": {
-                  "str": "s32",
-                  "start": 143,
-                  "end": 146
+                  "offset": 143,
+                  "length": 3
                 }
               }
             }
@@ -228,26 +210,23 @@
               {
                 "comment": "u64",
                 "span": {
-                  "str": "/// u64",
-                  "start": 148,
-                  "end": 155
+                  "offset": 148,
+                  "length": 7
                 }
               }
             ],
             "id": {
               "string": "g",
               "span": {
-                "str": "g",
-                "start": 161,
-                "end": 162
+                "offset": 161,
+                "length": 1
               }
             },
             "kind": {
               "type": {
                 "u64": {
-                  "str": "u64",
-                  "start": 165,
-                  "end": 168
+                  "offset": 165,
+                  "length": 3
                 }
               }
             }
@@ -263,26 +242,23 @@
               {
                 "comment": "s64",
                 "span": {
-                  "str": "/// s64",
-                  "start": 170,
-                  "end": 177
+                  "offset": 170,
+                  "length": 7
                 }
               }
             ],
             "id": {
               "string": "h",
               "span": {
-                "str": "h",
-                "start": 183,
-                "end": 184
+                "offset": 183,
+                "length": 1
               }
             },
             "kind": {
               "type": {
                 "s64": {
-                  "str": "s64",
-                  "start": 187,
-                  "end": 190
+                  "offset": 187,
+                  "length": 3
                 }
               }
             }
@@ -298,26 +274,23 @@
               {
                 "comment": "float32",
                 "span": {
-                  "str": "/// float32",
-                  "start": 192,
-                  "end": 203
+                  "offset": 192,
+                  "length": 11
                 }
               }
             ],
             "id": {
               "string": "i",
               "span": {
-                "str": "i",
-                "start": 209,
-                "end": 210
+                "offset": 209,
+                "length": 1
               }
             },
             "kind": {
               "type": {
                 "float32": {
-                  "str": "float32",
-                  "start": 213,
-                  "end": 220
+                  "offset": 213,
+                  "length": 7
                 }
               }
             }
@@ -333,26 +306,23 @@
               {
                 "comment": "float64",
                 "span": {
-                  "str": "/// float64",
-                  "start": 222,
-                  "end": 233
+                  "offset": 222,
+                  "length": 11
                 }
               }
             ],
             "id": {
               "string": "j",
               "span": {
-                "str": "j",
-                "start": 239,
-                "end": 240
+                "offset": 239,
+                "length": 1
               }
             },
             "kind": {
               "type": {
                 "float64": {
-                  "str": "float64",
-                  "start": 243,
-                  "end": 250
+                  "offset": 243,
+                  "length": 7
                 }
               }
             }
@@ -368,26 +338,23 @@
               {
                 "comment": "bool",
                 "span": {
-                  "str": "/// bool",
-                  "start": 252,
-                  "end": 260
+                  "offset": 252,
+                  "length": 8
                 }
               }
             ],
             "id": {
               "string": "k",
               "span": {
-                "str": "k",
-                "start": 266,
-                "end": 267
+                "offset": 266,
+                "length": 1
               }
             },
             "kind": {
               "type": {
                 "bool": {
-                  "str": "bool",
-                  "start": 270,
-                  "end": 274
+                  "offset": 270,
+                  "length": 4
                 }
               }
             }
@@ -403,26 +370,23 @@
               {
                 "comment": "char",
                 "span": {
-                  "str": "/// char",
-                  "start": 276,
-                  "end": 284
+                  "offset": 276,
+                  "length": 8
                 }
               }
             ],
             "id": {
               "string": "l",
               "span": {
-                "str": "l",
-                "start": 290,
-                "end": 291
+                "offset": 290,
+                "length": 1
               }
             },
             "kind": {
               "type": {
                 "char": {
-                  "str": "char",
-                  "start": 294,
-                  "end": 298
+                  "offset": 294,
+                  "length": 4
                 }
               }
             }
@@ -438,26 +402,23 @@
               {
                 "comment": "string",
                 "span": {
-                  "str": "/// string",
-                  "start": 300,
-                  "end": 310
+                  "offset": 300,
+                  "length": 10
                 }
               }
             ],
             "id": {
               "string": "m",
               "span": {
-                "str": "m",
-                "start": 316,
-                "end": 317
+                "offset": 316,
+                "length": 1
               }
             },
             "kind": {
               "type": {
                 "string": {
-                  "str": "string",
-                  "start": 320,
-                  "end": 326
+                  "offset": 320,
+                  "length": 6
                 }
               }
             }
@@ -473,18 +434,16 @@
               {
                 "comment": "tuple<u8, s8>",
                 "span": {
-                  "str": "/// tuple<u8, s8>",
-                  "start": 328,
-                  "end": 345
+                  "offset": 328,
+                  "length": 17
                 }
               }
             ],
             "id": {
               "string": "n",
               "span": {
-                "str": "n",
-                "start": 351,
-                "end": 352
+                "offset": 351,
+                "length": 1
               }
             },
             "kind": {
@@ -493,23 +452,20 @@
                   [
                     {
                       "u8": {
-                        "str": "u8",
-                        "start": 361,
-                        "end": 363
+                        "offset": 361,
+                        "length": 2
                       }
                     },
                     {
                       "s8": {
-                        "str": "s8",
-                        "start": 365,
-                        "end": 367
+                        "offset": 365,
+                        "length": 2
                       }
                     }
                   ],
                   {
-                    "str": "tuple<u8, s8>",
-                    "start": 355,
-                    "end": 368
+                    "offset": 355,
+                    "length": 13
                   }
                 ]
               }
@@ -526,18 +482,16 @@
               {
                 "comment": "list<tuple<u8>>",
                 "span": {
-                  "str": "/// list<tuple<u8>>",
-                  "start": 370,
-                  "end": 389
+                  "offset": 370,
+                  "length": 19
                 }
               }
             ],
             "id": {
               "string": "o",
               "span": {
-                "str": "o",
-                "start": 395,
-                "end": 396
+                "offset": 395,
+                "length": 1
               }
             },
             "kind": {
@@ -548,23 +502,20 @@
                       [
                         {
                           "u8": {
-                            "str": "u8",
-                            "start": 410,
-                            "end": 412
+                            "offset": 410,
+                            "length": 2
                           }
                         }
                       ],
                       {
-                        "str": "tuple<u8>",
-                        "start": 404,
-                        "end": 413
+                        "offset": 404,
+                        "length": 9
                       }
                     ]
                   },
                   {
-                    "str": "list<tuple<u8>>",
-                    "start": 399,
-                    "end": 414
+                    "offset": 399,
+                    "length": 15
                   }
                 ]
               }
@@ -581,18 +532,16 @@
               {
                 "comment": "option<string>",
                 "span": {
-                  "str": "/// option<string>",
-                  "start": 416,
-                  "end": 434
+                  "offset": 416,
+                  "length": 18
                 }
               }
             ],
             "id": {
               "string": "p",
               "span": {
-                "str": "p",
-                "start": 440,
-                "end": 441
+                "offset": 440,
+                "length": 1
               }
             },
             "kind": {
@@ -600,15 +549,13 @@
                 "option": [
                   {
                     "string": {
-                      "str": "string",
-                      "start": 451,
-                      "end": 457
+                      "offset": 451,
+                      "length": 6
                     }
                   },
                   {
-                    "str": "option<string>",
-                    "start": 444,
-                    "end": 458
+                    "offset": 444,
+                    "length": 14
                   }
                 ]
               }
@@ -625,18 +572,16 @@
               {
                 "comment": "result",
                 "span": {
-                  "str": "/// result",
-                  "start": 460,
-                  "end": 470
+                  "offset": 460,
+                  "length": 10
                 }
               }
             ],
             "id": {
               "string": "q",
               "span": {
-                "str": "q",
-                "start": 476,
-                "end": 477
+                "offset": 476,
+                "length": 1
               }
             },
             "kind": {
@@ -645,9 +590,8 @@
                   "ok": null,
                   "err": null,
                   "span": {
-                    "str": "result",
-                    "start": 480,
-                    "end": 486
+                    "offset": 480,
+                    "length": 6
                   }
                 }
               }
@@ -664,18 +608,16 @@
               {
                 "comment": "result<u8>",
                 "span": {
-                  "str": "/// result<u8>",
-                  "start": 488,
-                  "end": 502
+                  "offset": 488,
+                  "length": 14
                 }
               }
             ],
             "id": {
               "string": "r",
               "span": {
-                "str": "r",
-                "start": 508,
-                "end": 509
+                "offset": 508,
+                "length": 1
               }
             },
             "kind": {
@@ -683,16 +625,14 @@
                 "result": {
                   "ok": {
                     "u8": {
-                      "str": "u8",
-                      "start": 519,
-                      "end": 521
+                      "offset": 519,
+                      "length": 2
                     }
                   },
                   "err": null,
                   "span": {
-                    "str": "result<u8>",
-                    "start": 512,
-                    "end": 522
+                    "offset": 512,
+                    "length": 10
                   }
                 }
               }
@@ -709,18 +649,16 @@
               {
                 "comment": "result<_, s8>",
                 "span": {
-                  "str": "/// result<_, s8>",
-                  "start": 524,
-                  "end": 541
+                  "offset": 524,
+                  "length": 17
                 }
               }
             ],
             "id": {
               "string": "s",
               "span": {
-                "str": "s",
-                "start": 547,
-                "end": 548
+                "offset": 547,
+                "length": 1
               }
             },
             "kind": {
@@ -729,15 +667,13 @@
                   "ok": null,
                   "err": {
                     "s8": {
-                      "str": "s8",
-                      "start": 561,
-                      "end": 563
+                      "offset": 561,
+                      "length": 2
                     }
                   },
                   "span": {
-                    "str": "result<_, s8>",
-                    "start": 551,
-                    "end": 564
+                    "offset": 551,
+                    "length": 13
                   }
                 }
               }
@@ -754,18 +690,16 @@
               {
                 "comment": "result<u8, string>",
                 "span": {
-                  "str": "/// result<u8, string>",
-                  "start": 566,
-                  "end": 588
+                  "offset": 566,
+                  "length": 22
                 }
               }
             ],
             "id": {
               "string": "t",
               "span": {
-                "str": "t",
-                "start": 594,
-                "end": 595
+                "offset": 594,
+                "length": 1
               }
             },
             "kind": {
@@ -773,22 +707,19 @@
                 "result": {
                   "ok": {
                     "u8": {
-                      "str": "u8",
-                      "start": 605,
-                      "end": 607
+                      "offset": 605,
+                      "length": 2
                     }
                   },
                   "err": {
                     "string": {
-                      "str": "string",
-                      "start": 609,
-                      "end": 615
+                      "offset": 609,
+                      "length": 6
                     }
                   },
                   "span": {
-                    "str": "result<u8, string>",
-                    "start": 598,
-                    "end": 616
+                    "offset": 598,
+                    "length": 18
                   }
                 }
               }
@@ -805,18 +736,16 @@
               {
                 "comment": "borrow<x>",
                 "span": {
-                  "str": "/// borrow<x>",
-                  "start": 618,
-                  "end": 631
+                  "offset": 618,
+                  "length": 13
                 }
               }
             ],
             "id": {
               "string": "u",
               "span": {
-                "str": "u",
-                "start": 637,
-                "end": 638
+                "offset": 637,
+                "length": 1
               }
             },
             "kind": {
@@ -825,15 +754,13 @@
                   {
                     "string": "x",
                     "span": {
-                      "str": "x",
-                      "start": 648,
-                      "end": 649
+                      "offset": 648,
+                      "length": 1
                     }
                   },
                   {
-                    "str": "borrow<x>",
-                    "start": 641,
-                    "end": 650
+                    "offset": 641,
+                    "length": 9
                   }
                 ]
               }
@@ -850,18 +777,16 @@
               {
                 "comment": "x",
                 "span": {
-                  "str": "/// x",
-                  "start": 652,
-                  "end": 657
+                  "offset": 652,
+                  "length": 5
                 }
               }
             ],
             "id": {
               "string": "v",
               "span": {
-                "str": "v",
-                "start": 663,
-                "end": 664
+                "offset": 663,
+                "length": 1
               }
             },
             "kind": {
@@ -869,9 +794,8 @@
                 "ident": {
                   "string": "x",
                   "span": {
-                    "str": "x",
-                    "start": 667,
-                    "end": 668
+                    "offset": 667,
+                    "length": 1
                   }
                 }
               }
@@ -888,18 +812,16 @@
               {
                 "comment": "keyword",
                 "span": {
-                  "str": "/// keyword",
-                  "start": 670,
-                  "end": 681
+                  "offset": 670,
+                  "length": 11
                 }
               }
             ],
             "id": {
               "string": "type",
               "span": {
-                "str": "%type",
-                "start": 687,
-                "end": 692
+                "offset": 687,
+                "length": 5
               }
             },
             "kind": {
@@ -907,9 +829,8 @@
                 "ident": {
                   "string": "v",
                   "span": {
-                    "str": "v",
-                    "start": 695,
-                    "end": 696
+                    "offset": 695,
+                    "length": 1
                   }
                 }
               }

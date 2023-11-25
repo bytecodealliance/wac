@@ -1,5 +1,10 @@
-duplicate field `b` for record type `r`
-    --> tests/resolution/fail/duplicate-record-field.wac:9:5
-     |
-   9 |     b: string,
-     |     ^
+failed to resolve document
+
+  × duplicate field `b` for record type `r`
+    ╭─[tests/resolution/fail/duplicate-record-field.wac:9:5]
+  8 │     c: x,
+  9 │     b: string,
+    ·     ┬
+    ·     ╰── duplicate field `b`
+ 10 │ }
+    ╰────

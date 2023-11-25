@@ -1,8 +1,10 @@
-import name `NOT-VALID-NAME!` is not valid
-    --> tests/resolution/fail/import-invalid-name.wac:3:15
-     |
-   3 | import x with "NOT-VALID-NAME!": func();
-     |               ^---------------^
+failed to resolve document
 
-Caused by:
-    `NOT-VALID-NAME!` is not in kebab case
+  × import name `NOT-VALID-NAME!` is not valid
+  ╰─▶ `NOT-VALID-NAME!` is not in kebab case
+   ╭─[tests/resolution/fail/import-invalid-name.wac:3:15]
+ 2 │ 
+ 3 │ import x with "NOT-VALID-NAME!": func();
+   ·               ────────┬────────
+   ·                       ╰── invalid name `NOT-VALID-NAME!`
+   ╰────

@@ -1,10 +1,12 @@
-mismatched instantiation argument `x`
-    --> tests/resolution/fail/mismatched-resource-types.wac:9:23
-     |
-   9 | let i = new foo:bar { x };
-     |                       ^
+failed to resolve document
 
-Caused by:
-    0: mismatched type for export `f`
-    1: mismatched type for function parameter `x`
-    2: expected resource `x`, found resource `y`
+  × mismatched instantiation argument `x`
+  ├─▶ mismatched type for export `f`
+  ├─▶ mismatched type for function parameter `x`
+  ╰─▶ expected resource `x`, found resource `y`
+   ╭─[tests/resolution/fail/mismatched-resource-types.wac:9:23]
+ 8 │ 
+ 9 │ let i = new foo:bar { x };
+   ·                       ┬
+   ·                       ╰── mismatched argument `x`
+   ╰────

@@ -1,9 +1,11 @@
-mismatched instantiation argument `x`
-    --> tests/resolution/fail/func-results-not-present.wac:7:23
-     |
-   7 | let i = new foo:bar { x };
-     |                       ^
+failed to resolve document
 
-Caused by:
-    0: mismatched type for export `f`
-    1: expected function with results, found function without results
+  × mismatched instantiation argument `x`
+  ├─▶ mismatched type for export `f`
+  ╰─▶ expected function with results, found function without results
+   ╭─[tests/resolution/fail/func-results-not-present.wac:7:23]
+ 6 │ 
+ 7 │ let i = new foo:bar { x };
+   ·                       ┬
+   ·                       ╰── mismatched argument `x`
+   ╰────

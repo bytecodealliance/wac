@@ -1,8 +1,10 @@
-mismatched instantiation argument `x`
-    --> tests/resolution/fail/missing-constructor.wac:8:23
-     |
-   8 | let i = new foo:bar { x };
-     |                       ^
+failed to resolve document
 
-Caused by:
-    instance is missing expected export `[constructor]r`
+  × mismatched instantiation argument `x`
+  ╰─▶ instance is missing expected export `[constructor]r`
+   ╭─[tests/resolution/fail/missing-constructor.wac:8:23]
+ 7 │ 
+ 8 │ let i = new foo:bar { x };
+   ·                       ┬
+   ·                       ╰── mismatched argument `x`
+   ╰────

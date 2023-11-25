@@ -1,9 +1,11 @@
-mismatched instantiation argument `x`
-    --> tests/resolution/fail/mismatched-tuple-size.wac:7:23
-     |
-   7 | let i = new foo:bar { x };
-     |                       ^
+failed to resolve document
 
-Caused by:
-    0: mismatched type for export `t`
-    1: expected a tuple of size 3, found a tuple of size 4
+  × mismatched instantiation argument `x`
+  ├─▶ mismatched type for export `t`
+  ╰─▶ expected a tuple of size 3, found a tuple of size 4
+   ╭─[tests/resolution/fail/mismatched-tuple-size.wac:7:23]
+ 6 │ 
+ 7 │ let i = new foo:bar { x };
+   ·                       ┬
+   ·                       ╰── mismatched argument `x`
+   ╰────

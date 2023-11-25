@@ -1,5 +1,9 @@
-expected `}` or identifier, found end of input
-    --> tests/parser/fail/expected-two.wac:4:1
-     |
-   4 | 
-     | ^
+failed to parse document
+
+  × expected `}` or identifier, found end of input
+   ╭─[tests/parser/fail/expected-two.wac:3:12]
+ 2 │ 
+ 3 │ record foo {
+   ·            ┬
+   ·            ╰── unexpected end of input
+   ╰────

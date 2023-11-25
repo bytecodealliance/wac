@@ -1,5 +1,10 @@
-export `x` conflicts with existing export of the same name in world `w`
-    --> tests/resolution/fail/duplicate-world-export.wac:5:12
-     |
-   5 |     export x: func();
-     |            ^
+failed to resolve document
+
+  × export `x` conflicts with existing export of the same name in world `w`
+   ╭─[tests/resolution/fail/duplicate-world-export.wac:5:12]
+ 4 │     export x: func();
+ 5 │     export x: func();
+   ·            ┬
+   ·            ╰── conflicting name `x`
+ 6 │ }
+   ╰────

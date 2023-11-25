@@ -1,5 +1,13 @@
-implicit instantiation argument `foo` (function) conflicts with an explicit import at tests/resolution/fail/implicit-arg-conflict.wac:3:8
-    --> tests/resolution/fail/implicit-arg-conflict.wac:5:13
-     |
-   5 | let x = new foo:bar { ... };
-     |             ^-----^
+failed to resolve document
+
+  × implicit instantiation argument `foo` (function) conflicts with an explicit import
+   ╭─[tests/resolution/fail/implicit-arg-conflict.wac:5:13]
+ 2 │ 
+ 3 │ import foo: func();
+   ·        ─┬─
+   ·         ╰── explicit import here
+ 4 │ 
+ 5 │ let x = new foo:bar { ... };
+   ·             ───┬───
+   ·                ╰── conflicting instantiation here
+   ╰────

@@ -1,5 +1,12 @@
-implicit instantiation argument `foo` (function) conflicts with an implicitly imported argument from the instantiation of `bar:baz` at tests/resolution/fail/unmergeable-args.wac:3:13
-    --> tests/resolution/fail/unmergeable-args.wac:4:13
-     |
-   4 | let b = new foo:bar { ... };
-     |             ^-----^
+failed to resolve document
+
+  × implicit instantiation argument `foo` (function) conflicts with an implicitly imported argument from the instantiation of `bar:baz`
+   ╭─[tests/resolution/fail/unmergeable-args.wac:4:13]
+ 2 │ 
+ 3 │ let a = new bar:baz { ... };
+   ·             ───┬───
+   ·                ╰── previous instantiation here
+ 4 │ let b = new foo:bar { ... };
+   ·             ───┬───
+   ·                ╰── conflicting instantiation here
+   ╰────

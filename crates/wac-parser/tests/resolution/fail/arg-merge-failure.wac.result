@@ -1,5 +1,12 @@
-implicit instantiation argument `foo` (instance) conflicts with an implicitly imported argument from the instantiation of `foo:bar` at tests/resolution/fail/arg-merge-failure.wac:3:13
-    --> tests/resolution/fail/arg-merge-failure.wac:4:13
-     |
-   4 | let b = new bar:baz { ... };
-     |             ^-----^
+failed to resolve document
+
+  × implicit instantiation argument `foo` (instance) conflicts with an implicitly imported argument from the instantiation of `foo:bar`
+   ╭─[tests/resolution/fail/arg-merge-failure.wac:4:13]
+ 2 │ 
+ 3 │ let a = new foo:bar { ... };
+   ·             ───┬───
+   ·                ╰── previous instantiation here
+ 4 │ let b = new bar:baz { ... };
+   ·             ───┬───
+   ·                ╰── conflicting instantiation here
+   ╰────

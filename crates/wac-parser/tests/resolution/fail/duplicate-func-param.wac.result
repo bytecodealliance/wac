@@ -1,5 +1,9 @@
-duplicate function parameter `x`
-    --> tests/resolution/fail/duplicate-func-param.wac:3:23
-     |
-   3 | type f = func(x: u32, x: string);
-     |                       ^
+failed to resolve document
+
+  × duplicate function parameter `x`
+   ╭─[tests/resolution/fail/duplicate-func-param.wac:3:23]
+ 2 │ 
+ 3 │ type f = func(x: u32, x: string);
+   ·                       ┬
+   ·                       ╰── duplicate parameter `x`
+   ╰────

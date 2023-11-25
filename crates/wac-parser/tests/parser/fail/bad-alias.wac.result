@@ -1,5 +1,9 @@
-expected identifier, found `u32` keyword
-    --> tests/parser/fail/bad-alias.wac:3:6
-     |
-   3 | type u32 = x;
-     |      ^-^
+failed to parse document
+
+  × expected identifier, found `u32` keyword
+   ╭─[tests/parser/fail/bad-alias.wac:3:6]
+ 2 │ 
+ 3 │ type u32 = x;
+   ·      ─┬─
+   ·       ╰── unexpected `u32` keyword
+   ╰────

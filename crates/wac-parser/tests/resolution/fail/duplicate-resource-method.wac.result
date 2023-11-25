@@ -1,5 +1,10 @@
-duplicate method `x` for resource `x`
-    --> tests/resolution/fail/duplicate-resource-method.wac:6:9
-     |
-   6 |         x: static func();
-     |         ^
+failed to resolve document
+
+  × duplicate method `x` for resource `x`
+   ╭─[tests/resolution/fail/duplicate-resource-method.wac:6:9]
+ 5 │         x: func();
+ 6 │         x: static func();
+   ·         ┬
+   ·         ╰── duplicate method `x`
+ 7 │     }
+   ╰────

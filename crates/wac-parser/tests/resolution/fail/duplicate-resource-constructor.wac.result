@@ -1,5 +1,10 @@
-duplicate constructor for resource `x`
-    --> tests/resolution/fail/duplicate-resource-constructor.wac:6:9
-     |
-   6 |         constructor(x: u32);
-     |         ^---------^
+failed to resolve document
+
+  × duplicate constructor for resource `x`
+   ╭─[tests/resolution/fail/duplicate-resource-constructor.wac:6:9]
+ 5 │         constructor();
+ 6 │         constructor(x: u32);
+   ·         ─────┬─────
+   ·              ╰── duplicate constructor
+ 7 │     }
+   ╰────

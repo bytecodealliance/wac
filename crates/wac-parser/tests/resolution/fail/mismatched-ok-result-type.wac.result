@@ -1,11 +1,13 @@
-mismatched instantiation argument `x`
-    --> tests/resolution/fail/mismatched-ok-result-type.wac:7:23
-     |
-   7 | let i = new foo:bar { x };
-     |                       ^
+failed to resolve document
 
-Caused by:
-    0: mismatched type for export `f`
-    1: mismatched type for function result
-    2: mismatched type for result `ok`
-    3: expected u8, found string
+  × mismatched instantiation argument `x`
+  ├─▶ mismatched type for export `f`
+  ├─▶ mismatched type for function result
+  ├─▶ mismatched type for result `ok`
+  ╰─▶ expected u8, found string
+   ╭─[tests/resolution/fail/mismatched-ok-result-type.wac:7:23]
+ 6 │ 
+ 7 │ let i = new foo:bar { x };
+   ·                       ┬
+   ·                       ╰── mismatched argument `x`
+   ╰────
