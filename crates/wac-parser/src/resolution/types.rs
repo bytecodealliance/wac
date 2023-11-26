@@ -675,7 +675,9 @@ impl From<wasmparser::HeapType> for HeapType {
             wasmparser::HeapType::NoFunc => Self::NoFunc,
             wasmparser::HeapType::Struct => Self::Struct,
             wasmparser::HeapType::Array => Self::Array,
-            wasmparser::HeapType::Concrete(index) => Self::Concrete(index),
+            wasmparser::HeapType::Concrete(index) => {
+                Self::Concrete(index.as_module_index().unwrap())
+            }
         }
     }
 }
