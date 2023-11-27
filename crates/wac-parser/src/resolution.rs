@@ -1,15 +1,12 @@
 //! Module for resolving WAC documents.
 
-use self::{encoding::Encoder, package::Package};
-use crate::resolution::ast::AstResolver;
-use anyhow::Context;
+use self::{ast::AstResolver, encoding::Encoder, package::Package};
 use id_arena::{Arena, Id};
 use indexmap::IndexMap;
 use miette::{Diagnostic, SourceSpan};
 use semver::Version;
 use serde::{Serialize, Serializer};
-use std::{collections::HashMap, fmt, fs, path::PathBuf};
-use wit_parser::Resolve;
+use std::{fmt, sync::Arc};
 
 mod ast;
 mod encoding;
@@ -17,6 +14,7 @@ mod package;
 mod types;
 
 pub use encoding::EncodingOptions;
+pub use package::PackageKey;
 pub use types::*;
 
 fn serialize_arena<T, S>(arena: &Arena<T>, serializer: S) -> std::result::Result<S::Ok, S::Error>
@@ -417,17 +415,14 @@ pub enum Error {
         #[label(primary, "borrow type in result")]
         span: SourceSpan,
     },
-    /// A package failed to resolve.
-    #[error("failed to resolve package `{name}`")]
-    PackageResolutionFailure {
+    /// An unknown package was encountered.
+    #[error("unknown package `{name}`")]
+    UnknownPackage {
         /// The name of the package.
         name: String,
         /// The span where the error occurred.
-        #[label(primary, "package `{name}` failed to resolve")]
+        #[label(primary, "unknown package `{name}`")]
         span: SourceSpan,
-        /// The underlying error.
-        #[source]
-        source: anyhow::Error,
     },
     /// A package failed to parse.
     #[error("failed to parse package `{name}`")]
@@ -440,15 +435,6 @@ pub enum Error {
         /// The underlying error.
         #[source]
         source: anyhow::Error,
-    },
-    /// An unknown package was encountered.
-    #[error("unknown package `{name}`")]
-    UnknownPackage {
-        /// The name of the package.
-        name: String,
-        /// The span where the error occurred.
-        #[label(primary, "unknown package `{name}`")]
-        span: SourceSpan,
     },
     /// A package is missing an export.
     #[error("{prev}package `{name}` has no export named `{export}`", prev = ParentPathDisplay(.kind, .path))]
@@ -664,13 +650,6 @@ pub enum Error {
         #[source]
         source: anyhow::Error,
     },
-    /// Cannot instantiate the package being defined.
-    #[error("cannot instantiate the package being defined")]
-    CannotInstantiateSelf {
-        /// The span where the error occurred.
-        #[label(primary, "cannot instantiate self")]
-        span: SourceSpan,
-    },
     /// A use of a type conflicts with an extern item.
     #[error("use of type `{name}` conflicts with an {kind} of the same name")]
     UseConflict {
@@ -689,124 +668,6 @@ pub enum Error {
 
 /// Represents a resolution result.
 pub type ResolutionResult<T> = std::result::Result<T, Error>;
-
-/// A trait implemented by package resolvers.
-///
-/// This is used when resolving a document to resolve any referenced packages.
-pub trait PackageResolver {
-    /// Resolves a package name to the package bytes.
-    ///
-    /// Returns `Ok(None)` if the package could not be found.
-    fn resolve(&self, name: &str, version: Option<&Version>) -> anyhow::Result<Option<Vec<u8>>>;
-}
-
-/// Used to resolve packages from the file system.
-pub struct FileSystemPackageResolver {
-    root: PathBuf,
-    overrides: HashMap<String, PathBuf>,
-}
-
-impl FileSystemPackageResolver {
-    /// Creates a new `FileSystemPackageResolver` with the given root directory.
-    pub fn new(root: impl Into<PathBuf>, overrides: HashMap<String, PathBuf>) -> Self {
-        Self {
-            root: root.into(),
-            overrides,
-        }
-    }
-}
-
-impl Default for FileSystemPackageResolver {
-    fn default() -> Self {
-        Self::new("deps", Default::default())
-    }
-}
-
-impl PackageResolver for FileSystemPackageResolver {
-    fn resolve(&self, name: &str, version: Option<&Version>) -> anyhow::Result<Option<Vec<u8>>> {
-        if version.is_some() {
-            anyhow::bail!("local dependency resolution does not support package versions");
-        }
-
-        let path = if let Some(path) = self.overrides.get(name) {
-            if !path.is_file() {
-                anyhow::bail!(
-                    "local path `{path}` for package `{name}` does not exist",
-                    path = path.display(),
-                    name = name
-                )
-            }
-
-            path.clone()
-        } else {
-            let mut path = self.root.clone();
-            for segment in name.split(':') {
-                path.push(segment);
-            }
-
-            // If the path is not a directory, use a `.wasm` or `.wat` extension
-            if !path.is_dir() {
-                path.set_extension("wasm");
-
-                #[cfg(feature = "wat")]
-                {
-                    path.set_extension("wat");
-                    if !path.exists() {
-                        path.set_extension("wasm");
-                    }
-                }
-            }
-
-            path
-        };
-
-        // First check to see if a directory exists.
-        // If so, then treat it as a textual WIT package.
-        if path.is_dir() {
-            log::debug!(
-                "loading WIT package from directory `{path}`",
-                path = path.display()
-            );
-
-            let mut resolve = Resolve::new();
-            let (pkg, _) = resolve.push_dir(&path)?;
-
-            return wit_component::encode(Some(true), &resolve, pkg)
-                .with_context(|| {
-                    format!(
-                        "failed to encode WIT package from directory `{path}`",
-                        path = path.display()
-                    )
-                })
-                .map(Some);
-        }
-
-        if !path.is_file() {
-            log::debug!("package `{path}` does not exist", path = path.display());
-            return Ok(None);
-        }
-
-        log::debug!("loading package from `{path}`", path = path.display());
-        let bytes = fs::read(&path)
-            .with_context(|| format!("failed to read package `{path}`", path = path.display()))?;
-
-        #[cfg(feature = "wat")]
-        if path.extension().and_then(std::ffi::OsStr::to_str) == Some("wat") {
-            let bytes = match wat::parse_bytes(&bytes) {
-                Ok(std::borrow::Cow::Borrowed(_)) => bytes,
-                Ok(std::borrow::Cow::Owned(wat)) => wat,
-                Err(mut e) => {
-                    e.set_path(path);
-                    anyhow::bail!(e);
-                }
-            };
-
-            return Ok(Some(bytes));
-        }
-
-        Ok(Some(bytes))
-    }
-}
 
 /// Represents the kind of an item.
 #[derive(Debug, Clone, Copy, Serialize, Hash, Eq, PartialEq)]
@@ -966,9 +827,9 @@ impl Composition {
     /// Creates a new composition from an AST document.
     pub fn from_ast<'a>(
         document: &'a crate::ast::Document<'a>,
-        resolver: Option<Box<dyn PackageResolver>>,
+        packages: IndexMap<PackageKey<'a>, Arc<Vec<u8>>>,
     ) -> ResolutionResult<Self> {
-        AstResolver::new(document).resolve(resolver)
+        AstResolver::new(document, packages).resolve()
     }
 
     /// Encode the composition into a WebAssembly component.

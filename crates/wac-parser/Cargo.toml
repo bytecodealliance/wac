@@ -19,26 +19,25 @@ indexmap = { workspace = true }
 id-arena = { workspace = true }
 serde = { workspace = true }
 wasmparser = { workspace = true }
-wit-parser = { workspace = true }
-wit-component = { workspace = true }
 wasm-encoder = { workspace = true }
 wasm-metadata = { workspace = true }
-wat = { workspace = true, optional = true }
 # TODO: use the next release which has support for primary labels
 miette = { git = "https://github.com/zkat/miette", features = ["serde"] }
 
-[features]
-default = ["wat"]
-
 [dev-dependencies]
+wac-resolver = { workspace = true, default-features = false, features = ["wat", "wit"] }
 owo-colors = "3.5.0"
-pretty_assertions = "1.4.0"
+pretty_assertions = { workspace = true }
 pretty_env_logger = { workspace = true }
 rayon = "1.8.0"
+tokio = { workspace = true }
 serde_json = { workspace = true }
 wasmprinter = { workspace = true }
 # TODO: use the next release which has support for primary labels
-miette = { git = "https://github.com/zkat/miette", features = ["serde", "fancy"] }
+miette = { git = "https://github.com/zkat/miette", features = [
+    "serde",
+    "fancy",
+] }
 
 [[test]]
 name = "parser"

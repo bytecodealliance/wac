@@ -8,12 +8,21 @@ use anyhow::{bail, Result};
 use indexmap::IndexMap;
 use semver::Version;
 use serde::Serialize;
-use std::{collections::HashMap, fmt, rc::Rc};
+use std::{collections::HashMap, fmt, rc::Rc, sync::Arc};
 use wasmparser::{
     names::{ComponentName, ComponentNameKind},
     types::{self as wasm, ComponentAnyTypeId},
     Chunk, Encoding, Parser, Payload, ValidPayload, Validator, WasmFeatures,
 };
+
+/// Represents a package key that can be used in associative containers.
+#[derive(Copy, Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct PackageKey<'a> {
+    /// The name of the package,
+    pub name: &'a str,
+    /// The version of the package.
+    pub version: Option<&'a Version>,
+}
 
 /// Represents information about a package.
 ///
@@ -27,7 +36,7 @@ pub struct Package {
     pub version: Option<Version>,
     /// The bytes of the package.
     #[serde(skip)]
-    pub bytes: Vec<u8>,
+    pub bytes: Arc<Vec<u8>>,
     /// The world (component type) of the package.
     #[serde(serialize_with = "serialize_id")]
     pub world: WorldId,
@@ -41,7 +50,7 @@ impl Package {
         definitions: &mut Definitions,
         name: &str,
         version: Option<&Version>,
-        bytes: Vec<u8>,
+        bytes: Arc<Vec<u8>>,
     ) -> Result<Self> {
         let mut parser = Parser::new(0);
         let mut parsers = Vec::new();
@@ -52,7 +61,7 @@ impl Package {
         let mut imports = Vec::new();
         let mut exports = Vec::new();
 
-        let mut cur = bytes.as_ref();
+        let mut cur = bytes.as_ref().as_ref();
         loop {
             match parser.parse(cur, true)? {
                 Chunk::Parsed { payload, consumed } => {
