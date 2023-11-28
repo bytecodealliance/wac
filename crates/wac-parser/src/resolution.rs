@@ -646,6 +646,9 @@ pub enum Error {
         /// The span where the error occurred.
         #[label("previous {kind} here")]
         previous: SourceSpan,
+        /// The help of the error.
+        #[help]
+        help: Option<String>,
     },
     /// An invalid extern name was encountered.
     #[error("{kind} name `{name}` is not valid")]

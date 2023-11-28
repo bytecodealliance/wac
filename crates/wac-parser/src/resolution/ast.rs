@@ -208,17 +208,20 @@ impl<'a> AstResolver<'a> {
             "resolving import statement for id `{id}`",
             id = stmt.id.string
         );
-        let kind = match &stmt.ty {
-            ast::ImportType::Package(p) => self.resolve_package_export(state, p)?,
-            ast::ImportType::Func(ty) => ItemKind::Func(self.func_type(
-                state,
-                &ty.params,
-                &ty.results,
-                FuncKind::Free,
-                None,
-            )?),
-            ast::ImportType::Interface(i) => self.inline_interface(state, i)?,
-            ast::ImportType::Ident(id) => state.local_item(id)?.1.kind(),
+        let (kind, span) = match &stmt.ty {
+            ast::ImportType::Package(p) => (self.resolve_package_export(state, p)?, p.span),
+            ast::ImportType::Func(ty) => (
+                ItemKind::Func(self.func_type(
+                    state,
+                    &ty.params,
+                    &ty.results,
+                    FuncKind::Free,
+                    None,
+                )?),
+                stmt.id.span,
+            ),
+            ast::ImportType::Interface(i) => (self.inline_interface(state, i)?, stmt.id.span),
+            ast::ImportType::Ident(id) => (state.local_item(id)?.1.kind(), stmt.id.span),
         };
 
         // Promote function types, instance types, and component types to functions, instances, and components
@@ -230,17 +233,18 @@ impl<'a> AstResolver<'a> {
         };
 
         let (name, span) = if let Some(name) = stmt.name {
+            // Override the span to the `as` clause string
             (name.value, name.span)
         } else {
             // If the item is an instance with an id, use the id
             if let ItemKind::Instance(id) = kind {
                 if let Some(id) = &self.definitions.interfaces[id].id {
-                    (id.as_str(), stmt.id.span)
+                    (id.as_str(), span)
                 } else {
-                    (stmt.id.string, stmt.id.span)
+                    (stmt.id.string, span)
                 }
             } else {
-                (stmt.id.string, stmt.id.span)
+                (stmt.id.string, span)
             }
         };
 
@@ -275,12 +279,16 @@ impl<'a> AstResolver<'a> {
                         });
                     }
 
-                    // TODO: should use prev_span with this error
                     return Err(Error::DuplicateExternName {
                         name: name.to_owned(),
                         kind: ExternKind::Import,
                         span,
                         previous: existing.span,
+                        help: if stmt.name.is_some() {
+                            None
+                        } else {
+                            Some("consider using an `as` clause to use a different name".into())
+                        },
                     });
                 }
                 _ => unreachable!(),
@@ -412,6 +420,11 @@ impl<'a> AstResolver<'a> {
                 kind: ExternKind::Export,
                 span,
                 previous: existing.span,
+                help: if stmt.name.is_some() {
+                    None
+                } else {
+                    Some("consider using an `as` clause to use a different name".into())
+                },
             });
         }
 

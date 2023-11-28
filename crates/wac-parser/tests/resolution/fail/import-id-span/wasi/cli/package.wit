@@ -1,0 +1,4 @@
+package wasi:cli;
+
+interface environment {
+}
