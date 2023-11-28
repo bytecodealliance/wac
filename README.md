@@ -13,7 +13,7 @@ package-decl ::= `package` package-name `;`
 package-name ::= id (':' id)+ ('@' version)?
 version      ::= <SEMVER>
 
-import-statement ::= 'import' id ('with' string)? ':' import-type ';'
+import-statement ::= 'import' id ('as' string)? ':' import-type ';'
 import-type      ::= package-path | func-type | inline-interface | id
 package-path     ::= id (':' id)+ ('/' id)+ ('@' version)?
 
@@ -102,7 +102,7 @@ postfix-expr            ::= access-expr | named-access-expr
 access-expr             ::= '.' id
 named-access-expr       ::= '[' string ']'
 
-export-statement        ::= 'export' expr ('with' string)? ';'
+export-statement        ::= 'export' expr ('as' string)? ';'
 
 id     ::= '%'?[a-z][a-z0-9]*('-'[a-z][a-z0-9]*)*
 string ::= '"' character-that-is-not-a-double-quote* '"'
