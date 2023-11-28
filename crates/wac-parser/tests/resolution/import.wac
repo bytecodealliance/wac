@@ -11,7 +11,7 @@ import b: x;
 //import c: foo:bar/baz;
 
 /// Import by func type with kebab name 
-import d with "hello-world": func(name: string);
+import d as "hello-world": func(name: string);
 
 /// Import by inline interface
 import e: interface {
@@ -22,5 +22,5 @@ import e: interface {
 import f: foo:bar/baz;
 
 export d;
-export e with "e";
+export e as "e";
 export f;

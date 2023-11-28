@@ -11,4 +11,4 @@ failed to resolve document
    · ───┬──
    ·    ╰── conflicting export of `x`
    ╰────
-  help: consider using a `with` clause to use a different name
+  help: consider using an `as` clause to use a different name

@@ -229,8 +229,8 @@ impl<'a> AstResolver<'a> {
             _ => kind,
         };
 
-        let (name, span) = if let Some(with) = stmt.with {
-            (with.value, with.span)
+        let (name, span) = if let Some(name) = stmt.name {
+            (name.value, name.span)
         } else {
             // If the item is an instance with an id, use the id
             if let ItemKind::Instance(id) = kind {
@@ -348,7 +348,7 @@ impl<'a> AstResolver<'a> {
     ) -> ResolutionResult<()> {
         log::debug!("resolving export statement");
         let item = self.expr(state, &stmt.expr)?;
-        let (name, span) = if let Some(name) = stmt.with {
+        let (name, span) = if let Some(name) = stmt.name {
             (name.value, name.span)
         } else {
             (
@@ -397,10 +397,10 @@ impl<'a> AstResolver<'a> {
                     kind: definition.kind.as_str(&self.definitions).to_string(),
                     span,
                     definition: prev_span,
-                    help: if stmt.with.is_some() {
+                    help: if stmt.name.is_some() {
                         None
                     } else {
-                        Some("consider using a `with` clause to use a different name".into())
+                        Some("consider using an `as` clause to use a different name".into())
                     },
                 });
             }

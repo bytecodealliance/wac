@@ -1,3 +1,3 @@
 package test:comp;
 
-import x with "NOT-VALID-NAME!": func();
+import x as "NOT-VALID-NAME!": func();

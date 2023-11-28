@@ -1,5 +1,5 @@
 package test:comp;
 
 import f: func();
-export f with "x";
-export f with "x";
+export f as "x";
+export f as "x";

@@ -15,8 +15,8 @@ pub struct ImportStatement<'a> {
     pub docs: Vec<DocComment<'a>>,
     /// The identifier of the imported item.
     pub id: Ident<'a>,
-    /// The optional `with` string.
-    pub with: Option<super::String<'a>>,
+    /// The optional import name.
+    pub name: Option<super::String<'a>>,
     /// The type of the imported item.
     pub ty: ImportType<'a>,
 }
@@ -26,11 +26,11 @@ impl<'a> Parse<'a> for ImportStatement<'a> {
         let docs = Parse::parse(lexer)?;
         parse_token(lexer, Token::ImportKeyword)?;
         let id = Parse::parse(lexer)?;
-        let with = parse_optional(lexer, Token::WithKeyword, Parse::parse)?;
+        let name = parse_optional(lexer, Token::AsKeyword, Parse::parse)?;
         parse_token(lexer, Token::Colon)?;
         let ty = Parse::parse(lexer)?;
         parse_token(lexer, Token::Semicolon)?;
-        Ok(Self { docs, id, with, ty })
+        Ok(Self { docs, id, name, ty })
     }
 }
 
@@ -195,8 +195,8 @@ mod test {
         .unwrap();
 
         roundtrip(
-            "package foo:bar; import x with \"y\": foo:bar:baz/qux/jam@1.2.3-preview+abc;",
-            "package foo:bar;\n\nimport x with \"y\": foo:bar:baz/qux/jam@1.2.3-preview+abc;\n",
+            "package foo:bar; import x as \"y\": foo:bar:baz/qux/jam@1.2.3-preview+abc;",
+            "package foo:bar;\n\nimport x as \"y\": foo:bar:baz/qux/jam@1.2.3-preview+abc;\n",
         )
         .unwrap();
     }
@@ -210,8 +210,8 @@ mod test {
         .unwrap();
 
         roundtrip(
-            "package foo:bar; import x with \"foo\": func(x: string) -> string;",
-            "package foo:bar;\n\nimport x with \"foo\": func(x: string) -> string;\n",
+            "package foo:bar; import x as \"foo\": func(x: string) -> string;",
+            "package foo:bar;\n\nimport x as \"foo\": func(x: string) -> string;\n",
         )
         .unwrap();
     }
@@ -225,8 +225,8 @@ mod test {
         .unwrap();
 
         roundtrip(
-            "package foo:bar; import x with \"foo\": interface { x: func(x: string) -> string; };",
-            "package foo:bar;\n\nimport x with \"foo\": interface {\n    x: func(x: string) -> string;\n};\n",
+            "package foo:bar; import x as \"foo\": interface { x: func(x: string) -> string; };",
+            "package foo:bar;\n\nimport x as \"foo\": interface {\n    x: func(x: string) -> string;\n};\n",
         )
         .unwrap();
     }
@@ -240,8 +240,8 @@ mod test {
         .unwrap();
 
         roundtrip(
-            "package foo:bar; import x /*foo */ with    \"foo\": y;",
-            "package foo:bar;\n\nimport x with \"foo\": y;\n",
+            "package foo:bar; import x /*foo */ as    \"foo\": y;",
+            "package foo:bar;\n\nimport x as \"foo\": y;\n",
         )
         .unwrap();
     }

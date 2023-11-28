@@ -25,7 +25,7 @@
           "offset": 54,
           "length": 6
         },
-        "with": null,
+        "name": null,
         "expr": {
           "primary": {
             "ident": {
@@ -55,7 +55,7 @@
           "offset": 111,
           "length": 6
         },
-        "with": null,
+        "name": null,
         "expr": {
           "primary": {
             "ident": {
@@ -101,10 +101,10 @@
           "offset": 182,
           "length": 6
         },
-        "with": {
+        "name": {
           "value": "bar",
           "span": {
-            "offset": 203,
+            "offset": 201,
             "length": 5
           }
         },

@@ -83,8 +83,8 @@ impl<'a, W: Write> DocumentPrinter<'a, W> {
             id = self.source(statement.id.span)
         )?;
 
-        if let Some(with) = &statement.with {
-            write!(self.writer, " with {with}", with = self.source(with.span))?;
+        if let Some(name) = &statement.name {
+            write!(self.writer, " as {name}", name = self.source(name.span))?;
         }
 
         write!(self.writer, ": ")?;
@@ -751,8 +751,8 @@ impl<'a, W: Write> DocumentPrinter<'a, W> {
         write!(self.writer, "export ")?;
         self.expr(&stmt.expr)?;
 
-        if let Some(with) = &stmt.with {
-            write!(self.writer, " with {with}", with = self.source(with.span))?;
+        if let Some(name) = &stmt.name {
+            write!(self.writer, " as {name}", name = self.source(name.span))?;
         }
 
         write!(self.writer, ";")

@@ -2,9 +2,9 @@ failed to resolve document
 
   × export name `INVALID!` is not valid
   ╰─▶ `INVALID!` is not in kebab case
-   ╭─[tests/resolution/fail/export-invalid-name.wac:4:15]
+   ╭─[tests/resolution/fail/export-invalid-name.wac:4:13]
  3 │ import f: func();
- 4 │ export f with "INVALID!";
-   ·               ─────┬────
-   ·                    ╰── invalid name `INVALID!`
+ 4 │ export f as "INVALID!";
+   ·             ─────┬────
+   ·                  ╰── invalid name `INVALID!`
    ╰────

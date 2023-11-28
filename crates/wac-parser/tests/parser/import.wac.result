@@ -28,7 +28,7 @@
             "length": 1
           }
         },
-        "with": null,
+        "name": null,
         "ty": {
           "func": {
             "params": [],
@@ -55,7 +55,7 @@
             "length": 1
           }
         },
-        "with": null,
+        "name": null,
         "ty": {
           "ident": {
             "string": "x",
@@ -85,7 +85,7 @@
             "length": 1
           }
         },
-        "with": null,
+        "name": null,
         "ty": {
           "package": {
             "span": {
@@ -118,10 +118,10 @@
             "length": 1
           }
         },
-        "with": {
+        "name": {
           "value": "hello-world",
           "span": {
-            "offset": 203,
+            "offset": 201,
             "length": 13
           }
         },
@@ -132,13 +132,13 @@
                 "id": {
                   "string": "name",
                   "span": {
-                    "offset": 223,
+                    "offset": 221,
                     "length": 4
                   }
                 },
                 "ty": {
                   "string": {
-                    "offset": 229,
+                    "offset": 227,
                     "length": 6
                   }
                 }
@@ -155,7 +155,7 @@
           {
             "comment": "Import by inline interface",
             "span": {
-              "offset": 239,
+              "offset": 237,
               "length": 30
             }
           }
@@ -163,11 +163,11 @@
         "id": {
           "string": "e",
           "span": {
-            "offset": 277,
+            "offset": 275,
             "length": 1
           }
         },
-        "with": null,
+        "name": null,
         "ty": {
           "interface": {
             "items": [
@@ -177,7 +177,7 @@
                   "id": {
                     "string": "x",
                     "span": {
-                      "offset": 296,
+                      "offset": 294,
                       "length": 1
                     }
                   },
@@ -200,7 +200,7 @@
           {
             "comment": "Import by package path with version",
             "span": {
-              "offset": 311,
+              "offset": 309,
               "length": 39
             }
           }
@@ -208,15 +208,15 @@
         "id": {
           "string": "f",
           "span": {
-            "offset": 358,
+            "offset": 356,
             "length": 1
           }
         },
-        "with": null,
+        "name": null,
         "ty": {
           "package": {
             "span": {
-              "offset": 361,
+              "offset": 359,
               "length": 17
             },
             "string": "foo:bar/baz@1.0.0",

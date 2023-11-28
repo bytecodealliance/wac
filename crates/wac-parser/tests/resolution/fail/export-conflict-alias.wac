@@ -1,6 +1,6 @@
 package test:comp;
 
-import f with "x": func();
+import f as "x": func();
 
 type x = u32;
 
