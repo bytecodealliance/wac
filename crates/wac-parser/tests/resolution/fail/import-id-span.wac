@@ -1,0 +1,5 @@
+package test:comp;
+
+import env-foo: wasi:cli/environment;
+
+import env-bar: wasi:cli/environment;

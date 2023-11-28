@@ -1,0 +1,14 @@
+failed to resolve document
+
+  × duplicate import `wasi:cli/environment`
+   ╭─[tests/resolution/fail/import-id-span.wac:5:17]
+ 2 │ 
+ 3 │ import env-foo: wasi:cli/environment;
+   ·                 ──────────┬─────────
+   ·                           ╰── previous import here
+ 4 │ 
+ 5 │ import env-bar: wasi:cli/environment;
+   ·                 ──────────┬─────────
+   ·                           ╰── duplicate import name `wasi:cli/environment`
+   ╰────
+  help: consider using an `as` clause to use a different name

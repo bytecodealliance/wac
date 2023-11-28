@@ -10,3 +10,4 @@ failed to resolve document
    ·        ┬
    ·        ╰── duplicate import name `x`
    ╰────
+  help: consider using an `as` clause to use a different name
