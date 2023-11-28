@@ -1,4 +1,4 @@
 package test:comp;
 
 import f: func();
-export f with "INVALID!";
+export f as "INVALID!";

@@ -1,7 +1,7 @@
 failed to resolve document
 
   × export `foo` conflicts with world definition
-   ╭─[tests/resolution/fail/export-conflict-world.wac:9:15]
+   ╭─[tests/resolution/fail/export-conflict-world.wac:9:13]
  4 │ 
  5 │ world foo {
    ·       ─┬─
@@ -9,7 +9,7 @@ failed to resolve document
  6 │ 
  7 │ }
  8 │ 
- 9 │ export f with "foo";
-   ·               ──┬──
-   ·                 ╰── conflicting export of `foo`
+ 9 │ export f as "foo";
+   ·             ──┬──
+   ·               ╰── conflicting export of `foo`
    ╰────

@@ -1,9 +1,9 @@
 package test:comp;
 
-import f with "x": func();
+import f as "x": func();
 
 record x {
     a: u32
 }
 
-export f with "x";
+export f as "x";

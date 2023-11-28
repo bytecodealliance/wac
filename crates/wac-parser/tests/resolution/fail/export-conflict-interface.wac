@@ -6,4 +6,4 @@ interface foo {
 
 }
 
-export f with "foo";
+export f as "foo";

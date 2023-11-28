@@ -13,8 +13,8 @@ pub struct ExportStatement<'a> {
     pub docs: Vec<DocComment<'a>>,
     /// The span of the export keyword.
     pub span: SourceSpan,
-    /// The optional `with` string.
-    pub with: Option<super::String<'a>>,
+    /// The optional name to use for the export.
+    pub name: Option<super::String<'a>>,
     /// The expression to export.
     pub expr: Expr<'a>,
 }
@@ -24,13 +24,13 @@ impl<'a> Parse<'a> for ExportStatement<'a> {
         let docs = Parse::parse(lexer)?;
         let span = parse_token(lexer, Token::ExportKeyword)?;
         let expr = Parse::parse(lexer)?;
-        let with = parse_optional(lexer, Token::WithKeyword, Parse::parse)?;
+        let name = parse_optional(lexer, Token::AsKeyword, Parse::parse)?;
         parse_token(lexer, Token::Semicolon)?;
         Ok(Self {
             docs,
             span,
             expr,
-            with,
+            name,
         })
     }
 }
@@ -53,8 +53,8 @@ mod test {
         )
         .unwrap();
         roundtrip(
-            "package foo:bar; export foo.%with with \"foo\";",
-            "package foo:bar;\n\nexport foo.%with with \"foo\";\n",
+            "package foo:bar; export foo.%with as \"foo\";",
+            "package foo:bar;\n\nexport foo.%with as \"foo\";\n",
         )
         .unwrap();
         roundtrip(
@@ -63,8 +63,8 @@ mod test {
         )
         .unwrap();
         roundtrip(
-            "package foo:bar; export y.x.z with \"baz\";",
-            "package foo:bar;\n\nexport y.x.z with \"baz\";\n",
+            "package foo:bar; export y.x.z as \"baz\";",
+            "package foo:bar;\n\nexport y.x.z as \"baz\";\n",
         )
         .unwrap();
         roundtrip(
@@ -73,8 +73,8 @@ mod test {
         )
         .unwrap();
         roundtrip(
-            "package foo:bar; export y[\"x\"][\"z\"]  with    \"x\";",
-            "package foo:bar;\n\nexport y[\"x\"][\"z\"] with \"x\";\n",
+            "package foo:bar; export y[\"x\"][\"z\"]  as    \"x\";",
+            "package foo:bar;\n\nexport y[\"x\"][\"z\"] as \"x\";\n",
         )
         .unwrap();
         roundtrip(
@@ -83,8 +83,8 @@ mod test {
         )
         .unwrap();
         roundtrip(
-            "package foo:bar; export foo[\"bar\"].baz[\"qux\"] with \"qux\";",
-            "package foo:bar;\n\nexport foo[\"bar\"].baz[\"qux\"] with \"qux\";\n",
+            "package foo:bar; export foo[\"bar\"].baz[\"qux\"] as \"qux\";",
+            "package foo:bar;\n\nexport foo[\"bar\"].baz[\"qux\"] as \"qux\";\n",
         )
         .unwrap();
 
@@ -101,8 +101,8 @@ mod test {
         .unwrap();
 
         roundtrip(
-            "package foo:bar; export new foo:bar {}  /* foo */ with     \"foo\";",
-            "package foo:bar;\n\nexport new foo:bar {} with \"foo\";\n",
+            "package foo:bar; export new foo:bar {}  /* foo */ as     \"foo\";",
+            "package foo:bar;\n\nexport new foo:bar {} as \"foo\";\n",
         )
         .unwrap();
 

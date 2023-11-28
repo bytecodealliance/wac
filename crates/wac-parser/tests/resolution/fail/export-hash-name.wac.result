@@ -2,9 +2,9 @@ failed to resolve document
 
   × export name `integrity=<sha256-e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855>` is not valid
   ╰─▶ export name cannot be a hash, url, or dependency
-   ╭─[tests/resolution/fail/export-hash-name.wac:4:15]
+   ╭─[tests/resolution/fail/export-hash-name.wac:4:13]
  3 │ import f: func();
- 4 │ export f with "integrity=<sha256-e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855>";
-   ·               ──────────────────────────────────────────┬──────────────────────────────────────────
-   ·                                                         ╰── invalid name `integrity=<sha256-e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855>`
+ 4 │ export f as "integrity=<sha256-e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855>";
+   ·             ──────────────────────────────────────────┬──────────────────────────────────────────
+   ·                                                       ╰── invalid name `integrity=<sha256-e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855>`
    ╰────

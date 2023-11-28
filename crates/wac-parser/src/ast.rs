@@ -489,7 +489,7 @@ world w {
 /// Doc comment #9!
 let x = new foo:bar { };
 /// Doc comment #10!
-export x with "foo";
+export x as "foo";
 "#,
             r#"/// Doc comment for the package!
 package test:foo:bar@1.0.0;
@@ -524,7 +524,7 @@ world w {
 let x = new foo:bar {};
 
 /// Doc comment #10!
-export x with "foo";
+export x as "foo";
 "#,
         )
         .unwrap()

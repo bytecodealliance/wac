@@ -7,4 +7,4 @@ export e;
 export e["foo"];
 
 /// Export an alias of an item with a different name
-export e["foo"] with "bar";
+export e["foo"] as "bar";
