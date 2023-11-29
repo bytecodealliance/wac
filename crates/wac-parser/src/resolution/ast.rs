@@ -1950,19 +1950,31 @@ impl<'a> AstResolver<'a> {
         uses: IndexMap<InterfaceId, IndexSet<usize>>,
     ) -> IndexMap<InterfaceId, IndexSet<usize>> {
         // Now update all the interface ids in the usings
-        uses.into_iter()
-            .map(|(dep, exports)| {
-                let import =
-                    &state.imports[self.definitions.interfaces[dep].id.as_deref().unwrap()];
-                match &state.current.items[import.item] {
-                    super::Item::Import(super::Import {
-                        kind: ItemKind::Instance(id),
-                        ..
-                    }) => (*id, exports),
-                    _ => unreachable!(),
+        let mut remapped: IndexMap<InterfaceId, IndexSet<usize>> =
+            IndexMap::with_capacity(uses.len());
+        for (old_id, exports) in uses {
+            let old = &self.definitions.interfaces[old_id];
+            let import = &state.imports[old.id.as_deref().unwrap()];
+            match &state.current.items[import.item] {
+                super::Item::Import(super::Import {
+                    kind: ItemKind::Instance(new_id),
+                    ..
+                }) => {
+                    let new = &self.definitions.interfaces[*new_id];
+                    remapped
+                        .entry(*new_id)
+                        .or_default()
+                        .extend(exports.into_iter().map(|old_index| {
+                            new.exports
+                                .get_index_of(old.exports.get_index(old_index).unwrap().0)
+                                .unwrap()
+                        }));
                 }
-            })
-            .collect()
+                _ => unreachable!(),
+            }
+        }
+
+        remapped
     }
 
     fn named_instantiation_arg(
