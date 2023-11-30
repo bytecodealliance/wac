@@ -1,0 +1,52 @@
+(component
+  (type (;0;)
+    (instance
+      (type (;0;) (record (field "x" u32)))
+      (export (;1;) "x" (type (eq 0)))
+      (type (;2;) (func (param "x" 1)))
+      (export (;0;) "y" (func (type 2)))
+      (type (;3;) (func (param "x" 1)))
+      (export (;1;) "z" (func (type 3)))
+    )
+  )
+  (import "foo:bar/baz" (instance (;0;) (type 0)))
+  (type (;1;)
+    (component
+      (type (;0;)
+        (instance
+          (type (;0;) (record (field "x" u32)))
+          (export (;1;) "x" (type (eq 0)))
+          (type (;2;) (func (param "x" 1)))
+          (export (;0;) "y" (func (type 2)))
+        )
+      )
+      (import "foo:bar/baz" (instance (;0;) (type 0)))
+    )
+  )
+  (import "unlocked-dep=<foo:bar>" (component (;0;) (type 1)))
+  (instance (;1;) (instantiate 0
+      (with "foo:bar/baz" (instance 0))
+    )
+  )
+  (type (;2;)
+    (component
+      (type (;0;)
+        (instance
+          (type (;0;) (record (field "x" u32)))
+          (export (;1;) "x" (type (eq 0)))
+          (type (;2;) (func (param "x" 1)))
+          (export (;0;) "z" (func (type 2)))
+        )
+      )
+      (import "foo:bar/baz" (instance (;0;) (type 0)))
+    )
+  )
+  (import "unlocked-dep=<foo:baz>" (component (;1;) (type 2)))
+  (instance (;2;) (instantiate 1
+      (with "foo:bar/baz" (instance 0))
+    )
+  )
+  (@producers
+    (processed-by "wac-parser" "0.1.0")
+  )
+)

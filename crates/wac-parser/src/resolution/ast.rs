@@ -445,6 +445,7 @@ impl<'a> AstResolver<'a> {
 
         let mut ty = Interface {
             id: None,
+            remapped_types: Default::default(),
             uses: Default::default(),
             exports: Default::default(),
         };
@@ -483,6 +484,7 @@ impl<'a> AstResolver<'a> {
 
         let mut ty = Interface {
             id: Some(self.id(decl.id.string)),
+            remapped_types: Default::default(),
             uses: Default::default(),
             exports: Default::default(),
         };
@@ -1898,7 +1900,13 @@ impl<'a> AstResolver<'a> {
                             .with_context(|| format!("mismatched type for export `{name}`")),
                     ) {
                         (Ok(_), Ok(_)) => {
-                            // The two are compatible, so do nothing
+                            // The two are compatible, check for remapped type
+                            match (*target_kind, *source_kind) {
+                                (ItemKind::Type(new), ItemKind::Type(old)) if new != old => {
+                                    target.remapped_types.entry(new).or_default().insert(old);
+                                }
+                                _ => {}
+                            }
                         }
                         (Err(e), _) | (_, Err(e)) => {
                             // Neither is a subtype of the other, so error

@@ -620,7 +620,17 @@ impl<'a> TypeEncoder<'a> {
         // Otherwise, export all exports
         for (name, kind) in &interface.exports {
             match kind {
-                ItemKind::Type(_) | ItemKind::Resource(_) => {
+                ItemKind::Type(ty) => {
+                    let index = self.export(state, name, *kind)?;
+
+                    // Map the encoded type index to any remapped types.
+                    if let Some(prev) = interface.remapped_types.get(ty) {
+                        for ty in prev {
+                            state.current.type_indexes.insert(*ty, index);
+                        }
+                    }
+                }
+                ItemKind::Resource(_) => {
                     self.export(state, name, *kind)?;
                 }
                 _ => {
