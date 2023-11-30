@@ -1,0 +1,9 @@
+package test:comp;
+
+let a = new foo:bar {
+    ...
+};
+
+let b = new foo:baz {
+    ...
+};

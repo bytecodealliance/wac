@@ -364,6 +364,7 @@ impl<'a> TypeConverter<'a> {
         let instance_ty = &types[id];
         let id = self.definitions.interfaces.alloc(Interface {
             id: name.and_then(|n| n.contains(':').then(|| n.to_owned())),
+            remapped_types: Default::default(),
             uses: Default::default(),
             exports: IndexMap::with_capacity(instance_ty.exports.len()),
         });

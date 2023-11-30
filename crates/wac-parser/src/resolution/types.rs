@@ -387,6 +387,15 @@ pub struct Interface {
     ///
     /// This may be `None` for inline interfaces.
     pub id: Option<String>,
+    /// Represents a remapping of types that may occur when an interface is merged.
+    ///
+    /// The map is from the type present in this interface to a set of types
+    /// originating from the merged interfaces.
+    ///
+    /// Encoding uses this map to populate the encoded type index map for the
+    /// original types.
+    #[serde(skip_serializing_if = "IndexMap::is_empty")]
+    pub remapped_types: IndexMap<Type, IndexSet<Type>>,
     /// A map from used interface to set of used type export indexes.
     #[serde(serialize_with = "serialize_id_key_map")]
     pub uses: IndexMap<InterfaceId, IndexSet<usize>>,
