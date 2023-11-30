@@ -1768,28 +1768,6 @@ impl<'a> AstResolver<'a> {
     ) -> ResolutionResult<ItemId> {
         assert!(state.scopes.is_empty());
 
-        // If the item is an instance, we need to recurse on its dependencies
-        if let ItemKind::Instance(id) = kind {
-            let interface = &self.definitions.interfaces[id];
-            let deps = interface
-                .uses
-                .keys()
-                .map(|id| {
-                    (
-                        *id,
-                        self.definitions.interfaces[*id]
-                            .id
-                            .as_ref()
-                            .unwrap()
-                            .clone(),
-                    )
-                })
-                .collect::<Vec<_>>();
-            for (dep, name) in deps {
-                self.implicit_import(state, name, ItemKind::Instance(dep), package, span)?;
-            }
-        }
-
         if let Some(import) = state.imports.get(&name) {
             // Check if the implicit import would conflict with an explicit import
             if import.package.is_none() {

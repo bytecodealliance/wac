@@ -167,6 +167,13 @@ impl<'a> Encoder<'a> {
             ItemKind::Type(ty) => ComponentTypeRef::Type(TypeBounds::Eq(encoder.ty(state, ty)?)),
             ItemKind::Func(id) => ComponentTypeRef::Func(encoder.ty(state, Type::Func(id))?),
             ItemKind::Instance(id) => {
+                // Check to see if the instance has already been imported
+                // This may occur when an interface uses another
+                if let Some(index) = state.current.instances.get(&id) {
+                    log::debug!("skipping import of interface {id} as it was already imported with instance index {index}", id = id.index());
+                    return Ok(*index);
+                }
+
                 ComponentTypeRef::Instance(encoder.ty(state, Type::Interface(id))?)
             }
             ItemKind::Component(id) => {
@@ -710,7 +717,7 @@ impl<'a> TypeEncoder<'a> {
 
         log::debug!("encoding dependency on interface {id}", id = id.index());
 
-        let index = self.instance(state, id, true)?;
+        let index = self.instance(state, id, !state.scopes.is_empty())?;
         let import_index = state.current.encodable.instance_count();
 
         state
