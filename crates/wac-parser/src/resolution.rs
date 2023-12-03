@@ -576,11 +576,11 @@ pub enum Error {
         #[label(primary, "unknown export `{name}`")]
         span: SourceSpan,
     },
-    /// An export requires a with clause.
-    #[error("export statement requires a `with` clause as the export name cannot be inferred")]
-    ExportRequiresWith {
+    /// An export requires an `as`` clause.
+    #[error("export statement requires an `as` clause as the export name cannot be inferred")]
+    ExportRequiresAs {
         /// The span where the error occurred.
-        #[label(primary, "a `with` clause is required")]
+        #[label(primary, "an `as` clause is required")]
         span: SourceSpan,
     },
     /// An export conflicts with a definition.

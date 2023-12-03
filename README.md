@@ -1,119 +1,102 @@
-# WAC grammar
+<div align="center">
+  <h1><code>WebAssembly Compositions (WAC)</code></h1>
 
-The current WAC grammar:
+<strong>A <a href="https://bytecodealliance.org/">Bytecode Alliance</a> project</strong>
 
-```ebnf
-document  ::= package-decl statement*
-statement ::= import-statement
-            | type-statement
-            | let-statement
-            | export-statement
+  <p>
+    <strong>A tool for composing <a href="https://github.com/WebAssembly/component-model/">WebAssembly components</a> together.</strong>
+  </p>
 
-package-decl ::= `package` package-name `;`
-package-name ::= id (':' id)+ ('@' version)?
-version      ::= <SEMVER>
+  <p>
+    <a href="https://github.com/bytecodealliance/wasm-tools/actions?query=workflow%3ACI"><img src="https://github.com/bytecodealliance/wasm-tools/workflows/CI/badge.svg" alt="build status" /></a>
+    <a href="https://crates.io/crates/wasm-tools"><img src="https://img.shields.io/crates/v/wac-cli.svg?style=flat-square" alt="Crates.io version" /></a>
+    <a href="https://crates.io/crates/wac-cli"><img src="https://img.shields.io/crates/d/wac-cli.svg?style=flat-square" alt="Download" /></a>
+    <a href="https://docs.rs/wac-cli/"><img src="https://img.shields.io/badge/docs-latest-blue.svg?style=flat-square" alt="docs.rs docs" /></a>
+  </p>
+</div>
 
-import-statement ::= 'import' id ('as' string)? ':' import-type ';'
-import-type      ::= package-path | func-type | inline-interface | id
-package-path     ::= id (':' id)+ ('/' id)+ ('@' version)?
+## Overview
 
-type-statement      ::= interface-decl | world-decl | type-decl
-interface-decl      ::= 'interface' id '{' interface-item* '}'
-interface-item      ::= use-type | item-type-decl | interface-export
-use-type            ::= 'use' use-path '.' '{' use-items '}' ';'
-use-path            ::= package-path | id
-use-items           ::= use-item (',' use-item)* ','?
-use-item            ::= id ('as' id)? 
-interface-export    ::= id ':' func-type-ref ';'
-world-decl          ::= 'world' id '{' world-item* '}'
-world-item          ::= use-type
-                      | item-type-decl
-                      | world-import
-                      | world-export
-                      | world-include
-world-import        ::= 'import' world-item-path ';'
-world-export        ::= 'export' world-item-path ';'
-world-item-path     ::= named-world-item | package-path | id
-named-world-item    ::= id ':' extern-type
-extern-type         ::= func-type | inline-interface | id
-inline-interface    ::= 'interface' '{' interface-item* '}'
-world-include       ::= 'include' world-ref ('with' '{' world-include-items '}')? ';'
-world-include-items ::= world-include-item (',' world-include-item)* ','?
-world-include-item  ::= id 'as' id
-world-ref           ::= package-path | id
-type-decl           ::= variant-decl | record-decl | flags-decl | enum-decl | type-alias
-item-type-decl      ::= resource-decl | type-decl
-resource-decl       ::= 'resource' id '{' resource-item* '}'
-resource-item       ::= constructor | method
-constructor         ::= 'constructor' param-list
-method              ::= id ':' 'static'? func-type
-variant-decl        ::= 'variant' id '{' variant-cases '}'
-variant-cases       ::= variant-case (',' variant-case)* ','?
-variant-case        ::= id ('(' type ')')?
-record-decl         ::= 'record' id '{' fields '}'
-fields              ::= named-type (',' named-type)* ','?
-flags-decl          ::= 'flags' id '{' ids '}'
-ids                 ::= id (',' id)* ','?
-enum-decl           ::= 'enum' id '{' ids '}'
-type-alias          ::= 'type' id '=' (func-type | type) ';'
-func-type-ref       ::= func-type | id
-func-type           ::= '(' params? ')' ('->' results)?
-params              ::= named-type (',' named-type)* ','?
-results             ::= type
-                      | '(' named-type (',' named-type)* ','? ')'
-named-type          ::= id ':' type
-type                ::= u8
-                      | s8
-                      | u16
-                      | s16
-                      | u32
-                      | s32
-                      | u64
-                      | s64
-                      | float32
-                      | float64
-                      | char
-                      | bool
-                      | string
-                      | tuple
-                      | list
-                      | option
-                      | result
-                      | borrow
-                      | id
-tuple               ::= 'tuple' '<' type (',' type)* ','? '>'
-list                ::= 'list' '<' type '>'
-option              ::= 'option' '<' type '>'
-result              ::= 'result'
-                      | 'result' '<' type '>'
-                      | 'result' '<' '_' ',' type '>'
-                      | 'result' '<' type ',' type '>'
-borrow              ::= 'borrow' '<' type '>'
+`wac` is a tool for composing [WebAssembly Components](https://github.com/WebAssembly/component-model)
+together.
 
-let-statement           ::= 'let' id '=' expr ';'
-expr                    ::= primary-expr postfix-expr*
-primary-expr            ::= new-expr | nested-expr | id
-new-expr                ::= 'new' package-name '{' instantiation-args '}'
-instantiation-args      ::= instantiation-arg (',' instantiation-arg)* (',' '...'?)?
-instantiation-arg       ::= named-instantiation-arg | id
-named-instantiation-arg ::= (id | string) ':' expr
-nested-expr             ::= '(' expr ')'
-postfix-expr            ::= access-expr | named-access-expr
-access-expr             ::= '.' id
-named-access-expr       ::= '[' string ']'
+The tool uses the WAC (pronounced "whack") language to define how components
+composed together.
 
-export-statement        ::= 'export' expr ('as' string)? ';'
+## Language
 
-id     ::= '%'?[a-z][a-z0-9]*('-'[a-z][a-z0-9]*)*
-string ::= '"' character-that-is-not-a-double-quote* '"'
+See the [language documentation](LANGUAGE.md) for more information on the
+syntax of WAC.
+
+## Installation
+
+```
+cargo install --git https://github.com/peterhuene/wac --locked
 ```
 
-Whitespace (may appear anywhere between tokens):
+To enable support Warg component registries, specify the `registry` feature:
 
-```ebnf
-whitespace ::= ' ' | '\n' | '\r' | '\t' | comment
-comment    ::= '//' character-that-is-not-a-newline*
-             | '/*' any-unicode-character* '*/'
+```
+cargo install --git https://github.com/peterhuene/wac --locked --features registry
 ```
 
-Note: block comments are allowed to be nested.
+## Usage
+
+The `wac` CLI tool has three commands:
+
+* `wac parse` - Parses a composition into a JSON representation of the AST.
+* `wac resolve` - Resolves a composition into a JSON representation.
+* `wac encode` - Encodes a WAC source file as a WebAssembly component.
+
+### Encoding Compositions
+
+To encode a composition, use the `wac encode` command:
+
+```
+wac encode -t input.wac
+```
+
+This will encode `input.wac` as a WebAssembly component and write the text
+representation of the component to stdout.
+
+```
+wac encode -o output.wasm input.wac
+```
+
+This will encode `input.wac` as a WebAssembly component named `output.wasm`.
+
+By default, `wac` will import dependencies rather than defining  (i.e.
+embedding) them in the output component; to define dependencies in the output
+component, use the `--define` flag:
+
+```
+wac encode --define -o output.wasm input.wac
+```
+
+#### Dependencies
+
+Dependencies (i.e. packages referenced in a WAC source file) may be located
+within a `deps` subdirectory, with an expected structure of:
+
+```
+deps/
+├─ <namespace>/
+│  ├─ <package>.wasm
+``````
+If the `wit` build-time feature is enabled, the dependency may be a directory
+containing a WIT package:
+
+```
+deps/
+├─ <namespace>/
+│  ├─ <package>/
+│  │  ├─ a.wit
+│  │  ├─ ...
+```
+
+The `--deps-dir` CLI option may be used to specify a different directory to
+search for dependencies.
+
+If the `registry` build-time feature is enabled, then dependencies may be
+automatically resolved from a Warg registry and do not need to exist in the
+`deps` subdirectory.

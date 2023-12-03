@@ -364,7 +364,7 @@ impl<'a> AstResolver<'a> {
         } else {
             (
                 self.infer_export_name(state, item)
-                    .ok_or(Error::ExportRequiresWith { span: stmt.span })?,
+                    .ok_or(Error::ExportRequiresAs { span: stmt.span })?,
                 stmt.span,
             )
         };
