@@ -19,6 +19,7 @@ keywords = ["webassembly", "wasm", "components", "component-model"]
 repository = "https://github.com/bytecodealliance/wac"
 
 [dependencies]
+wac-resolver = { workspace = true, default-features = false }
 wac-parser = { workspace = true, default-features = false}
 anyhow = { workspace = true }
 clap = { workspace = true }
@@ -32,15 +33,21 @@ wat = { workspace = true }
 wasmparser = { workspace = true }
 wasmprinter = { workspace = true }
 thiserror = { workspace = true }
+indexmap = { workspace = true }
 # TODO: use the next release which has support for primary labels
 miette = { git = "https://github.com/zkat/miette", features = ["fancy"] }
+semver = { workspace = true }
+indicatif = { workspace = true, optional = true}
 
 [features]
 default = []
-wat = ["wac-parser/wat"]
+wat = ["wac-resolver/wat"]
+wit = ["wac-resolver/wit"]
+registry = ["wac-resolver/registry", "indicatif"]
 
 [workspace.dependencies]
 wac-parser = { path = "crates/wac-parser", default-features = false }
+wac-resolver = { path = "crates/wac-resolver", default-features = false }
 wit-parser = "0.13.0"
 wasmparser = "0.118.1"
 wit-component = "0.19.0"
@@ -61,3 +68,11 @@ serde_json = "1.0.108"
 wat = "1.0.82"
 logos = "0.13.0"
 thiserror = "1.0.50"
+# TODO: update these to 0.3.0 when it's released
+warg-client = { git = "https://github.com/bytecodealliance/registry" }
+warg-protocol = { git = "https://github.com/bytecodealliance/registry" }
+warg-crypto = { git = "https://github.com/bytecodealliance/registry" }
+warg-server = { git = "https://github.com/bytecodealliance/registry" }
+futures = "0.3.29"
+indicatif = "0.17.7"
+pretty_assertions = "1.4.0"

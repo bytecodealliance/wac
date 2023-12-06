@@ -2,10 +2,22 @@
 
 #![deny(missing_docs)]
 
+use anyhow::Result;
+use indexmap::IndexMap;
 use miette::{GraphicalReportHandler, GraphicalTheme, NamedSource, Report};
-use std::{io::IsTerminal, path::Path};
+use std::{
+    collections::HashMap,
+    io::IsTerminal,
+    path::{Path, PathBuf},
+    sync::Arc,
+};
+use wac_parser::{ast::Document, PackageKey};
+use wac_resolver::{packages, Error, FileSystemPackageResolver};
 
 pub mod commands;
+
+#[cfg(feature = "registry")]
+mod progress;
 
 fn fmt_err(e: impl Into<Report>, path: &Path, source: &str) -> anyhow::Error {
     let mut s = String::new();
@@ -24,4 +36,67 @@ fn fmt_err(e: impl Into<Report>, path: &Path, source: &str) -> anyhow::Error {
         )
         .expect("failed to render diagnostic");
     anyhow::Error::msg(s)
+}
+
+/// Represents a package resolver used to resolve packages
+/// referenced from a document.
+///
+/// The resolver first checks the file system for a matching package.
+///
+/// If it cannot find a matching package, it will check the registry.
+pub struct PackageResolver {
+    fs: FileSystemPackageResolver,
+    #[cfg(feature = "registry")]
+    registry: wac_resolver::RegistryPackageResolver,
+}
+
+impl PackageResolver {
+    /// Creates a new package resolver.
+    pub fn new(
+        dir: impl Into<PathBuf>,
+        overrides: HashMap<String, PathBuf>,
+        #[cfg(feature = "registry")] registry: Option<&str>,
+    ) -> Result<Self> {
+        Ok(Self {
+            fs: FileSystemPackageResolver::new(dir, overrides, false),
+            #[cfg(feature = "registry")]
+            registry: wac_resolver::RegistryPackageResolver::new(
+                registry,
+                Some(Box::new(progress::ProgressBar::new())),
+            )?,
+        })
+    }
+
+    /// Resolve all packages referenced in the given document.
+    pub async fn resolve<'a>(
+        &self,
+        document: &'a Document<'a>,
+    ) -> Result<IndexMap<PackageKey<'a>, Arc<Vec<u8>>>, Error> {
+        let mut keys = packages(document)?;
+
+        // Next, we resolve as many of the packages from the file system as possible
+        // and filter out the ones that were resolved.
+        #[allow(unused_mut)]
+        let mut packages = self.fs.resolve(&keys)?;
+        keys.retain(|key, _| !packages.contains_key(key));
+
+        // Next resolve the remaining packages from the registry
+        // The registry resolver will error on missing package
+        #[cfg(feature = "registry")]
+        if !keys.is_empty() {
+            let reg_packages = self.registry.resolve(&keys).await?;
+            keys.retain(|key, _| !reg_packages.contains_key(key));
+            packages.extend(reg_packages);
+        }
+
+        // At this point keys should be empty, otherwise we have an unknown package
+        if let Some((key, span)) = keys.first() {
+            return Err(Error::UnknownPackage {
+                name: key.name.to_string(),
+                span: *span,
+            });
+        }
+
+        Ok(packages)
+    }
 }

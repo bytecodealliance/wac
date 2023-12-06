@@ -1,0 +1,41 @@
+[package]
+name = "wac-resolver"
+description = "A library for package resolvers for WAC document resolution."
+version = { workspace = true }
+edition = { workspace = true }
+authors = { workspace = true }
+license = { workspace = true }
+categories = { workspace = true }
+keywords = { workspace = true }
+repository = { workspace = true }
+
+[dependencies]
+wac-parser = { workspace = true }
+semver = { workspace = true }
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+log = { workspace = true }
+wit-component = { workspace = true }
+indexmap = { workspace = true }
+wat = { workspace = true, optional = true }
+wit-parser = { workspace = true, optional = true }
+# TODO: use the next release which has support for primary labels
+miette = { git = "https://github.com/zkat/miette", features = ["fancy"] }
+warg-client = { workspace = true, optional = true }
+warg-protocol = { workspace = true, optional = true }
+warg-crypto = { workspace = true, optional = true }
+tokio = { workspace = true, optional = true }
+futures = { workspace = true, optional = true }
+
+[dev-dependencies]
+wasmprinter = { workspace = true }
+warg-server = { workspace = true }
+pretty_assertions = { workspace = true }
+tokio-util = "0.7.10"
+tempdir = "0.3.7"
+
+[features]
+default = ["registry"]
+wat = ["dep:wat"]
+wit = ["wit-parser"]
+registry = ["warg-client", "warg-protocol", "warg-crypto", "tokio", "futures"]

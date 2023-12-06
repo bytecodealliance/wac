@@ -1,4 +1,4 @@
-use crate::fmt_err;
+use crate::{fmt_err, PackageResolver};
 use anyhow::{bail, Context, Result};
 use clap::Args;
 use std::{
@@ -6,7 +6,7 @@ use std::{
     io::{IsTerminal, Write},
     path::PathBuf,
 };
-use wac_parser::{ast::Document, Composition, EncodingOptions, FileSystemPackageResolver};
+use wac_parser::{ast::Document, Composition, EncodingOptions};
 use wasmparser::{Validator, WasmFeatures};
 use wasmprinter::print_bytes;
 
@@ -57,6 +57,11 @@ pub struct EncodeCommand {
     #[clap(long, short = 'o')]
     pub output: Option<PathBuf>,
 
+    /// The URL of the registry to use.
+    #[cfg(feature = "registry")]
+    #[clap(long, value_name = "URL")]
+    pub registry: Option<String>,
+
     /// The path to the composition file.
     #[clap(value_name = "PATH")]
     pub path: PathBuf,
@@ -72,14 +77,20 @@ impl EncodeCommand {
 
         let document = Document::parse(&contents).map_err(|e| fmt_err(e, &self.path, &contents))?;
 
-        let resolved = Composition::from_ast(
-            &document,
-            Some(Box::new(FileSystemPackageResolver::new(
-                self.deps_dir,
-                self.deps.into_iter().collect(),
-            ))),
-        )
-        .map_err(|e| fmt_err(e, &self.path, &contents))?;
+        let resolver = PackageResolver::new(
+            self.deps_dir,
+            self.deps.into_iter().collect(),
+            #[cfg(feature = "registry")]
+            self.registry.as_deref(),
+        )?;
+
+        let packages = resolver
+            .resolve(&document)
+            .await
+            .map_err(|e| fmt_err(e, &self.path, &contents))?;
+
+        let resolved = Composition::from_ast(&document, packages)
+            .map_err(|e| fmt_err(e, &self.path, &contents))?;
 
         if !self.wat && self.output.is_none() && std::io::stdout().is_terminal() {
             bail!("cannot print binary wasm output to a terminal; pass the `-t` flag to print the text format instead");

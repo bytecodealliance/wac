@@ -11,12 +11,10 @@ use std::{
     sync::atomic::{AtomicUsize, Ordering},
 };
 use support::fmt_err;
-use wac_parser::{ast::Document, Composition, EncodingOptions, FileSystemPackageResolver};
+use wac_parser::{ast::Document, Composition, EncodingOptions};
+use wac_resolver::{packages, FileSystemPackageResolver};
 
 mod support;
-
-#[cfg(not(feature = "wat"))]
-compile_error!("the `wat` feature must be enabled for this test to run");
 
 fn find_tests() -> Vec<PathBuf> {
     let mut tests = Vec::new();
@@ -79,21 +77,23 @@ fn run_test(test: &Path, ntests: &AtomicUsize) -> Result<()> {
 
     let document = Document::parse(&source).map_err(|e| anyhow!(fmt_err(e, test, &source)))?;
 
-    let bytes = Composition::from_ast(
-        &document,
-        Some(Box::new(FileSystemPackageResolver::new(
-            test.parent().unwrap().join(test.file_stem().unwrap()),
-            Default::default(),
-        ))),
-    )
-    .map_err(|e| anyhow!(fmt_err(e, test, &source)))?
-    .encode(EncodingOptions::default())
-    .with_context(|| {
-        format!(
-            "failed to encode the composition `{path}`",
-            path = test.display()
-        )
-    })?;
+    let resolver = FileSystemPackageResolver::new(
+        test.parent().unwrap().join(test.file_stem().unwrap()),
+        Default::default(),
+        true,
+    );
+
+    let packages = resolver.resolve(&packages(&document)?)?;
+
+    let bytes = Composition::from_ast(&document, packages)
+        .map_err(|e| anyhow!(fmt_err(e, test, &source)))?
+        .encode(EncodingOptions::default())
+        .with_context(|| {
+            format!(
+                "failed to encode the composition `{path}`",
+                path = test.display()
+            )
+        })?;
 
     wasmparser::Validator::new_with_features(wasmparser::WasmFeatures {
         component_model: true,

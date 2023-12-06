@@ -22,7 +22,7 @@ fn package_import_name(package: &Package) -> String {
     let mut name = String::new();
     write!(&mut name, "unlocked-dep=<{name}", name = package.name).unwrap();
     if let Some(version) = &package.version {
-        write!(&mut name, "@>={version}", version = version).unwrap();
+        write!(&mut name, "@{{>={version}}}", version = version).unwrap();
     }
     write!(&mut name, ">").unwrap();
     name

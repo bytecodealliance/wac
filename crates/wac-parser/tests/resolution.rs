@@ -11,12 +11,10 @@ use std::{
     sync::atomic::{AtomicUsize, Ordering},
 };
 use support::fmt_err;
-use wac_parser::{ast::Document, Composition, FileSystemPackageResolver};
+use wac_parser::{ast::Document, Composition};
+use wac_resolver::{packages, FileSystemPackageResolver};
 
 mod support;
-
-#[cfg(not(feature = "wat"))]
-compile_error!("the `wat` feature must be enabled for this test to run");
 
 fn find_tests() -> Vec<PathBuf> {
     let mut tests = Vec::new();
@@ -86,13 +84,21 @@ fn run_test(test: &Path, ntests: &AtomicUsize) -> Result<()> {
 
     let document = Document::parse(&source).map_err(|e| anyhow!(fmt_err(e, test, &source)))?;
 
-    let result = match Composition::from_ast(
-        &document,
-        Some(Box::new(FileSystemPackageResolver::new(
+    let resolve = || {
+        let resolver = FileSystemPackageResolver::new(
             test.parent().unwrap().join(test.file_stem().unwrap()),
             Default::default(),
-        ))),
-    ) {
+            true,
+        );
+
+        let packages = resolver
+            .resolve(&packages(&document).map_err(|e| fmt_err(e, test, &source))?)
+            .map_err(|e| fmt_err(e, test, &source))?;
+
+        Composition::from_ast(&document, packages).map_err(|e| fmt_err(e, test, &source))
+    };
+
+    let result = match resolve() {
         Ok(doc) => {
             if should_fail {
                 bail!("the resolution was successful but it was expected to fail");
@@ -102,11 +108,11 @@ fn run_test(test: &Path, ntests: &AtomicUsize) -> Result<()> {
         }
         Err(e) => {
             if !should_fail {
-                return Err(anyhow!(fmt_err(e, test, &source))
-                    .context("the resolution failed but it was expected to succeed"));
+                return Err(anyhow!(e))
+                    .context("the resolution failed but it was expected to succeed");
             }
 
-            fmt_err(e, test, &source)
+            e
         }
     };
 

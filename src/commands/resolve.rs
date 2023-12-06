@@ -1,8 +1,8 @@
-use crate::fmt_err;
+use crate::{fmt_err, PackageResolver};
 use anyhow::{Context, Result};
 use clap::Args;
 use std::{fs, path::PathBuf};
-use wac_parser::{ast::Document, Composition, FileSystemPackageResolver};
+use wac_parser::{ast::Document, Composition};
 
 fn parse<T, U>(s: &str) -> Result<(T, U)>
 where
@@ -31,6 +31,11 @@ pub struct ResolveCommand {
     #[clap(long = "dep", short, value_name = "PKG=PATH", value_parser = parse::<String, PathBuf>)]
     pub deps: Vec<(String, PathBuf)>,
 
+    /// The URL of the registry to use.
+    #[cfg(feature = "registry")]
+    #[clap(long, value_name = "URL")]
+    pub registry: Option<String>,
+
     /// The path to the composition file.
     #[clap(value_name = "PATH")]
     pub path: PathBuf,
@@ -46,14 +51,20 @@ impl ResolveCommand {
 
         let document = Document::parse(&contents).map_err(|e| fmt_err(e, &self.path, &contents))?;
 
-        let resolved = Composition::from_ast(
-            &document,
-            Some(Box::new(FileSystemPackageResolver::new(
-                self.deps_dir,
-                self.deps.into_iter().collect(),
-            ))),
-        )
-        .map_err(|e| fmt_err(e, &self.path, &contents))?;
+        let resolver = PackageResolver::new(
+            self.deps_dir,
+            self.deps.into_iter().collect(),
+            #[cfg(feature = "registry")]
+            self.registry.as_deref(),
+        )?;
+
+        let packages = resolver
+            .resolve(&document)
+            .await
+            .map_err(|e| fmt_err(e, &self.path, &contents))?;
+
+        let resolved = Composition::from_ast(&document, packages)
+            .map_err(|e| fmt_err(e, &self.path, &contents))?;
 
         serde_json::to_writer_pretty(std::io::stdout(), &resolved)?;
         println!();

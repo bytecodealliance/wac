@@ -1,8 +1,8 @@
 use super::{
-    package::Package, Composition, DefinedType, Definitions, Enum, Error, ExternKind, Flags, Func,
-    FuncId, FuncKind, FuncResult, Interface, InterfaceId, ItemKind, PackageResolver, PrimitiveType,
-    Record, ResolutionResult, Resource, ResourceId, SubtypeChecker, Type, ValueType, Variant,
-    World, WorldId,
+    package::{Package, PackageKey},
+    Composition, DefinedType, Definitions, Enum, Error, ExternKind, Flags, Func, FuncId, FuncKind,
+    FuncResult, Interface, InterfaceId, ItemKind, PrimitiveType, Record, ResolutionResult,
+    Resource, ResourceId, SubtypeChecker, Type, ValueType, Variant, World, WorldId,
 };
 use crate::{ast, method_extern_name, Item, ItemId, PackageId};
 use anyhow::Context;
@@ -10,7 +10,10 @@ use id_arena::Arena;
 use indexmap::{IndexMap, IndexSet};
 use miette::SourceSpan;
 use semver::Version;
-use std::collections::{hash_map, HashMap, HashSet};
+use std::{
+    collections::{hash_map, HashMap, HashSet},
+    sync::Arc,
+};
 use wasmparser::names::{ComponentName, ComponentNameKind};
 
 #[derive(Default)]
@@ -43,12 +46,11 @@ struct Export {
 }
 
 struct State<'a> {
-    resolver: Option<Box<dyn PackageResolver>>,
     scopes: Vec<Scope>,
     current: Scope,
     packages: Arena<Package>,
     /// The map of package name to id.
-    package_map: HashMap<String, PackageId>,
+    package_map: HashMap<PackageKey<'a>, PackageId>,
     /// The map of instance items and export names to the aliased item id.
     aliases: HashMap<(ItemId, String), ItemId>,
     /// The map of imported items.
@@ -59,9 +61,8 @@ struct State<'a> {
 }
 
 impl<'a> State<'a> {
-    fn new(resolver: Option<Box<dyn PackageResolver>>) -> Self {
+    fn new() -> Self {
         Self {
-            resolver,
             scopes: Default::default(),
             current: Default::default(),
             packages: Default::default(),
@@ -153,21 +154,23 @@ impl<'a> State<'a> {
 pub struct AstResolver<'a> {
     document: &'a ast::Document<'a>,
     definitions: Definitions,
+    packages: IndexMap<PackageKey<'a>, Arc<Vec<u8>>>,
 }
 
 impl<'a> AstResolver<'a> {
-    pub fn new(document: &'a ast::Document<'a>) -> Self {
+    pub fn new(
+        document: &'a ast::Document<'a>,
+        packages: IndexMap<PackageKey<'a>, Arc<Vec<u8>>>,
+    ) -> Self {
         Self {
             document,
             definitions: Default::default(),
+            packages,
         }
     }
 
-    pub fn resolve(
-        mut self,
-        resolver: Option<Box<dyn PackageResolver>>,
-    ) -> ResolutionResult<Composition> {
-        let mut state = State::new(resolver);
+    pub fn resolve(mut self) -> ResolutionResult<Composition> {
+        let mut state = State::new();
 
         for stmt in &self.document.statements {
             match stmt {
@@ -729,7 +732,7 @@ impl<'a> AstResolver<'a> {
     fn world_include(
         &mut self,
         state: &mut State<'a>,
-        include: &ast::WorldInclude<'a>,
+        include: &'a ast::WorldInclude<'a>,
         world: &'a str,
         ty: &mut World,
     ) -> ResolutionResult<()> {
@@ -852,7 +855,7 @@ impl<'a> AstResolver<'a> {
     fn use_type(
         &mut self,
         state: &mut State<'a>,
-        use_type: &ast::Use<'a>,
+        use_type: &'a ast::Use<'a>,
         uses: &mut IndexMap<InterfaceId, IndexSet<usize>>,
         externs: &mut IndexMap<String, ItemKind>,
         in_world: bool,
@@ -1465,44 +1468,33 @@ impl<'a> AstResolver<'a> {
         &mut self,
         state: &mut State<'a>,
         name: &'a str,
-        version: Option<&Version>,
+        version: Option<&'a Version>,
         span: SourceSpan,
     ) -> ResolutionResult<PackageId> {
-        match state.package_map.entry(if let Some(version) = version {
-            format!("{name}@{version}")
-        } else {
-            name.to_owned()
-        }) {
+        match state.package_map.entry(PackageKey { name, version }) {
             hash_map::Entry::Occupied(e) => Ok(*e.get()),
             hash_map::Entry::Vacant(e) => {
                 log::debug!("resolving package `{name}`");
-                match state
-                    .resolver
-                    .as_deref()
-                    .and_then(|r| r.resolve(name, version).transpose())
-                    .transpose()
-                    .map_err(|e| Error::PackageResolutionFailure {
-                        name: name.to_string(),
-                        span,
-                        source: e,
-                    })? {
-                    Some(bytes) => {
-                        let id = state.packages.alloc(
-                            Package::parse(&mut self.definitions, name, version, bytes).map_err(
-                                |e| Error::PackageParseFailure {
-                                    name: name.to_string(),
-                                    span,
-                                    source: e,
-                                },
-                            )?,
-                        );
-                        Ok(*e.insert(id))
+                let bytes = match self.packages.remove(&PackageKey { name, version }) {
+                    Some(bytes) => bytes,
+                    None => {
+                        return Err(Error::UnknownPackage {
+                            name: name.to_string(),
+                            span,
+                        })
                     }
-                    None => Err(Error::UnknownPackage {
-                        name: name.to_string(),
-                        span,
-                    }),
-                }
+                };
+
+                let id = state.packages.alloc(
+                    Package::parse(&mut self.definitions, name, version, bytes).map_err(|e| {
+                        Error::PackageParseFailure {
+                            name: name.to_string(),
+                            span,
+                            source: e,
+                        }
+                    })?,
+                );
+                Ok(*e.insert(id))
             }
         }
     }
@@ -1510,7 +1502,7 @@ impl<'a> AstResolver<'a> {
     fn resolve_package_export(
         &mut self,
         state: &mut State<'a>,
-        path: &ast::PackagePath<'a>,
+        path: &'a ast::PackagePath<'a>,
     ) -> ResolutionResult<ItemKind> {
         // Check for reference to local item
         if path.name == self.document.package.name {
@@ -1637,7 +1629,7 @@ impl<'a> AstResolver<'a> {
         Ok(kind)
     }
 
-    fn expr(&mut self, state: &mut State<'a>, expr: &'a ast::Expr) -> ResolutionResult<ItemId> {
+    fn expr(&mut self, state: &mut State<'a>, expr: &'a ast::Expr<'a>) -> ResolutionResult<ItemId> {
         let mut item = self.primary_expr(state, &expr.primary)?;
 
         for expr in &expr.postfix {
@@ -1665,7 +1657,8 @@ impl<'a> AstResolver<'a> {
         expr: &'a ast::NewExpr<'a>,
     ) -> ResolutionResult<ItemId> {
         if expr.package.name == self.document.package.name {
-            return Err(Error::CannotInstantiateSelf {
+            return Err(Error::UnknownPackage {
+                name: expr.package.name.to_string(),
                 span: expr.package.span,
             });
         }
