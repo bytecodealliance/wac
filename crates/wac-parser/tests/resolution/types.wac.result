@@ -133,9 +133,13 @@
       {
         "id": "test:comp/i2",
         "uses": {
-          "0": [
-            1
-          ]
+          "r": {
+            "interface": 0
+          },
+          "z": {
+            "interface": 0,
+            "name": "r"
+          }
         },
         "exports": {
           "r": {
@@ -216,9 +220,9 @@
       {
         "id": "test:comp/w1",
         "uses": {
-          "2": [
-            0
-          ]
+          "r": {
+            "interface": 2
+          }
         },
         "imports": {
           "r": {

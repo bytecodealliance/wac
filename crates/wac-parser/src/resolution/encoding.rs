@@ -7,6 +7,7 @@ use super::{
 };
 use crate::{
     resolution::FuncResult, CoreExtern, Definition, Import, Instantiation, Item, ItemId, PackageId,
+    UsedType,
 };
 use anyhow::Result;
 use indexmap::{map::Entry, IndexMap, IndexSet};
@@ -127,11 +128,11 @@ impl<'a> Encoder<'a> {
         let encoder = TypeEncoder::new(&self.composition.definitions);
         let (ty, index) = match definition.kind {
             ItemKind::Type(ty) => match ty {
-                Type::Func(id) => (ty, encoder.ty(state, Type::Func(id))?),
-                Type::Value(id) => (ty, encoder.ty(state, Type::Value(id))?),
+                Type::Func(id) => (ty, encoder.ty(state, Type::Func(id), None)?),
+                Type::Value(id) => (ty, encoder.ty(state, Type::Value(id), None)?),
                 Type::Interface(id) => (ty, encoder.interface(state, id)?),
                 Type::World(id) => (ty, encoder.world(state, id)?),
-                Type::Module(id) => (ty, encoder.ty(state, Type::Module(id))?),
+                Type::Module(id) => (ty, encoder.ty(state, Type::Module(id), None)?),
             },
             _ => unreachable!("only types can be defined"),
         };
@@ -164,8 +165,12 @@ impl<'a> Encoder<'a> {
         let encoder = TypeEncoder::new(&self.composition.definitions);
 
         let ty = match import.kind {
-            ItemKind::Type(ty) => ComponentTypeRef::Type(TypeBounds::Eq(encoder.ty(state, ty)?)),
-            ItemKind::Func(id) => ComponentTypeRef::Func(encoder.ty(state, Type::Func(id))?),
+            ItemKind::Type(ty) => {
+                ComponentTypeRef::Type(TypeBounds::Eq(encoder.ty(state, ty, None)?))
+            }
+            ItemKind::Func(id) => {
+                ComponentTypeRef::Func(encoder.ty(state, Type::Func(id), None)?)
+            }
             ItemKind::Instance(id) => {
                 // Check to see if the instance has already been imported
                 // This may occur when an interface uses another
@@ -174,12 +179,14 @@ impl<'a> Encoder<'a> {
                     return Ok(*index);
                 }
 
-                ComponentTypeRef::Instance(encoder.ty(state, Type::Interface(id))?)
+                ComponentTypeRef::Instance(encoder.ty(state, Type::Interface(id), None)?)
             }
             ItemKind::Component(id) => {
-                ComponentTypeRef::Component(encoder.ty(state, Type::World(id))?)
+                ComponentTypeRef::Component(encoder.ty(state, Type::World(id), None)?)
             }
-            ItemKind::Module(id) => ComponentTypeRef::Module(encoder.ty(state, Type::Module(id))?),
+            ItemKind::Module(id) => {
+                ComponentTypeRef::Module(encoder.ty(state, Type::Module(id), None)?)
+            }
             ItemKind::Value(ty) => ComponentTypeRef::Value(encoder.value_type(state, ty)?),
             ItemKind::Resource(_) => unreachable!("resources cannot be imported at the top-level"),
             ItemKind::Instantiation(_) => unreachable!("instantiations cannot be imported"),
@@ -392,29 +399,14 @@ impl From<ItemKind> for ComponentExportKind {
     }
 }
 
-#[derive(Clone, PartialEq, Eq, Hash, Debug)]
-enum AliasKey<'a> {
-    Resource(&'a str),
-    Type(Type),
-}
-
-impl AliasKey<'_> {
-    fn as_str(&self, definitions: &Definitions) -> &str {
-        match self {
-            AliasKey::Resource(name) => name,
-            AliasKey::Type(ty) => ty.as_str(definitions),
-        }
-    }
-}
-
 #[derive(Default)]
 struct Scope<'a> {
     /// The map of types to their encoded indexes.
     type_indexes: IndexMap<Type, u32>,
     /// The map of imported instances in this scope.
     instances: IndexMap<InterfaceId, u32>,
-    /// The map of aliasable types to their encoded indexes.
-    type_aliases: IndexMap<AliasKey<'a>, u32>,
+    /// The map of import/export name to their alias indexes.
+    type_aliases: IndexMap<&'a str, u32>,
     /// The map of resource names to their encoded indexes.
     resources: IndexMap<&'a str, u32>,
     encodable: Encodable,
@@ -459,18 +451,15 @@ impl<'a> State<'a> {
         prev.encodable
     }
 
-    fn used_type_index(&mut self, definitions: &Definitions, key: AliasKey) -> Option<u32> {
-        if let Some(index) = self.current.type_aliases.get(&key) {
+    fn used_type_index(&mut self, name: &str) -> Option<u32> {
+        if let Some(index) = self.current.type_aliases.get(name) {
             return Some(*index);
         }
 
         if let Some(parent) = self.scopes.last() {
-            if let Some(outer) = parent.type_aliases.get(&key) {
+            if let Some(outer) = parent.type_aliases.get(name) {
                 let index = self.current.encodable.type_count();
-                log::debug!(
-                    "encoding outer alias for {key} to type index {index}",
-                    key = key.as_str(definitions)
-                );
+                log::debug!("encoding outer alias for `{name}` to type index {index}");
                 self.current.encodable.alias(Alias::Outer {
                     kind: ComponentOuterAliasKind::Type,
                     count: 1,
@@ -491,24 +480,27 @@ impl<'a> TypeEncoder<'a> {
         Self(defs)
     }
 
-    fn ty(&self, state: &mut State<'a>, ty: Type) -> Result<u32> {
+    fn ty(&self, state: &mut State<'a>, ty: Type, name: Option<&str>) -> Result<u32> {
         if let Some(index) = state.current.type_indexes.get(&ty) {
             return Ok(*index);
         }
 
-        let index = if let Some(index) = state.used_type_index(self.0, AliasKey::Type(ty)) {
-            index
-        } else {
-            match ty {
-                Type::Func(id) => self.func_type(state, id)?,
-                Type::Value(ValueType::Primitive(ty)) => Self::primitive(state, ty),
-                Type::Value(ValueType::Borrow(id)) => self.borrow(state, id),
-                Type::Value(ValueType::Own(id)) => self.own(state, id),
-                Type::Value(ValueType::Defined { id, .. }) => self.defined(state, id)?,
-                Type::Interface(id) => self.instance(state, id, false)?,
-                Type::World(id) => self.component(state, id)?,
-                Type::Module(id) => self.module(state, id),
+        if let Some(name) = name {
+            if let Some(index) = state.used_type_index(name) {
+                state.current.type_indexes.insert(ty, index);
+                return Ok(index);
             }
+        }
+
+        let index = match ty {
+            Type::Func(id) => self.func_type(state, id)?,
+            Type::Value(ValueType::Primitive(ty)) => Self::primitive(state, ty),
+            Type::Value(ValueType::Borrow(id)) => self.borrow(state, id),
+            Type::Value(ValueType::Own(id)) => self.own(state, id),
+            Type::Value(ValueType::Defined { id, .. }) => self.defined(state, id)?,
+            Type::Interface(id) => self.instance(state, id, false)?,
+            Type::World(id) => self.component(state, id)?,
+            Type::Module(id) => self.module(state, id),
         };
 
         state.current.type_indexes.insert(ty, index);
@@ -579,45 +571,34 @@ impl<'a> TypeEncoder<'a> {
         Ok(index)
     }
 
-    fn use_aliases(&self, state: &mut State<'a>, uses: &IndexMap<InterfaceId, IndexSet<usize>>) {
-        for (id, exports) in uses {
-            let interface = &self.0.interfaces[*id];
-            let instance = state.current.instances[id];
-            for export in exports {
-                let index = state.current.encodable.type_count();
-                let (export, kind) = interface.exports.get_index(*export).unwrap();
-                state.current.encodable.alias(Alias::InstanceExport {
-                    instance,
-                    kind: ComponentExportKind::Type,
-                    name: export,
-                });
+    fn use_aliases(&self, state: &mut State<'a>, uses: &'a IndexMap<String, UsedType>) {
+        state.current.type_aliases.clear();
 
-                log::debug!("aliased export `{export}` ({kind:?}) of instance {instance} to type index {index}");
+        for (name, used) in uses {
+            let interface = &self.0.interfaces[used.interface];
+            let instance = state.current.instances[&used.interface];
+            let index = state.current.encodable.type_count();
+            let export: &String = used.name.as_ref().unwrap_or(name);
+            let kind = interface.exports.get(export).unwrap();
+            state.current.encodable.alias(Alias::InstanceExport {
+                instance,
+                kind: ComponentExportKind::Type,
+                name: export,
+            });
 
-                match kind {
-                    ItemKind::Resource(id) => {
-                        state
-                            .current
-                            .type_aliases
-                            .insert(AliasKey::Resource(&self.0.resources[*id].name), index);
-                    }
-                    ItemKind::Type(ty) => {
-                        state
-                            .current
-                            .type_aliases
-                            .insert(AliasKey::Type(*ty), index);
-                    }
-                    _ => unreachable!("use of non-type"),
-                }
-            }
+            log::debug!(
+                "aliased export `{export}` ({kind:?}) of instance {instance} to type index {index}"
+            );
+
+            state.current.type_aliases.insert(name, index);
         }
     }
 
     fn instance(&self, state: &mut State<'a>, id: InterfaceId, types_only: bool) -> Result<u32> {
         log::debug!("encoding instance type for interface {id}", id = id.index());
         let interface = &self.0.interfaces[id];
-        for owner in interface.uses.keys() {
-            self.import_deps(state, self.0, *owner)?;
+        for used in interface.uses.values() {
+            self.import_deps(state, self.0, used.interface)?;
         }
 
         // Encode any required aliases
@@ -668,8 +649,8 @@ impl<'a> TypeEncoder<'a> {
 
         state.push(Encodable::Component(ComponentType::default()));
 
-        for dep in world.uses.keys() {
-            self.import_deps(state, self.0, *dep)?;
+        for used in world.uses.values() {
+            self.import_deps(state, self.0, used.interface)?;
         }
 
         self.use_aliases(state, &world.uses);
@@ -706,8 +687,8 @@ impl<'a> TypeEncoder<'a> {
         let interface = &definitions.interfaces[id];
 
         // Depth-first recurse on the dependencies of this interface
-        for id in interface.uses.keys() {
-            self.import_deps(state, definitions, *id)?;
+        for used in interface.uses.values() {
+            self.import_deps(state, definitions, used.interface)?;
         }
 
         let name = self.0.interfaces[id]
@@ -744,8 +725,8 @@ impl<'a> TypeEncoder<'a> {
         assert!(state.scopes.is_empty());
         state.push(Encodable::Component(ComponentType::default()));
 
-        for dep in interface.uses.keys() {
-            self.import_deps(state, self.0, *dep)?;
+        for used in interface.uses.values() {
+            self.import_deps(state, self.0, used.interface)?;
         }
 
         let index = self.instance(state, id, false)?;
@@ -1004,7 +985,7 @@ impl<'a> TypeEncoder<'a> {
             kind = kind.as_str(self.0)
         );
 
-        let index = self.ty(state, ty)?;
+        let index = self.ty(state, ty, Some(name))?;
 
         match kind {
             ItemKind::Type(_) => {
@@ -1052,9 +1033,7 @@ impl<'a> TypeEncoder<'a> {
         );
 
         let resource = &self.0.resources[id];
-        let index = if let Some(outer) =
-            state.used_type_index(self.0, AliasKey::Resource(&resource.name))
-        {
+        let index = if let Some(outer) = state.used_type_index(name) {
             // This is an alias to an outer resource type
             let index = state.current.encodable.type_count();
             state
@@ -1106,7 +1085,7 @@ impl<'a> TypeEncoder<'a> {
             kind = kind.as_str(self.0)
         );
 
-        let index = self.ty(state, ty)?;
+        let index = self.ty(state, ty, Some(name))?;
         let index = Self::export_type(
             state,
             name,
@@ -1137,9 +1116,7 @@ impl<'a> TypeEncoder<'a> {
         }
 
         let resource = &self.0.resources[id];
-        let index = if let Some(outer) =
-            state.used_type_index(self.0, AliasKey::Resource(&resource.name))
-        {
+        let index = if let Some(outer) = state.used_type_index(name) {
             // This is an alias to an outer resource type
             let index =
                 Self::export_type(state, name, ComponentTypeRef::Type(TypeBounds::Eq(outer)));

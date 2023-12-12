@@ -117,7 +117,10 @@ impl FileSystemPackageResolver {
             }
 
             if !path.is_file() {
-                log::debug!("package `{path}` does not exist", path = path.display());
+                log::debug!(
+                    "package `{key}` does not exist at `{path}`",
+                    path = path.display()
+                );
                 if self.error_on_unknown {
                     return Err(Error::UnknownPackage {
                         name: key.name.to_string(),
@@ -127,7 +130,10 @@ impl FileSystemPackageResolver {
                 continue;
             }
 
-            log::debug!("loading package from `{path}`", path = path.display());
+            log::debug!(
+                "loading package `{key}` from `{path}`",
+                path = path.display()
+            );
             let bytes = fs::read(&path)
                 .with_context(|| format!("failed to read package `{path}`", path = path.display()))
                 .map_err(|e| Error::PackageResolutionFailure {

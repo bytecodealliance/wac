@@ -1,7 +1,4 @@
-use super::{
-    package::Package, serialize_arena, serialize_id, serialize_id_key_map, serialize_optional_id,
-    ItemKind,
-};
+use super::{package::Package, serialize_arena, serialize_id, serialize_optional_id, ItemKind};
 use anyhow::{bail, Context, Result};
 use id_arena::{Arena, Id};
 use indexmap::{IndexMap, IndexSet};
@@ -379,6 +376,19 @@ pub enum FuncResult {
     List(IndexMap<String, ValueType>),
 }
 
+/// Represents a used type.
+#[derive(Debug, Clone, Serialize)]
+pub struct UsedType {
+    /// The interface the type was used from.
+    #[serde(serialize_with = "serialize_id")]
+    pub interface: InterfaceId,
+    /// The original export name.
+    ///
+    /// This is `None` when the type was not renamed with an `as` clause.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+}
+
 /// Represents an interface (i.e. instance type).
 #[derive(Debug, Clone, Serialize, Default)]
 #[serde(rename_all = "camelCase")]
@@ -396,9 +406,8 @@ pub struct Interface {
     /// original types.
     #[serde(skip)]
     pub remapped_types: IndexMap<Type, IndexSet<Type>>,
-    /// A map from used interface to set of used type export indexes.
-    #[serde(serialize_with = "serialize_id_key_map")]
-    pub uses: IndexMap<InterfaceId, IndexSet<usize>>,
+    /// A map of exported name to information about the used type.
+    pub uses: IndexMap<String, UsedType>,
     /// The exported items of the interface.
     pub exports: IndexMap<String, ItemKind>,
 }
@@ -411,9 +420,8 @@ pub struct World {
     ///
     /// This may be `None` for worlds representing component types.
     pub id: Option<String>,
-    /// A map from used interface to set of used type export indexes.
-    #[serde(serialize_with = "serialize_id_key_map")]
-    pub uses: IndexMap<InterfaceId, IndexSet<usize>>,
+    /// A map of imported name to information about the used type.
+    pub uses: IndexMap<String, UsedType>,
     /// The imported items of the world.
     pub imports: IndexMap<String, ItemKind>,
     /// The exported items of the world.

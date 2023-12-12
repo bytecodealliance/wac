@@ -148,9 +148,9 @@
       {
         "id": "foo:bar/baz",
         "uses": {
-          "1": [
-            0
-          ]
+          "x": {
+            "interface": 1
+          }
         },
         "imports": {
           "foo:bar/i": {
