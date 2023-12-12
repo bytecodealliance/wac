@@ -3,7 +3,7 @@ use super::{
     FuncResult, Interface, InterfaceId, ItemKind, Module, ModuleId, Record, Type, ValueType,
     Variant, World, WorldId,
 };
-use crate::{Resource, ResourceId};
+use crate::{Resource, ResourceId, UsedType};
 use anyhow::{bail, Result};
 use indexmap::IndexMap;
 use semver::Version;
@@ -22,6 +22,16 @@ pub struct PackageKey<'a> {
     pub name: &'a str,
     /// The version of the package.
     pub version: Option<&'a Version>,
+}
+
+impl fmt::Display for PackageKey<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{name}", name = self.name)?;
+        if let Some(version) = self.version {
+            write!(f, "@{version}")?;
+        }
+        Ok(())
+    }
 }
 
 /// Represents information about a package.
@@ -207,7 +217,7 @@ struct TypeConverter<'a> {
     types: Rc<wasm::Types>,
     cache: HashMap<wasm::AnyTypeId, Entity>,
     resource_map: HashMap<wasm::ResourceId, ResourceId>,
-    owners: HashMap<wasm::ComponentAnyTypeId, (Owner, usize)>,
+    owners: HashMap<wasm::ComponentAnyTypeId, (Owner, String)>,
 }
 
 impl<'a> TypeConverter<'a> {
@@ -224,37 +234,12 @@ impl<'a> TypeConverter<'a> {
 
     fn import(&mut self, name: &str) -> Result<ItemKind> {
         let import = self.types.component_entity_type_of_import(name).unwrap();
-        self.component_entity_type(name, import)
+        self.entity(name, import)
     }
 
     fn export(&mut self, name: &str) -> Result<ItemKind> {
         let export = self.types.component_entity_type_of_export(name).unwrap();
-        self.component_entity_type(name, export)
-    }
-
-    fn component_entity_type(
-        &mut self,
-        name: &str,
-        ty: wasm::ComponentEntityType,
-    ) -> Result<ItemKind> {
-        match ty {
-            wasm::ComponentEntityType::Module(id) => Ok(ItemKind::Module(self.module_type(id)?)),
-            wasm::ComponentEntityType::Func(id) => {
-                Ok(ItemKind::Func(self.component_func_type(id)?))
-            }
-            wasm::ComponentEntityType::Value(ty) => {
-                Ok(ItemKind::Value(self.component_val_type(ty)?))
-            }
-            wasm::ComponentEntityType::Type { created, .. } => {
-                Ok(ItemKind::Type(self.ty(created)?))
-            }
-            wasm::ComponentEntityType::Instance(ty) => Ok(ItemKind::Instance(
-                self.component_instance_type(Some(name), ty)?,
-            )),
-            wasm::ComponentEntityType::Component(ty) => {
-                Ok(ItemKind::Component(self.component_type(Some(name), ty)?))
-            }
-        }
+        self.entity(name, export)
     }
 
     fn component_func_type(&mut self, id: wasm::ComponentFuncTypeId) -> Result<FuncId> {
@@ -378,7 +363,7 @@ impl<'a> TypeConverter<'a> {
             exports: IndexMap::with_capacity(instance_ty.exports.len()),
         });
 
-        for (index, (name, ty)) in instance_ty.exports.iter().enumerate() {
+        for (name, ty) in &instance_ty.exports {
             let export = self.entity(name, *ty)?;
 
             if let wasm::ComponentEntityType::Type {
@@ -386,7 +371,7 @@ impl<'a> TypeConverter<'a> {
                 created,
             } = ty
             {
-                self.use_or_own(Owner::Interface(id), index, *referenced, *created);
+                self.use_or_own(Owner::Interface(id), name, *referenced, *created);
             }
 
             let prev = self.definitions.interfaces[id]
@@ -427,19 +412,29 @@ impl<'a> TypeConverter<'a> {
     fn use_or_own(
         &mut self,
         owner: Owner,
-        index: usize,
+        name: &str,
         referenced: ComponentAnyTypeId,
         created: ComponentAnyTypeId,
     ) {
-        if let Some((other, index)) = self.find_owner(referenced) {
-            match other {
-                Owner::Interface(interface) if owner != other => {
+        if let Some((other, orig)) = self.find_owner(referenced) {
+            match *other {
+                Owner::Interface(interface) if owner != *other => {
+                    let used = UsedType {
+                        interface,
+                        name: if name != orig {
+                            Some(orig.to_string())
+                        } else {
+                            None
+                        },
+                    };
+
                     // Owner is a different interface, so add a using reference
                     let uses = match owner {
                         Owner::Interface(id) => &mut self.definitions.interfaces[id].uses,
                         Owner::World(id) => &mut self.definitions.worlds[id].uses,
                     };
-                    uses.entry(interface).or_default().insert(index);
+
+                    uses.insert(name.to_string(), used);
                 }
                 _ => {}
             }
@@ -447,7 +442,7 @@ impl<'a> TypeConverter<'a> {
         }
 
         // Take ownership of the entity
-        let prev = self.owners.insert(created, (owner, index));
+        let prev = self.owners.insert(created, (owner, name.to_string()));
         assert!(prev.is_none());
     }
 
@@ -469,7 +464,7 @@ impl<'a> TypeConverter<'a> {
             exports: IndexMap::with_capacity(component_ty.exports.len()),
         });
 
-        for (index, (name, ty)) in component_ty.imports.iter().enumerate() {
+        for (name, ty) in &component_ty.imports {
             let import = self.entity(name, *ty)?;
 
             if let wasm::ComponentEntityType::Type {
@@ -477,7 +472,7 @@ impl<'a> TypeConverter<'a> {
                 created,
             } = ty
             {
-                self.use_or_own(Owner::World(id), index, *referenced, *created);
+                self.use_or_own(Owner::World(id), name, *referenced, *created);
             }
 
             let prev = self.definitions.worlds[id]
@@ -487,7 +482,7 @@ impl<'a> TypeConverter<'a> {
         }
 
         for (name, ty) in &component_ty.exports {
-            let ty = self.component_entity_type(name, *ty)?;
+            let ty = self.entity(name, *ty)?;
             let prev = self.definitions.worlds[id].exports.insert(name.clone(), ty);
             assert!(prev.is_none());
         }
@@ -683,10 +678,10 @@ impl<'a> TypeConverter<'a> {
         }
     }
 
-    fn find_owner(&self, mut id: wasm::ComponentAnyTypeId) -> Option<(Owner, usize)> {
+    fn find_owner(&self, mut id: wasm::ComponentAnyTypeId) -> Option<&(Owner, String)> {
         let mut prev = None;
         while prev.is_none() {
-            prev = self.owners.get(&id).copied();
+            prev = self.owners.get(&id);
             id = match self.types.peel_alias(id) {
                 Some(next) => next,
                 None => break,

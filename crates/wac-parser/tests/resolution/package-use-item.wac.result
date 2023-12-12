@@ -77,9 +77,10 @@
       {
         "id": "foo:bar/qux",
         "uses": {
-          "1": [
-            2
-          ]
+          "z": {
+            "interface": 1,
+            "name": "c"
+          }
         },
         "exports": {
           "z": {
@@ -100,11 +101,15 @@
       {
         "id": "test:comp/i@0.0.1",
         "uses": {
-          "0": [
-            0,
-            1,
-            2
-          ]
+          "a": {
+            "interface": 0
+          },
+          "b": {
+            "interface": 0
+          },
+          "c": {
+            "interface": 0
+          }
         },
         "exports": {
           "a": {
@@ -170,11 +175,15 @@
       {
         "id": "test:comp/w@0.0.1",
         "uses": {
-          "2": [
-            1,
-            2,
-            0
-          ]
+          "x": {
+            "interface": 2
+          },
+          "y": {
+            "interface": 2
+          },
+          "z": {
+            "interface": 2
+          }
         },
         "imports": {
           "x": {

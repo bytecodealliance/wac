@@ -32,25 +32,6 @@ where
     s.end()
 }
 
-fn serialize_id_key_map<T, V, S>(
-    map: &IndexMap<Id<T>, V>,
-    serializer: S,
-) -> std::result::Result<S::Ok, S::Error>
-where
-    S: Serializer,
-    T: Serialize,
-    V: Serialize,
-{
-    use serde::ser::SerializeMap;
-
-    let mut s = serializer.serialize_map(Some(map.len()))?;
-    for (k, v) in map {
-        s.serialize_entry(&k.index(), v)?;
-    }
-
-    s.end()
-}
-
 fn serialize_id_value_map<K, T, S>(
     map: &IndexMap<K, Id<T>>,
     serializer: S,

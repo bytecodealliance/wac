@@ -4,7 +4,7 @@ use super::{
     FuncResult, Interface, InterfaceId, ItemKind, PrimitiveType, Record, ResolutionResult,
     Resource, ResourceId, SubtypeChecker, Type, ValueType, Variant, World, WorldId,
 };
-use crate::{ast, method_extern_name, Item, ItemId, PackageId};
+use crate::{ast, method_extern_name, Item, ItemId, PackageId, UsedType};
 use anyhow::Context;
 use id_arena::Arena;
 use indexmap::{IndexMap, IndexSet};
@@ -856,7 +856,7 @@ impl<'a> AstResolver<'a> {
         &mut self,
         state: &mut State<'a>,
         use_type: &'a ast::Use<'a>,
-        uses: &mut IndexMap<InterfaceId, IndexSet<usize>>,
+        uses: &mut IndexMap<String, UsedType>,
         externs: &mut IndexMap<String, ItemKind>,
         in_world: bool,
     ) -> ResolutionResult<()> {
@@ -888,9 +888,9 @@ impl<'a> AstResolver<'a> {
 
         for item in &use_type.items {
             let ident = item.as_id.unwrap_or(item.id);
-            let (index, _, kind) = self.definitions.interfaces[interface]
+            let kind = self.definitions.interfaces[interface]
                 .exports
-                .get_full(item.id.string)
+                .get(item.id.string)
                 .ok_or(Error::UndefinedInterfaceType {
                     name: item.id.string.to_string(),
                     interface_name: name.to_string(),
@@ -916,7 +916,13 @@ impl<'a> AstResolver<'a> {
                         });
                     }
 
-                    uses.entry(interface).or_default().insert(index);
+                    uses.insert(
+                        ident.string.into(),
+                        UsedType {
+                            interface,
+                            name: item.as_id.map(|_| item.id.string.to_string()),
+                        },
+                    );
                     externs.insert(ident.string.into(), *kind);
 
                     let id = state.current.items.alloc(Item::Use(*kind));
@@ -1772,10 +1778,36 @@ impl<'a> AstResolver<'a> {
                 });
             };
 
-            // Ensure the import and the existing import are instances, otherwise
-            // we cannot merge them
-            let id = match (kind, state.current.items[import.item].kind()) {
-                (ItemKind::Instance(id), ItemKind::Instance(_)) => id,
+            // Merge the existing import item with the given one
+            return match (kind, state.current.items[import.item].kind()) {
+                (ItemKind::Instance(id), ItemKind::Instance(_)) => {
+                    log::debug!(
+                        "merging implicit interface import `{name}` ({id})",
+                        id = id.index(),
+                    );
+
+                    let item = import.item;
+                    self.merge_instance_import(state, &name, id, span)?;
+                    Ok(item)
+                }
+                (ItemKind::Component(_), ItemKind::Component(_)) => {
+                    todo!("merge component imports")
+                }
+                (ItemKind::Func(_), ItemKind::Func(_)) => {
+                    todo!("merge func imports")
+                }
+                (ItemKind::Module(_), ItemKind::Module(_)) => {
+                    todo!("merge module imports")
+                }
+                (ItemKind::Resource(_), ItemKind::Resource(_)) => {
+                    todo!("merge resource imports")
+                }
+                (ItemKind::Type(_), ItemKind::Type(_)) => {
+                    todo!("merge type imports")
+                }
+                (ItemKind::Value(_), ItemKind::Value(_)) => {
+                    todo!("merge value imports")
+                }
                 (_, kind) => {
                     return Err(Error::UnmergeableInstantiationArg {
                         name: name.to_owned(),
@@ -1786,15 +1818,6 @@ impl<'a> AstResolver<'a> {
                     });
                 }
             };
-
-            log::debug!(
-                "merging implicit interface import `{name}` ({id})",
-                id = id.index(),
-            );
-
-            let item = import.item;
-            self.merge_instance_import(state, &name, id, span)?;
-            return Ok(item);
         }
 
         log::debug!(
@@ -1806,7 +1829,7 @@ impl<'a> AstResolver<'a> {
         // might be merged in the future with other interface definitions.
         if let ItemKind::Instance(id) = kind {
             let mut target = self.definitions.interfaces[id].clone();
-            target.uses = self.remap_uses(state, target.uses);
+            self.remap_uses(state, &mut target.uses);
             let id = self.definitions.interfaces.alloc(target);
             log::debug!(
                 "creating new interface definition ({id}) for implicit import `{name}`",
@@ -1914,46 +1937,34 @@ impl<'a> AstResolver<'a> {
         let source = &self.definitions.interfaces[source_id];
 
         // Merge the source and target usings
-        for (dep, exports) in &source.uses {
-            target.uses.entry(*dep).or_default().extend(exports);
+        for (name, used) in &source.uses {
+            if target.uses.contains_key(name) {
+                continue;
+            }
+
+            target.uses.insert(name.clone(), used.clone());
         }
 
         // Remap the usings to point at imported interfaces
-        target.uses = self.remap_uses(state, target.uses);
+        self.remap_uses(state, &mut target.uses);
         self.definitions.interfaces[target_id] = target;
     }
 
-    fn remap_uses(
-        &self,
-        state: &State,
-        uses: IndexMap<InterfaceId, IndexSet<usize>>,
-    ) -> IndexMap<InterfaceId, IndexSet<usize>> {
+    fn remap_uses(&self, state: &State, uses: &mut IndexMap<String, UsedType>) {
         // Now update all the interface ids in the usings
-        let mut remapped: IndexMap<InterfaceId, IndexSet<usize>> =
-            IndexMap::with_capacity(uses.len());
-        for (old_id, exports) in uses {
-            let old = &self.definitions.interfaces[old_id];
+        for used in uses.values_mut() {
+            let old = &self.definitions.interfaces[used.interface];
             let import = &state.imports[old.id.as_deref().unwrap()];
             match &state.current.items[import.item] {
                 super::Item::Import(super::Import {
                     kind: ItemKind::Instance(new_id),
                     ..
                 }) => {
-                    let new = &self.definitions.interfaces[*new_id];
-                    remapped
-                        .entry(*new_id)
-                        .or_default()
-                        .extend(exports.into_iter().map(|old_index| {
-                            new.exports
-                                .get_index_of(old.exports.get_index(old_index).unwrap().0)
-                                .unwrap()
-                        }));
+                    used.interface = *new_id;
                 }
                 _ => unreachable!(),
             }
         }
-
-        remapped
     }
 
     fn named_instantiation_arg(
