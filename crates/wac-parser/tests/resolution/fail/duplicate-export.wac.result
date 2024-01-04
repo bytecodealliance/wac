@@ -1,0 +1,12 @@
+failed to resolve document
+
+  × duplicate export `foo`
+   ╭─[tests/resolution/fail/duplicate-export.wac:6:15]
+ 4 │ 
+ 5 │ export foo as "foo";
+   ·               ──┬──
+   ·                 ╰── previous export here
+ 6 │ export foo as foo;
+   ·               ─┬─
+   ·                ╰── duplicate export name `foo`
+   ╰────

@@ -1,0 +1,4 @@
+package test:comp;
+
+import foo as "foo": func();
+import bar as foo: func();

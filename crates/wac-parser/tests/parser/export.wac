@@ -6,5 +6,8 @@ export e;
 /// Export an alias of an item (default name)
 export e["foo"];
 
-/// Export an alias of an item with a different name
+/// Export an alias of an item with a different name with string
 export e["foo"] as "bar";
+
+/// Export an alias of an item with a different name with identifier
+export e["foo"] as foo-bar;

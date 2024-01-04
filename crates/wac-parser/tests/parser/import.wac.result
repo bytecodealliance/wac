@@ -104,25 +104,27 @@
       "Import": {
         "docs": [
           {
-            "comment": "Import by func type with kebab name",
+            "comment": "Import by func type with kebab name string",
             "span": {
               "offset": 148,
-              "length": 40
+              "length": 46
             }
           }
         ],
         "id": {
           "string": "d",
           "span": {
-            "offset": 196,
+            "offset": 202,
             "length": 1
           }
         },
         "name": {
-          "value": "hello-world",
-          "span": {
-            "offset": 201,
-            "length": 13
+          "string": {
+            "value": "hello-world",
+            "span": {
+              "offset": 207,
+              "length": 13
+            }
           }
         },
         "ty": {
@@ -132,13 +134,13 @@
                 "id": {
                   "string": "name",
                   "span": {
-                    "offset": 221,
+                    "offset": 227,
                     "length": 4
                   }
                 },
                 "ty": {
                   "string": {
-                    "offset": 227,
+                    "offset": 233,
                     "length": 6
                   }
                 }
@@ -155,7 +157,7 @@
           {
             "comment": "Import by inline interface",
             "span": {
-              "offset": 237,
+              "offset": 243,
               "length": 30
             }
           }
@@ -163,7 +165,7 @@
         "id": {
           "string": "e",
           "span": {
-            "offset": 275,
+            "offset": 281,
             "length": 1
           }
         },
@@ -177,7 +179,7 @@
                   "id": {
                     "string": "x",
                     "span": {
-                      "offset": 294,
+                      "offset": 300,
                       "length": 1
                     }
                   },
@@ -200,7 +202,7 @@
           {
             "comment": "Import by package path with version",
             "span": {
-              "offset": 309,
+              "offset": 315,
               "length": 39
             }
           }
@@ -208,7 +210,7 @@
         "id": {
           "string": "f",
           "span": {
-            "offset": 356,
+            "offset": 362,
             "length": 1
           }
         },
@@ -216,13 +218,64 @@
         "ty": {
           "package": {
             "span": {
-              "offset": 359,
+              "offset": 365,
               "length": 17
             },
             "string": "foo:bar/baz@1.0.0",
             "name": "foo:bar",
             "segments": "baz",
             "version": "1.0.0"
+          }
+        }
+      }
+    },
+    {
+      "Import": {
+        "docs": [
+          {
+            "comment": "Import by func type with kebab name identifier",
+            "span": {
+              "offset": 385,
+              "length": 50
+            }
+          }
+        ],
+        "id": {
+          "string": "g",
+          "span": {
+            "offset": 443,
+            "length": 1
+          }
+        },
+        "name": {
+          "ident": {
+            "string": "hello-world",
+            "span": {
+              "offset": 448,
+              "length": 11
+            }
+          }
+        },
+        "ty": {
+          "func": {
+            "params": [
+              {
+                "id": {
+                  "string": "name",
+                  "span": {
+                    "offset": 466,
+                    "length": 4
+                  }
+                },
+                "ty": {
+                  "string": {
+                    "offset": 472,
+                    "length": 6
+                  }
+                }
+              }
+            ],
+            "results": "empty"
           }
         }
       }

@@ -1,0 +1,12 @@
+failed to resolve document
+
+  × duplicate import `foo`
+   ╭─[tests/resolution/fail/duplicate-import.wac:4:15]
+ 2 │ 
+ 3 │ import foo as "foo": func();
+   ·               ──┬──
+   ·                 ╰── previous import here
+ 4 │ import bar as foo: func();
+   ·               ─┬─
+   ·                ╰── duplicate import name `foo`
+   ╰────
