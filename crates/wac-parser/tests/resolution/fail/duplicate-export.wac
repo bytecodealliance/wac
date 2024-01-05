@@ -1,0 +1,6 @@
+package test:comp;
+
+import foo: func();
+
+export foo as "foo";
+export foo as foo;

@@ -235,9 +235,9 @@ impl<'a> AstResolver<'a> {
             _ => kind,
         };
 
-        let (name, span) = if let Some(name) = stmt.name {
+        let (name, span) = if let Some(name) = &stmt.name {
             // Override the span to the `as` clause string
-            (name.value, name.span)
+            (name.as_str(), name.span())
         } else {
             // If the item is an instance with an id, use the id
             if let ItemKind::Instance(id) = kind {
@@ -359,8 +359,8 @@ impl<'a> AstResolver<'a> {
     ) -> ResolutionResult<()> {
         log::debug!("resolving export statement");
         let item = self.expr(state, &stmt.expr)?;
-        let (name, span) = if let Some(name) = stmt.name {
-            (name.value, name.span)
+        let (name, span) = if let Some(name) = &stmt.name {
+            (name.as_str(), name.span())
         } else {
             (
                 self.infer_export_name(state, item)

@@ -84,7 +84,7 @@ impl<'a, W: Write> DocumentPrinter<'a, W> {
         )?;
 
         if let Some(name) = &statement.name {
-            write!(self.writer, " as {name}", name = self.source(name.span))?;
+            write!(self.writer, " as {name}", name = self.source(name.span()))?;
         }
 
         write!(self.writer, ": ")?;
@@ -752,7 +752,7 @@ impl<'a, W: Write> DocumentPrinter<'a, W> {
         self.expr(&stmt.expr)?;
 
         if let Some(name) = &stmt.name {
-            write!(self.writer, " as {name}", name = self.source(name.span))?;
+            write!(self.writer, " as {name}", name = self.source(name.span()))?;
         }
 
         write!(self.writer, ";")

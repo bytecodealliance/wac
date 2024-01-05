@@ -1,5 +1,6 @@
 use super::{
-    expr::Expr, parse_optional, parse_token, DocComment, Lookahead, Parse, ParseResult, Peek,
+    expr::Expr, parse_optional, parse_token, DocComment, ExternName, Lookahead, Parse, ParseResult,
+    Peek,
 };
 use crate::lexer::{Lexer, Token};
 use miette::SourceSpan;
@@ -14,7 +15,7 @@ pub struct ExportStatement<'a> {
     /// The span of the export keyword.
     pub span: SourceSpan,
     /// The optional name to use for the export.
-    pub name: Option<super::String<'a>>,
+    pub name: Option<ExternName<'a>>,
     /// The expression to export.
     pub expr: Expr<'a>,
 }

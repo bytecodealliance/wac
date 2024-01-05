@@ -9,7 +9,7 @@ import b: x;
 /// Import by package path
 import c: foo:bar/baz;
 
-/// Import by func type with kebab name 
+/// Import by func type with kebab name string
 import d as "hello-world": func(name: string);
 
 /// Import by inline interface
@@ -19,3 +19,6 @@ import e: interface {
 
 /// Import by package path with version
 import f: foo:bar/baz@1.0.0;
+
+/// Import by func type with kebab name identifier
+import g as hello-world: func(name: string);

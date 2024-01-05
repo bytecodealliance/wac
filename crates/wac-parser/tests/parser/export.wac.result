@@ -90,22 +90,24 @@
       "Export": {
         "docs": [
           {
-            "comment": "Export an alias of an item with a different name",
+            "comment": "Export an alias of an item with a different name with string",
             "span": {
               "offset": 129,
-              "length": 52
+              "length": 64
             }
           }
         ],
         "span": {
-          "offset": 182,
+          "offset": 194,
           "length": 6
         },
         "name": {
-          "value": "bar",
-          "span": {
-            "offset": 201,
-            "length": 5
+          "string": {
+            "value": "bar",
+            "span": {
+              "offset": 213,
+              "length": 5
+            }
           }
         },
         "expr": {
@@ -113,7 +115,7 @@
             "ident": {
               "string": "e",
               "span": {
-                "offset": 189,
+                "offset": 201,
                 "length": 1
               }
             }
@@ -122,13 +124,67 @@
             {
               "namedAccess": {
                 "span": {
-                  "offset": 190,
+                  "offset": 202,
                   "length": 7
                 },
                 "string": {
                   "value": "foo",
                   "span": {
-                    "offset": 191,
+                    "offset": 203,
+                    "length": 5
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "Export": {
+        "docs": [
+          {
+            "comment": "Export an alias of an item with a different name with identifier",
+            "span": {
+              "offset": 221,
+              "length": 68
+            }
+          }
+        ],
+        "span": {
+          "offset": 290,
+          "length": 6
+        },
+        "name": {
+          "ident": {
+            "string": "foo-bar",
+            "span": {
+              "offset": 309,
+              "length": 7
+            }
+          }
+        },
+        "expr": {
+          "primary": {
+            "ident": {
+              "string": "e",
+              "span": {
+                "offset": 297,
+                "length": 1
+              }
+            }
+          },
+          "postfix": [
+            {
+              "namedAccess": {
+                "span": {
+                  "offset": 298,
+                  "length": 7
+                },
+                "string": {
+                  "value": "foo",
+                  "span": {
+                    "offset": 299,
                     "length": 5
                   }
                 }

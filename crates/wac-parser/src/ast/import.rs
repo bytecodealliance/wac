@@ -7,6 +7,53 @@ use miette::SourceSpan;
 use semver::Version;
 use serde::Serialize;
 
+/// Represents an extern name following an `as` clause in the AST.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum ExternName<'a> {
+    /// The "as" clause is an identifier.
+    Ident(Ident<'a>),
+    /// The "as" clause is a string.
+    String(super::String<'a>),
+}
+
+impl ExternName<'_> {
+    /// Gets the span of the extern name.
+    pub fn span(&self) -> SourceSpan {
+        match self {
+            Self::Ident(ident) => ident.span,
+            Self::String(string) => string.span,
+        }
+    }
+
+    /// Gets the string value of the extern name.
+    pub fn as_str(&self) -> &str {
+        match self {
+            Self::Ident(ident) => ident.string,
+            Self::String(string) => string.value,
+        }
+    }
+}
+
+impl Peek for ExternName<'_> {
+    fn peek(lookahead: &mut Lookahead) -> bool {
+        Ident::peek(lookahead) || super::String::peek(lookahead)
+    }
+}
+
+impl<'a> Parse<'a> for ExternName<'a> {
+    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<Self> {
+        let mut lookahead = Lookahead::new(lexer);
+        if Ident::peek(&mut lookahead) {
+            Ok(Self::Ident(Parse::parse(lexer)?))
+        } else if super::String::peek(&mut lookahead) {
+            Ok(Self::String(Parse::parse(lexer)?))
+        } else {
+            Err(lookahead.error())
+        }
+    }
+}
+
 /// Represents an import statement in the AST.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -16,7 +63,7 @@ pub struct ImportStatement<'a> {
     /// The identifier of the imported item.
     pub id: Ident<'a>,
     /// The optional import name.
-    pub name: Option<super::String<'a>>,
+    pub name: Option<ExternName<'a>>,
     /// The type of the imported item.
     pub ty: ImportType<'a>,
 }
