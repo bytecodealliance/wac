@@ -92,7 +92,8 @@ fn detect_invalid_input(source: &str) -> Result<(), (Error, SourceSpan)> {
 #[derive(Logos, Debug, Clone, Copy, PartialEq, Eq)]
 #[logos(error = Error)]
 #[logos(skip r"[ \t\r\n\f]+")]
-#[logos(subpattern id = r"%?[a-z][a-z0-9]*(-[a-z][a-z0-9]*)*")]
+#[logos(subpattern word = r"[a-z][a-z0-9]*|[A-Z][A-Z0-9]*")]
+#[logos(subpattern id = r"%?(?&word)(-(?&word))*")]
 #[logos(subpattern package_name = r"(?&id)(:(?&id))+")]
 #[logos(subpattern semver = r"[0-9a-zA-Z-\.\+]+")]
 pub enum Token {
@@ -592,6 +593,7 @@ mod test {
             foo-bar123
             foo0123-bar0123-baz0123
             %interface
+            foo123-BAR
             "#,
             &[
                 (Ok(Token::Ident), "foo", 13..16),
@@ -600,6 +602,7 @@ mod test {
                 (Ok(Token::Ident), "foo-bar123", 64..74),
                 (Ok(Token::Ident), "foo0123-bar0123-baz0123", 87..110),
                 (Ok(Token::Ident), "%interface", 123..133),
+                (Ok(Token::Ident), "foo123-BAR", 146..156),
             ],
         );
     }
