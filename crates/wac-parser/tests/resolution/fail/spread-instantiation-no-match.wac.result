@@ -1,0 +1,9 @@
+failed to resolve document
+
+  × the instance has no matching exports for the remaining unsatisfied arguments
+   ╭─[tests/resolution/fail/spread-instantiation-no-match.wac:6:26]
+ 5 │ 
+ 6 │ let x = new foo:bar { ...i };
+   ·                          ┬
+   ·                          ╰── no matching exports for the instance
+   ╰────

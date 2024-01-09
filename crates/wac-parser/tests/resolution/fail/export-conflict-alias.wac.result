@@ -1,14 +1,14 @@
 failed to resolve document
 
   × export `x` conflicts with u32 definition
-   ╭─[tests/resolution/fail/export-conflict-alias.wac:7:1]
+   ╭─[tests/resolution/fail/export-conflict-alias.wac:7:8]
  4 │ 
  5 │ type x = u32;
    ·      ┬
    ·      ╰── previous definition is here
  6 │ 
  7 │ export f;
-   · ───┬──
-   ·    ╰── conflicting export of `x`
+   ·        ┬
+   ·        ╰── conflicting export of `x`
    ╰────
   help: consider using an `as` clause to use a different name

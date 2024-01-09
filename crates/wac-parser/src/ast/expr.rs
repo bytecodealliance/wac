@@ -1,6 +1,5 @@
 use super::{
-    parse_delimited, parse_optional, parse_token, Ident, Lookahead, PackageName, Parse,
-    ParseResult, Peek,
+    parse_delimited, parse_token, Ident, Lookahead, PackageName, Parse, ParseResult, Peek,
 };
 use crate::lexer::{Lexer, Token};
 use miette::SourceSpan;
@@ -10,6 +9,8 @@ use serde::Serialize;
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Expr<'a> {
+    /// The span of the entire expression.
+    pub span: SourceSpan,
     /// The primary expression.
     pub primary: PrimaryExpr<'a>,
     /// The postfix expressions
@@ -18,7 +19,8 @@ pub struct Expr<'a> {
 
 impl<'a> Parse<'a> for Expr<'a> {
     fn parse(lexer: &mut Lexer<'a>) -> ParseResult<Self> {
-        let primary = Parse::parse(lexer)?;
+        let primary = PrimaryExpr::parse(lexer)?;
+
         // Currently, only the access expressions are supported for postfix expressions.
         // As they have the same precedence, we don't need to perform climbing.
         let mut postfix = Vec::new();
@@ -33,7 +35,17 @@ impl<'a> Parse<'a> for Expr<'a> {
                 _ => break,
             }
         }
-        Ok(Self { primary, postfix })
+
+        let start = primary.span();
+        let len = postfix.last().map_or(start.len(), |p| {
+            start.offset() + p.span().offset() + p.span().len()
+        });
+
+        Ok(Self {
+            span: SourceSpan::new(start.offset().into(), len.into()),
+            primary,
+            postfix,
+        })
     }
 }
 
@@ -47,6 +59,17 @@ pub enum PrimaryExpr<'a> {
     Nested(NestedExpr<'a>),
     /// An identifier.
     Ident(Ident<'a>),
+}
+
+impl PrimaryExpr<'_> {
+    /// Gets the span of the primary expression.
+    pub fn span(&self) -> SourceSpan {
+        match self {
+            PrimaryExpr::New(new) => new.span,
+            PrimaryExpr::Nested(nested) => nested.span,
+            PrimaryExpr::Ident(ident) => ident.span,
+        }
+    }
 }
 
 impl<'a> Parse<'a> for PrimaryExpr<'a> {
@@ -68,26 +91,28 @@ impl<'a> Parse<'a> for PrimaryExpr<'a> {
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct NewExpr<'a> {
+    /// The span of the new expression.
+    pub span: SourceSpan,
     /// The package name in the expression.
     pub package: PackageName<'a>,
     /// The instantiation arguments in the expression.
     pub arguments: Vec<InstantiationArgument<'a>>,
-    /// Whether or not a trailing ellipsis was in the expression.
-    pub ellipsis: bool,
 }
 
 impl<'a> Parse<'a> for NewExpr<'a> {
     fn parse(lexer: &mut Lexer<'a>) -> ParseResult<Self> {
-        parse_token(lexer, Token::NewKeyword)?;
+        let start = parse_token(lexer, Token::NewKeyword)?;
         let package = PackageName::parse(lexer)?;
         parse_token(lexer, Token::OpenBrace)?;
-        let arguments = parse_delimited(lexer, &[Token::CloseBrace, Token::Ellipsis], true)?;
-        let ellipsis = parse_optional(lexer, Token::Ellipsis, |_| Ok(true))?.unwrap_or(false);
-        parse_token(lexer, Token::CloseBrace)?;
+        let arguments = parse_delimited(lexer, Token::CloseBrace, true)?;
+        let end = parse_token(lexer, Token::CloseBrace)?;
         Ok(Self {
+            span: SourceSpan::new(
+                start.offset().into(),
+                ((end.offset() + end.len()) - start.offset()).into(),
+            ),
             package,
             arguments,
-            ellipsis,
         })
     }
 }
@@ -102,21 +127,39 @@ impl Peek for NewExpr<'_> {
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum InstantiationArgument<'a> {
+    /// The argument name is inferred.
+    Inferred(Ident<'a>),
+    /// The argument is a spread of an instance.
+    Spread(Ident<'a>),
     /// The argument is a named instantiation argument.
     Named(NamedInstantiationArgument<'a>),
-    /// The argument is an identifier.
-    Ident(Ident<'a>),
+    /// Fill remaining arguments with implicit imports.
+    Fill(SourceSpan),
 }
 
 impl<'a> Parse<'a> for InstantiationArgument<'a> {
     fn parse(lexer: &mut Lexer<'a>) -> ParseResult<Self> {
         let mut lookahead = Lookahead::new(lexer);
-        if NamedInstantiationArgument::peek(&mut lookahead) {
-            // Peek again to see if this is really a named instantiation argument.
+        if lookahead.peek(Token::Ellipsis) {
+            // This is a spread of an instance or a fill.
+            let span = parse_token(lexer, Token::Ellipsis)?;
+            match lexer.peek() {
+                Some((Ok(Token::Comma), _)) | Some((Ok(Token::CloseBrace), _)) => {
+                    // This is a fill.
+                    Ok(Self::Fill(span))
+                }
+                _ => {
+                    // This is a spread of an instance.
+                    Ok(Self::Spread(Parse::parse(lexer)?))
+                }
+            }
+        } else if NamedInstantiationArgument::peek(&mut lookahead) {
+            // Peek again to see if this is really a named instantiation argument or
+            // an inferred argument.
             if let Some((Ok(Token::Colon), _)) = lexer.peek2() {
                 Ok(Self::Named(Parse::parse(lexer)?))
             } else {
-                Ok(Self::Ident(Parse::parse(lexer)?))
+                Ok(Self::Inferred(Parse::parse(lexer)?))
             }
         } else {
             Err(lookahead.error())
@@ -126,7 +169,7 @@ impl<'a> Parse<'a> for InstantiationArgument<'a> {
 
 impl Peek for InstantiationArgument<'_> {
     fn peek(lookahead: &mut Lookahead) -> bool {
-        NamedInstantiationArgument::peek(lookahead)
+        lookahead.peek(Token::Ellipsis) | NamedInstantiationArgument::peek(lookahead)
     }
 }
 
@@ -165,6 +208,16 @@ pub enum InstantiationArgumentName<'a> {
     String(super::String<'a>),
 }
 
+impl InstantiationArgumentName<'_> {
+    /// Gets the string value of the instantiation argument name.
+    pub fn as_str(&self) -> &str {
+        match self {
+            Self::Ident(ident) => ident.string,
+            Self::String(string) => string.value,
+        }
+    }
+}
+
 impl<'a> Parse<'a> for InstantiationArgumentName<'a> {
     fn parse(lexer: &mut Lexer<'a>) -> ParseResult<Self> {
         let mut lookahead = Lookahead::new(lexer);
@@ -197,14 +250,25 @@ impl<'a> InstantiationArgumentName<'a> {
 /// Represents a nested expression in the AST.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct NestedExpr<'a>(pub Box<Expr<'a>>);
+pub struct NestedExpr<'a> {
+    /// The span of the nested expression.
+    pub span: SourceSpan,
+    /// The inner expression.
+    pub inner: Box<Expr<'a>>,
+}
 
 impl<'a> Parse<'a> for NestedExpr<'a> {
     fn parse(lexer: &mut Lexer<'a>) -> ParseResult<Self> {
-        parse_token(lexer, Token::OpenParen)?;
-        let expr = Box::new(Parse::parse(lexer)?);
-        parse_token(lexer, Token::CloseParen)?;
-        Ok(Self(expr))
+        let start = parse_token(lexer, Token::OpenParen)?;
+        let inner = Box::new(Parse::parse(lexer)?);
+        let end = parse_token(lexer, Token::CloseParen)?;
+        Ok(Self {
+            span: SourceSpan::new(
+                start.offset().into(),
+                ((end.offset() + end.len()) - start.offset()).into(),
+            ),
+            inner,
+        })
     }
 }
 
@@ -246,10 +310,13 @@ pub struct AccessExpr<'a> {
 
 impl<'a> Parse<'a> for AccessExpr<'a> {
     fn parse(lexer: &mut Lexer<'a>) -> ParseResult<Self> {
-        let span = parse_token(lexer, Token::Dot)?;
+        let start = parse_token(lexer, Token::Dot)?;
         let id: Ident = Parse::parse(lexer)?;
         Ok(Self {
-            span: SourceSpan::new(span.offset().into(), (id.span.len() + 1).into()),
+            span: SourceSpan::new(
+                start.offset().into(),
+                (id.span.offset() - start.offset() + id.span.len()).into(),
+            ),
             id,
         })
     }

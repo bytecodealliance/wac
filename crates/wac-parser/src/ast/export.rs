@@ -1,7 +1,4 @@
-use super::{
-    expr::Expr, parse_optional, parse_token, DocComment, ExternName, Lookahead, Parse, ParseResult,
-    Peek,
-};
+use super::{expr::Expr, parse_token, DocComment, ExternName, Lookahead, Parse, ParseResult, Peek};
 use crate::lexer::{Lexer, Token};
 use miette::SourceSpan;
 use serde::Serialize;
@@ -12,26 +9,23 @@ use serde::Serialize;
 pub struct ExportStatement<'a> {
     /// The doc comments for the statement.
     pub docs: Vec<DocComment<'a>>,
-    /// The span of the export keyword.
-    pub span: SourceSpan,
-    /// The optional name to use for the export.
-    pub name: Option<ExternName<'a>>,
-    /// The expression to export.
+    /// The expression that is being exported.
     pub expr: Expr<'a>,
+    /// The options for the export statement.
+    pub options: ExportOptions<'a>,
 }
 
 impl<'a> Parse<'a> for ExportStatement<'a> {
     fn parse(lexer: &mut Lexer<'a>) -> ParseResult<Self> {
         let docs = Parse::parse(lexer)?;
-        let span = parse_token(lexer, Token::ExportKeyword)?;
+        parse_token(lexer, Token::ExportKeyword)?;
         let expr = Parse::parse(lexer)?;
-        let name = parse_optional(lexer, Token::AsKeyword, Parse::parse)?;
+        let options = Parse::parse(lexer)?;
         parse_token(lexer, Token::Semicolon)?;
         Ok(Self {
             docs,
-            span,
             expr,
-            name,
+            options,
         })
     }
 }
@@ -39,6 +33,36 @@ impl<'a> Parse<'a> for ExportStatement<'a> {
 impl Peek for ExportStatement<'_> {
     fn peek(lookahead: &mut Lookahead) -> bool {
         lookahead.peek(Token::ExportKeyword)
+    }
+}
+
+/// Represents an item being exported in the AST.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum ExportOptions<'a> {
+    /// No options for the export.
+    None,
+    /// Spread export the exports of an instance.
+    Spread(SourceSpan),
+    /// Exporting with the provided name.
+    Rename(ExternName<'a>),
+}
+
+impl<'a> Parse<'a> for ExportOptions<'a> {
+    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<Self> {
+        if let Some((Ok(Token::Ellipsis), _)) = lexer.peek() {
+            // This is a spread export
+            let span = parse_token(lexer, Token::Ellipsis)?;
+            return Ok(Self::Spread(span));
+        }
+
+        if let Some((Ok(Token::AsKeyword), _)) = lexer.peek() {
+            // This is a renamed export
+            parse_token(lexer, Token::AsKeyword)?;
+            return Ok(Self::Rename(Parse::parse(lexer)?));
+        }
+
+        Ok(Self::None)
     }
 }
 
@@ -110,6 +134,12 @@ mod test {
         roundtrip(
             "package foo:bar; export new foo:bar { foo, \"bar\": (new baz:qux {a, ...}), \"baz\": foo[\"baz\"].qux };",
             "package foo:bar;\n\nexport new foo:bar {\n    foo,\n    \"bar\": (new baz:qux {\n        a,\n        ...\n    }),\n    \"baz\": foo[\"baz\"].qux,\n};\n",
+        )
+        .unwrap();
+
+        roundtrip(
+            "package foo:bar; export i...;",
+            "package foo:bar;\n\nexport i...;\n",
         )
         .unwrap();
     }

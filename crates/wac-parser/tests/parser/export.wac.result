@@ -21,12 +21,11 @@
             }
           }
         ],
-        "span": {
-          "offset": 54,
-          "length": 6
-        },
-        "name": null,
         "expr": {
+          "span": {
+            "offset": 61,
+            "length": 1
+          },
           "primary": {
             "ident": {
               "string": "e",
@@ -37,7 +36,8 @@
             }
           },
           "postfix": []
-        }
+        },
+        "options": "none"
       }
     },
     {
@@ -51,12 +51,11 @@
             }
           }
         ],
-        "span": {
-          "offset": 111,
-          "length": 6
-        },
-        "name": null,
         "expr": {
+          "span": {
+            "offset": 118,
+            "length": 244
+          },
           "primary": {
             "ident": {
               "string": "e",
@@ -83,7 +82,8 @@
               }
             }
           ]
-        }
+        },
+        "options": "none"
       }
     },
     {
@@ -97,20 +97,11 @@
             }
           }
         ],
-        "span": {
-          "offset": 194,
-          "length": 6
-        },
-        "name": {
-          "string": {
-            "value": "bar",
-            "span": {
-              "offset": 213,
-              "length": 5
-            }
-          }
-        },
         "expr": {
+          "span": {
+            "offset": 201,
+            "length": 410
+          },
           "primary": {
             "ident": {
               "string": "e",
@@ -137,6 +128,17 @@
               }
             }
           ]
+        },
+        "options": {
+          "rename": {
+            "string": {
+              "value": "bar",
+              "span": {
+                "offset": 213,
+                "length": 5
+              }
+            }
+          }
         }
       }
     },
@@ -151,20 +153,11 @@
             }
           }
         ],
-        "span": {
-          "offset": 290,
-          "length": 6
-        },
-        "name": {
-          "ident": {
-            "string": "foo-bar",
-            "span": {
-              "offset": 309,
-              "length": 7
-            }
-          }
-        },
         "expr": {
+          "span": {
+            "offset": 297,
+            "length": 602
+          },
           "primary": {
             "ident": {
               "string": "e",
@@ -191,6 +184,103 @@
               }
             }
           ]
+        },
+        "options": {
+          "rename": {
+            "ident": {
+              "string": "foo-bar",
+              "span": {
+                "offset": 309,
+                "length": 7
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "Export": {
+        "docs": [
+          {
+            "comment": "Export of an instance spread",
+            "span": {
+              "offset": 319,
+              "length": 32
+            }
+          }
+        ],
+        "expr": {
+          "span": {
+            "offset": 359,
+            "length": 1
+          },
+          "primary": {
+            "ident": {
+              "string": "i",
+              "span": {
+                "offset": 359,
+                "length": 1
+              }
+            }
+          },
+          "postfix": []
+        },
+        "options": {
+          "spread": {
+            "offset": 360,
+            "length": 3
+          }
+        }
+      }
+    },
+    {
+      "Export": {
+        "docs": [
+          {
+            "comment": "Export of an expression spread",
+            "span": {
+              "offset": 366,
+              "length": 34
+            }
+          }
+        ],
+        "expr": {
+          "span": {
+            "offset": 408,
+            "length": 19
+          },
+          "primary": {
+            "new": {
+              "span": {
+                "offset": 408,
+                "length": 19
+              },
+              "package": {
+                "string": "foo:bar",
+                "name": "foo:bar",
+                "version": null,
+                "span": {
+                  "offset": 412,
+                  "length": 7
+                }
+              },
+              "arguments": [
+                {
+                  "fill": {
+                    "offset": 422,
+                    "length": 3
+                  }
+                }
+              ]
+            }
+          },
+          "postfix": []
+        },
+        "options": {
+          "spread": {
+            "offset": 428,
+            "length": 3
+          }
         }
       }
     }

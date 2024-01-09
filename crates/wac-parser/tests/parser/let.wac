@@ -17,3 +17,6 @@ let e = (b);
 
 /// Access expression
 let f = e["b-c"].c.d["foo:bar/baz"].e;
+
+/// Mix of instantiation arguments
+let h = new f:bar { inferred, ...a, b: c, ...d, ... };

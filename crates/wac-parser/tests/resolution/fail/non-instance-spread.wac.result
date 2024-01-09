@@ -1,0 +1,9 @@
+failed to resolve document
+
+  × an instance is required to perform a spread operation
+   ╭─[tests/resolution/fail/non-instance-spread.wac:5:26]
+ 4 │ 
+ 5 │ let x = new foo:bar { ...f };
+   ·                          ┬
+   ·                          ╰── this evaluated to a function when an instance was expected
+   ╰────

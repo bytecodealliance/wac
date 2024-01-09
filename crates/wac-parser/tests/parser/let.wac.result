@@ -29,8 +29,16 @@
           }
         },
         "expr": {
+          "span": {
+            "offset": 57,
+            "length": 14
+          },
           "primary": {
             "new": {
+              "span": {
+                "offset": 57,
+                "length": 14
+              },
               "package": {
                 "string": "foo:bar",
                 "name": "foo:bar",
@@ -40,8 +48,7 @@
                   "length": 7
                 }
               },
-              "arguments": [],
-              "ellipsis": false
+              "arguments": []
             }
           },
           "postfix": []
@@ -67,8 +74,16 @@
           }
         },
         "expr": {
+          "span": {
+            "offset": 125,
+            "length": 25
+          },
           "primary": {
             "new": {
+              "span": {
+                "offset": 125,
+                "length": 25
+              },
               "package": {
                 "string": "foo:bar@1.0.0",
                 "name": "foo:bar",
@@ -78,8 +93,14 @@
                   "length": 13
                 }
               },
-              "arguments": [],
-              "ellipsis": true
+              "arguments": [
+                {
+                  "fill": {
+                    "offset": 145,
+                    "length": 3
+                  }
+                }
+              ]
             }
           },
           "postfix": []
@@ -105,8 +126,16 @@
           }
         },
         "expr": {
+          "span": {
+            "offset": 194,
+            "length": 35
+          },
           "primary": {
             "new": {
+              "span": {
+                "offset": 194,
+                "length": 35
+              },
               "package": {
                 "string": "foo:bar@2.0.0",
                 "name": "foo:bar",
@@ -118,7 +147,7 @@
               },
               "arguments": [
                 {
-                  "ident": {
+                  "inferred": {
                     "string": "a",
                     "span": {
                       "offset": 214,
@@ -127,7 +156,7 @@
                   }
                 },
                 {
-                  "ident": {
+                  "inferred": {
                     "string": "b",
                     "span": {
                       "offset": 217,
@@ -147,6 +176,10 @@
                       }
                     },
                     "expr": {
+                      "span": {
+                        "offset": 225,
+                        "length": 1
+                      },
                       "primary": {
                         "ident": {
                           "string": "c",
@@ -160,8 +193,7 @@
                     }
                   }
                 }
-              ],
-              "ellipsis": false
+              ]
             }
           },
           "postfix": []
@@ -187,8 +219,16 @@
           }
         },
         "expr": {
+          "span": {
+            "offset": 297,
+            "length": 58
+          },
           "primary": {
             "new": {
+              "span": {
+                "offset": 297,
+                "length": 58
+              },
               "package": {
                 "string": "foo:bar@3.0.0",
                 "name": "foo:bar",
@@ -200,7 +240,7 @@
               },
               "arguments": [
                 {
-                  "ident": {
+                  "inferred": {
                     "string": "a",
                     "span": {
                       "offset": 317,
@@ -220,24 +260,41 @@
                       }
                     },
                     "expr": {
+                      "span": {
+                        "offset": 325,
+                        "length": 17
+                      },
                       "primary": {
                         "nested": {
-                          "primary": {
-                            "new": {
-                              "package": {
-                                "string": "foo:bar",
-                                "name": "foo:bar",
-                                "version": null,
-                                "span": {
-                                  "offset": 330,
-                                  "length": 7
-                                }
-                              },
-                              "arguments": [],
-                              "ellipsis": false
-                            }
+                          "span": {
+                            "offset": 325,
+                            "length": 17
                           },
-                          "postfix": []
+                          "inner": {
+                            "span": {
+                              "offset": 326,
+                              "length": 15
+                            },
+                            "primary": {
+                              "new": {
+                                "span": {
+                                  "offset": 326,
+                                  "length": 15
+                                },
+                                "package": {
+                                  "string": "foo:bar",
+                                  "name": "foo:bar",
+                                  "version": null,
+                                  "span": {
+                                    "offset": 330,
+                                    "length": 7
+                                  }
+                                },
+                                "arguments": []
+                              }
+                            },
+                            "postfix": []
+                          }
                         }
                       },
                       "postfix": []
@@ -256,6 +313,10 @@
                       }
                     },
                     "expr": {
+                      "span": {
+                        "offset": 347,
+                        "length": 1
+                      },
                       "primary": {
                         "ident": {
                           "string": "c",
@@ -268,9 +329,14 @@
                       "postfix": []
                     }
                   }
+                },
+                {
+                  "fill": {
+                    "offset": 350,
+                    "length": 3
+                  }
                 }
-              ],
-              "ellipsis": true
+              ]
             }
           },
           "postfix": []
@@ -296,18 +362,32 @@
           }
         },
         "expr": {
+          "span": {
+            "offset": 388,
+            "length": 3
+          },
           "primary": {
             "nested": {
-              "primary": {
-                "ident": {
-                  "string": "b",
-                  "span": {
-                    "offset": 389,
-                    "length": 1
-                  }
-                }
+              "span": {
+                "offset": 388,
+                "length": 3
               },
-              "postfix": []
+              "inner": {
+                "span": {
+                  "offset": 389,
+                  "length": 1
+                },
+                "primary": {
+                  "ident": {
+                    "string": "b",
+                    "span": {
+                      "offset": 389,
+                      "length": 1
+                    }
+                  }
+                },
+                "postfix": []
+              }
             }
           },
           "postfix": []
@@ -333,6 +413,10 @@
           }
         },
         "expr": {
+          "span": {
+            "offset": 424,
+            "length": 877
+          },
           "primary": {
             "ident": {
               "string": "e",
@@ -419,6 +503,114 @@
               }
             }
           ]
+        }
+      }
+    },
+    {
+      "Let": {
+        "docs": [
+          {
+            "comment": "Mix of instantiation arguments",
+            "span": {
+              "offset": 456,
+              "length": 34
+            }
+          }
+        ],
+        "id": {
+          "string": "h",
+          "span": {
+            "offset": 495,
+            "length": 1
+          }
+        },
+        "expr": {
+          "span": {
+            "offset": 499,
+            "length": 45
+          },
+          "primary": {
+            "new": {
+              "span": {
+                "offset": 499,
+                "length": 45
+              },
+              "package": {
+                "string": "f:bar",
+                "name": "f:bar",
+                "version": null,
+                "span": {
+                  "offset": 503,
+                  "length": 5
+                }
+              },
+              "arguments": [
+                {
+                  "inferred": {
+                    "string": "inferred",
+                    "span": {
+                      "offset": 511,
+                      "length": 8
+                    }
+                  }
+                },
+                {
+                  "spread": {
+                    "string": "a",
+                    "span": {
+                      "offset": 524,
+                      "length": 1
+                    }
+                  }
+                },
+                {
+                  "named": {
+                    "name": {
+                      "ident": {
+                        "string": "b",
+                        "span": {
+                          "offset": 527,
+                          "length": 1
+                        }
+                      }
+                    },
+                    "expr": {
+                      "span": {
+                        "offset": 530,
+                        "length": 1
+                      },
+                      "primary": {
+                        "ident": {
+                          "string": "c",
+                          "span": {
+                            "offset": 530,
+                            "length": 1
+                          }
+                        }
+                      },
+                      "postfix": []
+                    }
+                  }
+                },
+                {
+                  "spread": {
+                    "string": "d",
+                    "span": {
+                      "offset": 536,
+                      "length": 1
+                    }
+                  }
+                },
+                {
+                  "fill": {
+                    "offset": 539,
+                    "length": 3
+                  }
+                }
+              ]
+            }
+          },
+          "postfix": []
         }
       }
     }

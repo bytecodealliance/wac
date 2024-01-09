@@ -659,7 +659,7 @@ impl<'a, W: Write> DocumentPrinter<'a, W> {
             PrimaryExpr::New(e) => self.new_expr(e),
             PrimaryExpr::Nested(e) => {
                 write!(self.writer, "(")?;
-                self.expr(&e.0)?;
+                self.expr(&e.inner)?;
                 write!(self.writer, ")")
             }
             PrimaryExpr::Ident(id) => write!(self.writer, "{id}", id = self.source(id.span)),
@@ -675,12 +675,15 @@ impl<'a, W: Write> DocumentPrinter<'a, W> {
         )?;
 
         if expr.arguments.is_empty() {
-            if expr.ellipsis {
-                write!(self.writer, " ... ")?;
-            }
-
             write!(self.writer, "}}")?;
             return Ok(());
+        }
+
+        if expr.arguments.len() == 1 {
+            if let InstantiationArgument::Fill(_) = expr.arguments[0] {
+                write!(self.writer, " ... }}")?;
+                return Ok(());
+            }
         }
 
         self.newline()?;
@@ -690,6 +693,12 @@ impl<'a, W: Write> DocumentPrinter<'a, W> {
             self.indent()?;
 
             match arg {
+                InstantiationArgument::Inferred(id) => {
+                    write!(self.writer, "{id},", id = self.source(id.span))?
+                }
+                InstantiationArgument::Spread(id) => {
+                    write!(self.writer, "...{id},", id = self.source(id.span))?
+                }
                 InstantiationArgument::Named(arg) => {
                     match &arg.name {
                         InstantiationArgumentName::Ident(id) => {
@@ -700,19 +709,11 @@ impl<'a, W: Write> DocumentPrinter<'a, W> {
                         }
                     }
                     self.expr(&arg.expr)?;
+                    write!(self.writer, ",")?;
                 }
-                InstantiationArgument::Ident(id) => {
-                    write!(self.writer, "{id}", id = self.source(id.span))?
-                }
+                InstantiationArgument::Fill(_) => write!(self.writer, "...")?,
             }
 
-            write!(self.writer, ",")?;
-            self.newline()?;
-        }
-
-        if expr.ellipsis {
-            self.indent()?;
-            write!(self.writer, "...")?;
             self.newline()?;
         }
 
@@ -749,10 +750,17 @@ impl<'a, W: Write> DocumentPrinter<'a, W> {
         self.indent()?;
 
         write!(self.writer, "export ")?;
+
         self.expr(&stmt.expr)?;
 
-        if let Some(name) = &stmt.name {
-            write!(self.writer, " as {name}", name = self.source(name.span()))?;
+        match &stmt.options {
+            ExportOptions::None => {}
+            ExportOptions::Spread(_) => {
+                write!(self.writer, "...")?;
+            }
+            ExportOptions::Rename(name) => {
+                write!(self.writer, " as {name}", name = self.source(name.span()))?;
+            }
         }
 
         write!(self.writer, ";")

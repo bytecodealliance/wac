@@ -125,7 +125,7 @@ impl<'a> Parse<'a> for ResourceDecl<'a> {
             Default::default()
         } else if lookahead.peek(Token::OpenBrace) {
             parse_token(lexer, Token::OpenBrace)?;
-            let methods = parse_delimited(lexer, &[Token::CloseBrace], false)?;
+            let methods = parse_delimited(lexer, Token::CloseBrace, false)?;
             parse_token(lexer, Token::CloseBrace)?;
             methods
         } else {
@@ -154,7 +154,7 @@ impl<'a> Parse<'a> for VariantDecl<'a> {
         parse_token(lexer, Token::VariantKeyword)?;
         let id = Ident::parse(lexer)?;
         parse_token(lexer, Token::OpenBrace)?;
-        let cases = parse_delimited(lexer, &[Token::CloseBrace], true)?;
+        let cases = parse_delimited(lexer, Token::CloseBrace, true)?;
         let close = parse_token(lexer, Token::CloseBrace)?;
 
         if cases.is_empty() {
@@ -218,7 +218,7 @@ impl<'a> Parse<'a> for RecordDecl<'a> {
         parse_token(lexer, Token::RecordKeyword)?;
         let id = Ident::parse(lexer)?;
         parse_token(lexer, Token::OpenBrace)?;
-        let fields = parse_delimited(lexer, &[Token::CloseBrace], true)?;
+        let fields = parse_delimited(lexer, Token::CloseBrace, true)?;
         let close = parse_token(lexer, Token::CloseBrace)?;
 
         if fields.is_empty() {
@@ -281,7 +281,7 @@ impl<'a> Parse<'a> for FlagsDecl<'a> {
         parse_token(lexer, Token::FlagsKeyword)?;
         let id = Ident::parse(lexer)?;
         parse_token(lexer, Token::OpenBrace)?;
-        let flags = parse_delimited(lexer, &[Token::CloseBrace], true)?;
+        let flags = parse_delimited(lexer, Token::CloseBrace, true)?;
         let close = parse_token(lexer, Token::CloseBrace)?;
 
         if flags.is_empty() {
@@ -338,7 +338,7 @@ impl<'a> Parse<'a> for EnumDecl<'a> {
         parse_token(lexer, Token::EnumKeyword)?;
         let id = Ident::parse(lexer)?;
         parse_token(lexer, Token::OpenBrace)?;
-        let cases = parse_delimited(lexer, &[Token::CloseBrace], true)?;
+        let cases = parse_delimited(lexer, Token::CloseBrace, true)?;
         let close = parse_token(lexer, Token::CloseBrace)?;
 
         if cases.is_empty() {
@@ -423,7 +423,7 @@ impl<'a> Parse<'a> for Constructor<'a> {
         let docs = Parse::parse(lexer)?;
         let span = parse_token(lexer, Token::ConstructorKeyword)?;
         parse_token(lexer, Token::OpenParen)?;
-        let params = parse_delimited(lexer, &[Token::CloseParen], true)?;
+        let params = parse_delimited(lexer, Token::CloseParen, true)?;
         parse_token(lexer, Token::CloseParen)?;
         parse_token(lexer, Token::Semicolon)?;
         Ok(Self { docs, span, params })
@@ -506,7 +506,7 @@ impl<'a> Parse<'a> for FuncType<'a> {
     fn parse(lexer: &mut Lexer<'a>) -> ParseResult<Self> {
         parse_token(lexer, Token::FuncKeyword)?;
         parse_token(lexer, Token::OpenParen)?;
-        let params = parse_delimited(lexer, &[Token::CloseParen], true)?;
+        let params = parse_delimited(lexer, Token::CloseParen, true)?;
         parse_token(lexer, Token::CloseParen)?;
         let results =
             parse_optional(lexer, Token::Arrow, Parse::parse)?.unwrap_or(ResultList::Empty);
@@ -538,7 +538,7 @@ impl<'a> Parse<'a> for ResultList<'a> {
         let mut lookahead = Lookahead::new(lexer);
         if lookahead.peek(Token::OpenParen) {
             parse_token(lexer, Token::OpenParen)?;
-            let results = parse_delimited(lexer, &[Token::CloseParen], true)?;
+            let results = parse_delimited(lexer, Token::CloseParen, true)?;
             parse_token(lexer, Token::CloseParen)?;
             Ok(Self::Named(results))
         } else if Type::peek(&mut lookahead) {
@@ -738,7 +738,7 @@ impl<'a> Parse<'a> for Type<'a> {
                 return Err(lookahead.error());
             }
 
-            let types = parse_delimited(lexer, &[Token::CloseAngle], true)?;
+            let types = parse_delimited(lexer, Token::CloseAngle, true)?;
             assert!(!types.is_empty());
             let close = parse_token(lexer, Token::CloseAngle)?;
             Ok(Self::Tuple(
@@ -938,7 +938,7 @@ impl<'a> Parse<'a> for InterfaceDecl<'a> {
         parse_token(lexer, Token::InterfaceKeyword)?;
         let id = Ident::parse(lexer)?;
         parse_token(lexer, Token::OpenBrace)?;
-        let items = parse_delimited(lexer, &[Token::CloseBrace], false)?;
+        let items = parse_delimited(lexer, Token::CloseBrace, false)?;
         parse_token(lexer, Token::CloseBrace)?;
         Ok(Self { docs, id, items })
     }
@@ -1002,7 +1002,7 @@ impl<'a> Parse<'a> for Use<'a> {
         let path = Parse::parse(lexer)?;
         parse_token(lexer, Token::Dot)?;
         parse_token(lexer, Token::OpenBrace)?;
-        let items = parse_delimited(lexer, &[Token::CloseBrace], true)?;
+        let items = parse_delimited(lexer, Token::CloseBrace, true)?;
         parse_token(lexer, Token::CloseBrace)?;
         parse_token(lexer, Token::Semicolon)?;
         Ok(Self { docs, path, items })
@@ -1115,7 +1115,7 @@ impl<'a> Parse<'a> for WorldDecl<'a> {
         parse_token(lexer, Token::WorldKeyword)?;
         let id = Ident::parse(lexer)?;
         parse_token(lexer, Token::OpenBrace)?;
-        let items = parse_delimited(lexer, &[Token::CloseBrace], false)?;
+        let items = parse_delimited(lexer, Token::CloseBrace, false)?;
         parse_token(lexer, Token::CloseBrace)?;
         Ok(Self { docs, id, items })
     }
@@ -1312,7 +1312,7 @@ impl<'a> Parse<'a> for InlineInterface<'a> {
     fn parse(lexer: &mut Lexer<'a>) -> ParseResult<Self> {
         parse_token(lexer, Token::InterfaceKeyword)?;
         parse_token(lexer, Token::OpenBrace)?;
-        let items = parse_delimited(lexer, &[Token::CloseBrace], false)?;
+        let items = parse_delimited(lexer, Token::CloseBrace, false)?;
         parse_token(lexer, Token::CloseBrace)?;
         Ok(Self { items })
     }
@@ -1343,7 +1343,7 @@ impl<'a> Parse<'a> for WorldInclude<'a> {
         let world = Parse::parse(lexer)?;
         let with = parse_optional(lexer, Token::WithKeyword, |lexer| {
             parse_token(lexer, Token::OpenBrace)?;
-            let items = parse_delimited(lexer, &[Token::CloseBrace], true)?;
+            let items = parse_delimited(lexer, Token::CloseBrace, true)?;
             parse_token(lexer, Token::CloseBrace)?;
             Ok(items)
         })?

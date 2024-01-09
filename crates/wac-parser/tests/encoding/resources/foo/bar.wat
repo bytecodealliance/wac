@@ -11,7 +11,7 @@
       (type (;6;) (own 2))
       (type (;7;) (tuple 5 6))
       (type (;8;) (func (param "r" 3) (param "r2" 4) (param "r3" 5) (param "r4" 6) (result 7)))
-      (export (;1;) "foo" (func (type 8)))
+      (export (;1;) "bar" (func (type 8)))
     )
   )
   (import "foo" (instance (;0;) (type 0)))
