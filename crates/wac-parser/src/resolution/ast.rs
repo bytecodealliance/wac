@@ -1,10 +1,14 @@
 use super::{
     package::{Package, PackageKey},
-    Composition, DefinedType, Definitions, Enum, Error, ExternKind, Flags, Func, FuncId, FuncKind,
-    FuncResult, Interface, InterfaceId, ItemKind, PrimitiveType, Record, ResolutionResult,
-    Resource, ResourceId, SubtypeChecker, Type, ValueType, Variant, World, WorldId,
+    transform, Composition, DefinedType, Definitions, Enum, Error, ExternKind, Flags, Func, FuncId,
+    FuncKind, FuncResult, Interface, InterfaceId, ItemKind, PrimitiveType, Record,
+    ResolutionResult, Resource, ResourceId, SubtypeChecker, Type, ValueType, Variant, World,
+    WorldId,
 };
-use crate::{ast, method_extern_name, InstanceOperation, Item, ItemId, PackageId, UsedType};
+use crate::{
+    ast::{self, LetStatementRhs},
+    method_extern_name, InstanceOperation, Item, ItemId, PackageId, UsedType,
+};
 use anyhow::Context;
 use id_arena::Arena;
 use indexmap::{IndexMap, IndexSet};
@@ -58,6 +62,8 @@ struct State<'a> {
     imports: IndexMap<String, Import<'a>>,
     /// The map of exported items.
     exports: IndexMap<String, Export>,
+    /// The map of ids introduced via a component transform.
+    transform_names: IndexMap<String, (PackageId, SourceSpan)>,
 }
 
 impl<'a> State<'a> {
@@ -70,6 +76,7 @@ impl<'a> State<'a> {
             aliases: Default::default(),
             imports: Default::default(),
             exports: Default::default(),
+            transform_names: Default::default(),
         }
     }
 
@@ -361,8 +368,13 @@ impl<'a> AstResolver<'a> {
             "resolving type statement for id `{id}`",
             id = stmt.id.string
         );
-        let item = self.expr(state, &stmt.expr)?;
-        state.register_name(stmt.id, item)
+        match &stmt.rhs {
+            LetStatementRhs::Expr(expr) => {
+                let item = self.expr(state, expr)?;
+                state.register_name(stmt.id, item)
+            }
+            LetStatementRhs::Transform(transform) => self.transform(state, &stmt.id, transform),
+        }
     }
 
     fn export_statement(
@@ -1688,6 +1700,83 @@ impl<'a> AstResolver<'a> {
         Ok(kind)
     }
 
+    fn transform(
+        &mut self,
+        state: &mut State<'a>,
+        id: &'a ast::Ident<'a>,
+        ast: &'a ast::Transform<'a>,
+    ) -> ResolutionResult<()> {
+        let ast::Transform {
+            span,
+            transformer,
+            component,
+            untyped_value,
+        } = ast;
+
+        // Resolve the transformer package.
+        let transformer_pkg = self.resolve_package(
+            state,
+            transformer.name,
+            transformer.version.as_ref(),
+            transformer.span,
+        )?;
+
+        let transformer_bytes = state.packages[transformer_pkg].bytes.clone();
+
+        // Resolve the component package.
+        let component_pkg = self.resolve_package(
+            state,
+            component.name,
+            component.version.as_ref(),
+            component.span,
+        )?;
+
+        let component_bytes = state.packages[component_pkg].bytes.clone();
+
+        // Apply the transform .
+        let transformed_bytes = transform(
+            transformer.span,
+            &transformer_bytes,
+            component.span,
+            &component_bytes,
+            untyped_value,
+        )
+        .map(Arc::new)
+        .map_err(|e| Error::ComponentTransformFailure {
+            span: *span,
+            source: e,
+        })?;
+
+        let package_id = state.packages.alloc(
+            Package::parse(&mut self.definitions, id.string, None, transformed_bytes).map_err(
+                |e| Error::PackageParseFailure {
+                    name: id.string.to_string(),
+                    span: id.span,
+                    source: e,
+                },
+            )?,
+        );
+
+        log::debug!(
+            "registering name `{id}` for transformed package {package_id} in the current scope",
+            id = id.string,
+            package_id = package_id.index(),
+        );
+
+        if let Some((_, span)) = state
+            .transform_names
+            .insert(id.string.to_owned(), (package_id, id.span))
+        {
+            return Err(Error::DuplicateName {
+                name: id.string.to_owned(),
+                span: id.span,
+                previous: span,
+            });
+        }
+
+        Ok(())
+    }
+
     fn expr(&mut self, state: &mut State<'a>, expr: &'a ast::Expr<'a>) -> ResolutionResult<ItemId> {
         let mut item = self.primary_expr(state, &expr.primary)?;
 
@@ -1717,19 +1806,29 @@ impl<'a> AstResolver<'a> {
         state: &mut State<'a>,
         expr: &'a ast::NewExpr<'a>,
     ) -> ResolutionResult<ItemId> {
-        if expr.package.name == self.document.directive.package.name {
-            return Err(Error::UnknownPackage {
-                name: expr.package.name.to_string(),
-                span: expr.package.span,
-            });
-        }
+        let pkg = match &expr.component {
+            ast::ComponentRef::Package(pkg) => {
+                if pkg.name == self.document.directive.package.name {
+                    return Err(Error::UnknownPackage {
+                        name: pkg.name.to_string(),
+                        span: pkg.span,
+                    });
+                }
 
-        let pkg = self.resolve_package(
-            state,
-            expr.package.name,
-            expr.package.version.as_ref(),
-            expr.package.span,
-        )?;
+                self.resolve_package(state, pkg.name, pkg.version.as_ref(), pkg.span)?
+            }
+            ast::ComponentRef::Local(id) => {
+                state
+                    .transform_names
+                    .get(id.string)
+                    .ok_or(Error::UndefinedName {
+                        name: id.string.to_owned(),
+                        span: id.span,
+                    })?
+                    .0
+            }
+        };
+
         let ty = state.packages[pkg].world;
         let mut require_all = true;
 
@@ -1777,7 +1876,7 @@ impl<'a> AstResolver<'a> {
                     .imports
                     .get(name)
                     .ok_or_else(|| Error::MissingComponentImport {
-                        package: expr.package.string.to_string(),
+                        package: expr.component.name().to_string(),
                         import: name.clone(),
                         span: *span,
                     })?;
@@ -1809,8 +1908,8 @@ impl<'a> AstResolver<'a> {
             if require_all {
                 return Err(Error::MissingInstantiationArg {
                     name,
-                    package: expr.package.string.to_string(),
-                    span: expr.package.span,
+                    package: expr.component.name().to_string(),
+                    span: expr.component.span(),
                 });
             }
 
@@ -1819,11 +1918,11 @@ impl<'a> AstResolver<'a> {
                 state,
                 name.clone(),
                 argument,
-                expr.package.name,
-                expr.package.span,
+                expr.component.name(),
+                expr.component.span(),
             )?;
 
-            arguments.insert(name, (item, expr.package.span));
+            arguments.insert(name, (item, expr.component.span()));
         }
 
         Ok(state

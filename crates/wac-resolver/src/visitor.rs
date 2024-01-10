@@ -1,8 +1,9 @@
 use miette::SourceSpan;
 use semver::Version;
 use wac_parser::ast::{
-    Document, Expr, ExternType, ImportStatement, ImportType, InstantiationArgument, InterfaceItem,
-    PrimaryExpr, Statement, TypeStatement, UsePath, WorldItem, WorldItemPath, WorldRef,
+    ComponentRef, Document, Expr, ExternType, ImportStatement, ImportType, InstantiationArgument,
+    InterfaceItem, LetStatement, LetStatementRhs, PrimaryExpr, Statement, Transform, TypeStatement,
+    UsePath, WorldItem, WorldItemPath, WorldRef,
 };
 
 use crate::Error;
@@ -53,7 +54,7 @@ where
                     }
                 }
                 Statement::Let(l) => {
-                    if !self.expr(doc.directive.package.name, &l.expr)? {
+                    if !self.let_statement(doc.directive.package.name, l)? {
                         break;
                     }
                 }
@@ -108,6 +109,13 @@ where
         }
     }
 
+    fn let_statement(&mut self, this: &str, stmt: &'a LetStatement) -> Result<bool, Error> {
+        match &stmt.rhs {
+            LetStatementRhs::Expr(expr) => self.expr(this, &expr),
+            LetStatementRhs::Transform(transform) => self.transform(this, &transform),
+        }
+    }
+
     fn interface_item(&mut self, item: &'a InterfaceItem) -> bool {
         match item {
             InterfaceItem::Use(u) => match &u.path {
@@ -158,14 +166,14 @@ where
     fn expr(&mut self, this: &str, expr: &'a Expr) -> Result<bool, Error> {
         match &expr.primary {
             PrimaryExpr::New(e) => {
-                if e.package.name == this {
-                    return Err(Error::CannotInstantiateSelf {
-                        span: e.package.span,
-                    });
-                }
+                if let ComponentRef::Package(package) = &e.component {
+                    if package.name == this {
+                        return Err(Error::CannotInstantiateSelf { span: package.span });
+                    }
 
-                if !(self.0)(e.package.name, e.package.version.as_ref(), e.package.span) {
-                    return Ok(false);
+                    if !(self.0)(package.name, package.version.as_ref(), package.span) {
+                        return Ok(false);
+                    }
                 }
 
                 for arg in &e.arguments {
@@ -186,5 +194,33 @@ where
             PrimaryExpr::Nested(e) => self.expr(this, &e.inner),
             PrimaryExpr::Ident(_) => Ok(true),
         }
+    }
+
+    fn transform(&mut self, this: &str, trs: &'a Transform) -> Result<bool, Error> {
+        if trs.transformer.name == this {
+            return Err(Error::InvalidTransformer {
+                span: trs.transformer.span,
+            });
+        }
+        if !(self.0)(
+            trs.transformer.name,
+            trs.transformer.version.as_ref(),
+            trs.transformer.span,
+        ) {
+            return Ok(false);
+        }
+        if trs.component.name == this {
+            return Err(Error::CannotTransformSelf {
+                span: trs.component.span,
+            });
+        }
+        if !(self.0)(
+            trs.component.name,
+            trs.component.version.as_ref(),
+            trs.component.span,
+        ) {
+            return Ok(false);
+        }
+        Ok(true)
     }
 }

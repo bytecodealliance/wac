@@ -21,8 +21,11 @@ serde = { workspace = true }
 wasmparser = { workspace = true }
 wasm-encoder = { workspace = true }
 wasm-metadata = { workspace = true }
+wasmtime = { workspace = true }
+wasmtime-wasi = { workspace = true }
 # TODO: use the next release which has support for primary labels
 miette = { git = "https://github.com/zkat/miette", features = ["serde"] }
+wasm-wave = { git = "https://github.com/lann/wasm-wave", default-features = false, features = ["wasmtime"] }
 
 [dev-dependencies]
 wac-resolver = { workspace = true, default-features = false, features = ["wat", "wit"] }

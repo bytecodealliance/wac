@@ -10,6 +10,7 @@ mod expr;
 mod import;
 mod r#let;
 mod printer;
+mod transform;
 mod r#type;
 
 pub use export::*;
@@ -18,6 +19,7 @@ pub use import::*;
 pub use printer::*;
 pub use r#let::*;
 pub use r#type::*;
+pub use transform::*;
 
 struct Found(Option<Token>);
 
@@ -126,6 +128,17 @@ pub enum Error {
         version: std::string::String,
         /// The span of the version.
         #[label(primary, "invalid version")]
+        span: SourceSpan,
+    },
+    /// An invalid WAVE value was encountered.
+    #[error("`{error}` {detail}")]
+    InvalidValue {
+        /// The WAVE parse error kind.
+        error: wasm_wave::parser::ParserErrorKind,
+        /// The error detail (if any).
+        detail: std::string::String,
+        /// The span of the invalid value.
+        #[label(primary)]
         span: SourceSpan,
     },
 }

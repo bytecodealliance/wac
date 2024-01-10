@@ -1,4 +1,4 @@
-use super::{parse_token, DocComment, Expr, Ident, Lookahead, Parse, ParseResult, Peek};
+use super::{parse_token, DocComment, Expr, Ident, Lookahead, Parse, ParseResult, Peek, Transform};
 use crate::lexer::{Lexer, Token};
 use serde::Serialize;
 
@@ -10,8 +10,8 @@ pub struct LetStatement<'a> {
     pub docs: Vec<DocComment<'a>>,
     /// The newly bound identifier.
     pub id: Ident<'a>,
-    /// The expression being bound.
-    pub expr: Expr<'a>,
+    /// The right-hand-side of the let..
+    pub rhs: LetStatementRhs<'a>,
 }
 
 impl<'a> Parse<'a> for LetStatement<'a> {
@@ -20,9 +20,16 @@ impl<'a> Parse<'a> for LetStatement<'a> {
         parse_token(lexer, Token::LetKeyword)?;
         let id = Parse::parse(lexer)?;
         parse_token(lexer, Token::Equals)?;
-        let expr = Parse::parse(lexer)?;
+        let mut lookahead = Lookahead::new(lexer);
+        let rhs = if Transform::peek(&mut lookahead) {
+            LetStatementRhs::Transform(Parse::parse(lexer)?)
+        } else if Expr::peek(&mut lookahead) {
+            LetStatementRhs::Expr(Parse::parse(lexer)?)
+        } else {
+            return Err(lookahead.error());
+        };
         parse_token(lexer, Token::Semicolon)?;
-        Ok(Self { docs, id, expr })
+        Ok(Self { docs, id, rhs })
     }
 }
 
@@ -30,6 +37,16 @@ impl Peek for LetStatement<'_> {
     fn peek(lookahead: &mut Lookahead) -> bool {
         lookahead.peek(Token::LetKeyword)
     }
+}
+
+/// Represents the right-hand-side of a let statement.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum LetStatementRhs<'a> {
+    /// The right-hand-side is an expression.
+    Expr(Expr<'a>),
+    /// The right-hand-side is a transform.
+    Transform(Transform<'a>),
 }
 
 #[cfg(test)]

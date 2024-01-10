@@ -652,7 +652,10 @@ impl<'a, W: Write> DocumentPrinter<'a, W> {
         self.docs(&stmt.docs)?;
         self.indent()?;
         write!(self.writer, "let {id} = ", id = self.source(stmt.id.span))?;
-        self.expr(&stmt.expr)?;
+        match &stmt.rhs {
+            LetStatementRhs::Expr(expr) => self.expr(&expr)?,
+            LetStatementRhs::Transform(transform) => self.transform(&transform)?,
+        }
         write!(self.writer, ";")
     }
 
@@ -663,6 +666,18 @@ impl<'a, W: Write> DocumentPrinter<'a, W> {
             self.postfix_expr(postfix)?;
         }
 
+        Ok(())
+    }
+
+    /// Prints the given transform.
+    pub fn transform(&mut self, transform: &Transform) -> std::fmt::Result {
+        write!(
+            self.writer,
+            "transform<{transformer}> {component}",
+            transformer = self.source(transform.transformer.span),
+            component = self.source(transform.component.span),
+        )?;
+        // TODO: write value
         Ok(())
     }
 
@@ -684,7 +699,7 @@ impl<'a, W: Write> DocumentPrinter<'a, W> {
         write!(
             self.writer,
             "new {name} {{",
-            name = self.source(expr.package.span)
+            name = self.source(expr.component.span())
         )?;
 
         if expr.arguments.is_empty() {

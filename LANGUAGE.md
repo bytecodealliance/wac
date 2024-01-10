@@ -356,6 +356,9 @@ The string may be any legal export name in the component model.
 It is invalid to use a named access expression on anything other than an
 instance.
 
+#### Transform Expressions
+TODO
+
 ### Export Statements
 
 Export statements are used to export the result of an expression from the
@@ -518,10 +521,11 @@ result              ::= 'result'
                       | 'result' '<' type ',' type '>'
 borrow              ::= 'borrow' '<' type '>'
 
-let-statement           ::= 'let' id '=' expr ';'
+let-statement           ::= 'let' id '=' (expr | transform) ';'
 expr                    ::= primary-expr postfix-expr*
 primary-expr            ::= new-expr | nested-expr | id
-new-expr                ::= 'new' package-name '{' instantiation-args '}'
+new-expr                ::= 'new' component-ref '{' instantiation-args '}'
+component-ref           ::= id | package-name
 instantiation-args      ::= instantiation-arg (',' instantiation-arg)* (',' '...'?)?
 instantiation-arg       ::= id | '...' id | named-instantiation-arg
 named-instantiation-arg ::= (id | string) ':' expr
@@ -532,6 +536,8 @@ named-access-expr       ::= '[' string ']'
 
 export-statement        ::= 'export' expr (export-options)? ';'
 export-options          ::= `...` | 'as' (id | string)
+
+transform               ::= 'transform' '<' package-name '>' package-name wave-record
 
 id     ::= '%'?[a-z][a-z0-9]*('-'[a-z][a-z0-9]*)*
 string ::= '"' character-that-is-not-a-double-quote* '"'

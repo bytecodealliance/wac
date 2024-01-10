@@ -1,0 +1,70 @@
+{
+  "docs": [],
+  "directive": {
+    "package": {
+      "string": "test:comp",
+      "name": "test:comp",
+      "version": null,
+      "span": {
+        "offset": 8,
+        "length": 9
+      }
+    }
+  },
+  "statements": [
+    {
+      "Let": {
+        "docs": [
+          {
+            "comment": "Apply the transformer `wasi:virt` to the `foo:bar` package",
+            "span": {
+              "offset": 20,
+              "length": 62
+            }
+          },
+          {
+            "comment": "using the structured value to configure the transformer.",
+            "span": {
+              "offset": 83,
+              "length": 60
+            }
+          }
+        ],
+        "id": {
+          "string": "foo-bar",
+          "span": {
+            "offset": 148,
+            "length": 7
+          }
+        },
+        "rhs": {
+          "transform": {
+            "span": {
+              "offset": 158,
+              "length": 9
+            },
+            "transformer": {
+              "string": "wasi:virt",
+              "name": "wasi:virt",
+              "version": null,
+              "span": {
+                "offset": 168,
+                "length": 9
+              }
+            },
+            "component": {
+              "string": "foo:bar",
+              "name": "foo:bar",
+              "version": null,
+              "span": {
+                "offset": 179,
+                "length": 7
+              }
+            },
+            "untypedValue": "{environment: [(\"FOO\", \"BAR\")], files: [(\"/\", \"/etc\")]}"
+          }
+        }
+      }
+    }
+  ]
+}

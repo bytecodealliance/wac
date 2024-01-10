@@ -11,10 +11,12 @@ use std::{fmt, sync::Arc};
 mod ast;
 mod encoding;
 mod package;
+mod transform;
 mod types;
 
 pub use encoding::EncodingOptions;
 pub use package::PackageKey;
+pub use transform::*;
 pub use types::*;
 
 fn serialize_arena<T, S>(arena: &Arena<T>, serializer: S) -> std::result::Result<S::Ok, S::Error>
@@ -718,6 +720,24 @@ pub enum Error {
         #[label(primary, "mismatched type for {kind} `{name}`")]
         span: SourceSpan,
         /// The source of the error.
+        #[source]
+        source: anyhow::Error,
+    },
+    /// A component transform is missing required export func.
+    #[error("invalid transformer component")]
+    MissingTransformExport {
+        /// The span of the transformer package name.
+        #[label(primary, "no export matching transform signature")]
+        span: SourceSpan,
+    },
+
+    /// A transform failure occured.
+    #[error("failed to transform component")]
+    ComponentTransformFailure {
+        /// The span of the transform keyword.
+        #[label(primary, "transform failed")]
+        span: SourceSpan,
+        /// The underlying error.
         #[source]
         source: anyhow::Error,
     },

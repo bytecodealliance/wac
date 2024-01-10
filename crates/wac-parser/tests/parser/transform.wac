@@ -1,0 +1,8 @@
+package test:comp;
+
+/// Apply the transformer `wasi:virt` to the `foo:bar` package
+/// using the structured value to configure the transformer.
+let foo-bar = transform<wasi:virt> foo:bar {
+    environment: [("FOO", "BAR")],
+    files: [("/", "/etc")],
+};
