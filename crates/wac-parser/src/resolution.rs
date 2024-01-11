@@ -115,6 +115,24 @@ impl fmt::Display for ParentPathDisplay<'_> {
     }
 }
 
+/// Represents an operation that may be performed on an instance.
+#[derive(Debug, Clone, Copy, Hash, Eq, PartialEq)]
+pub enum InstanceOperation {
+    /// The operation was an access of the form `.name` or `.["name"]`.
+    Access,
+    /// The operation was a spread of the form `...id` or `<expr>...`.
+    Spread,
+}
+
+impl fmt::Display for InstanceOperation {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Access => write!(f, "an access operation"),
+            Self::Spread => write!(f, "a spread operation"),
+        }
+    }
+}
+
 /// Represents a resolution error.
 #[derive(thiserror::Error, Diagnostic, Debug)]
 #[diagnostic(code("failed to resolve document"))]
@@ -551,20 +569,15 @@ pub enum Error {
         #[label("previous instantiation here")]
         instantiation: SourceSpan,
     },
-    /// An access expression on an inaccessible value was encountered.
-    #[error("a {kind} cannot be accessed")]
-    Inaccessible {
-        /// The kind of the item.
+    /// An operation was performed on something that was not an instance.
+    #[error("an instance is required to perform {operation}")]
+    NotAnInstance {
+        /// The kind of item that was not an instance.
         kind: String,
+        /// The operation that was performed.
+        operation: InstanceOperation,
         /// The span where the error occurred.
-        #[label(primary, "a {kind} cannot be accessed")]
-        span: SourceSpan,
-    },
-    /// An access on an interface was encountered.
-    #[error("an interface cannot be accessed")]
-    InaccessibleInterface {
-        /// The span where the error occurred.
-        #[label(primary, "an interface cannot be accessed")]
+        #[label(primary, "this evaluated to a {kind} when an instance was expected")]
         span: SourceSpan,
     },
     /// An instance is missing an export.
@@ -644,6 +657,29 @@ pub enum Error {
         /// The help message for the error.
         #[help]
         help: Option<String>,
+    },
+    /// A fill argument (`...`) was not the last argument.
+    #[error("implicit import argument `...` must be the last argument")]
+    FillArgumentNotLast {
+        /// The span where the error occurred.
+        #[label(primary, "must be last argument")]
+        span: SourceSpan,
+    },
+    /// A spread instantiation argument did not match any import names.
+    #[error("the instance has no matching exports for the remaining unsatisfied arguments")]
+    SpreadInstantiationNoMatch {
+        /// The span where the error occurred.
+        #[label(primary, "no matching exports for the instance")]
+        span: SourceSpan,
+    },
+    /// An export spread operation was performed and had no effect.
+    #[error(
+        "instance has no exports or all exports of the instance match previously exported names"
+    )]
+    SpreadExportNoEffect {
+        /// The span where the error occurred.
+        #[label(primary, "spreading the exports of this instance has no effect")]
+        span: SourceSpan,
     },
 }
 

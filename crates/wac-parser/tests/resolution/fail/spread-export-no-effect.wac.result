@@ -1,0 +1,9 @@
+failed to resolve document
+
+  × instance has no exports or all exports of the instance match previously exported names
+   ╭─[tests/resolution/fail/spread-export-no-effect.wac:5:8]
+ 4 │ 
+ 5 │ export i...;
+   ·        ┬
+   ·        ╰── spreading the exports of this instance has no effect
+   ╰────

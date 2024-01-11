@@ -1,0 +1,9 @@
+failed to resolve document
+
+  × implicit import argument `...` must be the last argument
+   ╭─[tests/resolution/fail/fill-not-last.wac:3:23]
+ 2 │ 
+ 3 │ let x = new foo:bar { ..., a };
+   ·                       ─┬─
+   ·                        ╰── must be last argument
+   ╰────

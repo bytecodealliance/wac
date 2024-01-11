@@ -4,7 +4,7 @@ use super::{
     FuncResult, Interface, InterfaceId, ItemKind, PrimitiveType, Record, ResolutionResult,
     Resource, ResourceId, SubtypeChecker, Type, ValueType, Variant, World, WorldId,
 };
-use crate::{ast, method_extern_name, Item, ItemId, PackageId, UsedType};
+use crate::{ast, method_extern_name, InstanceOperation, Item, ItemId, PackageId, UsedType};
 use anyhow::Context;
 use id_arena::Arena;
 use indexmap::{IndexMap, IndexSet};
@@ -51,8 +51,8 @@ struct State<'a> {
     packages: Arena<Package>,
     /// The map of package name to id.
     package_map: HashMap<PackageKey<'a>, PackageId>,
-    /// The map of instance items and export names to the aliased item id.
-    aliases: HashMap<(ItemId, String), ItemId>,
+    /// The map of instance items and their aliased items.
+    aliases: HashMap<ItemId, HashMap<String, ItemId>>,
     /// The map of imported items.
     /// This is used to keep track of implicit imports and merge them together.
     imports: IndexMap<String, Import<'a>>,
@@ -358,23 +358,66 @@ impl<'a> AstResolver<'a> {
         stmt: &'a ast::ExportStatement<'a>,
     ) -> ResolutionResult<()> {
         log::debug!("resolving export statement");
-        let item = self.expr(state, &stmt.expr)?;
-        let (name, span) = if let Some(name) = &stmt.name {
-            (name.as_str(), name.span())
-        } else {
-            (
-                self.infer_export_name(state, item)
-                    .ok_or(Error::ExportRequiresAs { span: stmt.span })?,
-                stmt.span,
-            )
-        };
 
-        // Validate the export name
-        match ComponentName::new(name, 0)
+        let item = self.expr(state, &stmt.expr)?;
+
+        match &stmt.options {
+            ast::ExportOptions::None => {
+                let name = self
+                    .infer_export_name(state, item)
+                    .ok_or(Error::ExportRequiresAs {
+                        span: stmt.expr.span,
+                    })?;
+
+                self.export_item(state, item, name.to_owned(), stmt.expr.span, true)?;
+            }
+            ast::ExportOptions::Spread(span) => {
+                let exports =
+                    self.instance_exports(state, item, stmt.expr.span, InstanceOperation::Spread)?;
+
+                let mut exported = false;
+                for name in exports.keys() {
+                    // Only export the item if it another item with the same name
+                    // has not been already exported
+                    if state.exports.contains_key(name) {
+                        continue;
+                    }
+
+                    let item = self
+                        .alias_export(state, item, exports, name)?
+                        .expect("expected a matching export name");
+
+                    self.export_item(state, item, name.clone(), *span, false)?;
+                    exported = true;
+                }
+
+                if !exported {
+                    return Err(Error::SpreadExportNoEffect {
+                        span: stmt.expr.span,
+                    });
+                }
+            }
+            ast::ExportOptions::Rename(name) => {
+                self.export_item(state, item, name.as_str().to_owned(), name.span(), false)?;
+            }
+        }
+
+        Ok(())
+    }
+
+    fn export_item(
+        &self,
+        state: &mut State<'a>,
+        item: ItemId,
+        name: String,
+        span: SourceSpan,
+        show_hint: bool,
+    ) -> Result<(), Error> {
+        match ComponentName::new(&name, 0)
             .map_err(|e| {
                 let msg = e.to_string();
                 Error::InvalidExternName {
-                    name: name.to_string(),
+                    name: name.clone(),
                     kind: ExternKind::Export,
                     span,
                     source: anyhow::anyhow!(
@@ -398,9 +441,7 @@ impl<'a> AstResolver<'a> {
             _ => {}
         }
 
-        // Ensure the export does not conflict with a defined item as
-        // they are implicitly exported.
-        if let Some((item_id, prev_span)) = state.root_scope().get(name) {
+        if let Some((item_id, prev_span)) = state.root_scope().get(&name) {
             let item = &state.current.items[item_id];
             if let Item::Definition(definition) = item {
                 return Err(Error::ExportConflict {
@@ -408,7 +449,7 @@ impl<'a> AstResolver<'a> {
                     kind: definition.kind.as_str(&self.definitions).to_string(),
                     span,
                     definition: prev_span,
-                    help: if stmt.name.is_some() {
+                    help: if !show_hint {
                         None
                     } else {
                         Some("consider using an `as` clause to use a different name".into())
@@ -417,13 +458,13 @@ impl<'a> AstResolver<'a> {
             }
         }
 
-        if let Some(existing) = state.exports.get(name) {
+        if let Some(existing) = state.exports.get(&name) {
             return Err(Error::DuplicateExternName {
                 name: name.to_owned(),
                 kind: ExternKind::Export,
                 span,
                 previous: existing.span,
-                help: if stmt.name.is_some() {
+                help: if !show_hint {
                     None
                 } else {
                     Some("consider using an `as` clause to use a different name".into())
@@ -431,9 +472,8 @@ impl<'a> AstResolver<'a> {
             });
         }
 
-        let prev = state.exports.insert(name.to_owned(), Export { span, item });
+        let prev = state.exports.insert(name, Export { span, item });
         assert!(prev.is_none());
-
         Ok(())
     }
 
@@ -1638,8 +1678,10 @@ impl<'a> AstResolver<'a> {
     fn expr(&mut self, state: &mut State<'a>, expr: &'a ast::Expr<'a>) -> ResolutionResult<ItemId> {
         let mut item = self.primary_expr(state, &expr.primary)?;
 
+        let mut parent_span = expr.primary.span();
         for expr in &expr.postfix {
-            item = self.postfix_expr(state, item, expr)?;
+            item = self.postfix_expr(state, item, expr, parent_span)?;
+            parent_span = expr.span();
         }
 
         Ok(item)
@@ -1652,7 +1694,7 @@ impl<'a> AstResolver<'a> {
     ) -> ResolutionResult<ItemId> {
         match expr {
             ast::PrimaryExpr::New(e) => self.new_expr(state, e),
-            ast::PrimaryExpr::Nested(e) => self.expr(state, &e.0),
+            ast::PrimaryExpr::Nested(e) => self.expr(state, &e.inner),
             ast::PrimaryExpr::Ident(i) => Ok(state.local_item(i)?.0),
         }
     }
@@ -1676,28 +1718,55 @@ impl<'a> AstResolver<'a> {
             expr.package.span,
         )?;
         let ty = state.packages[pkg].world;
-        let require_all = !expr.ellipsis;
+        let mut require_all = true;
 
-        let mut arguments: IndexMap<String, ItemId> = Default::default();
-        for arg in &expr.arguments {
+        let mut arguments: IndexMap<String, (ItemId, SourceSpan)> = Default::default();
+        for (i, arg) in expr.arguments.iter().enumerate() {
             let (name, item, span) = match arg {
+                ast::InstantiationArgument::Inferred(id) => {
+                    self.inferred_instantiation_arg(state, id, ty)?
+                }
+                ast::InstantiationArgument::Spread(_) => {
+                    // Spread arguments will be processed after all other arguments
+                    continue;
+                }
                 ast::InstantiationArgument::Named(arg) => {
                     self.named_instantiation_arg(state, arg, ty)?
                 }
-                ast::InstantiationArgument::Ident(id) => {
-                    self.ident_instantiation_arg(state, id, ty)?
+                ast::InstantiationArgument::Fill(span) => {
+                    if i != (expr.arguments.len() - 1) {
+                        return Err(Error::FillArgumentNotLast { span: *span });
+                    }
+
+                    require_all = false;
+                    continue;
                 }
             };
 
+            let prev = arguments.insert(name.clone(), (item, span));
+            if prev.is_some() {
+                return Err(Error::DuplicateInstantiationArg { name, span });
+            }
+        }
+
+        // Process the spread arguments
+        for arg in &expr.arguments {
+            if let ast::InstantiationArgument::Spread(id) = arg {
+                self.spread_instantiation_arg(state, id, ty, &mut arguments)?;
+            }
+        }
+
+        // Type check the arguments
+        for (name, (item, span)) in &arguments {
             let world = &self.definitions.worlds[ty];
             let expected =
                 world
                     .imports
-                    .get(&name)
+                    .get(name)
                     .ok_or_else(|| Error::MissingComponentImport {
                         package: expr.package.string.to_string(),
                         import: name.clone(),
-                        span,
+                        span: *span,
                     })?;
 
             log::debug!(
@@ -1706,17 +1775,12 @@ impl<'a> AstResolver<'a> {
             );
 
             SubtypeChecker::new(&self.definitions, &state.packages)
-                .is_subtype(*expected, state.current.items[item].kind())
+                .is_subtype(*expected, state.current.items[*item].kind())
                 .map_err(|e| Error::MismatchedInstantiationArg {
                     name: name.clone(),
-                    span,
+                    span: *span,
                     source: e,
                 })?;
-
-            let prev = arguments.insert(name.clone(), item);
-            if prev.is_some() {
-                return Err(Error::DuplicateInstantiationArg { name, span });
-            }
         }
 
         // Add implicit imports (i.e. `...` was present) or error in
@@ -1731,7 +1795,7 @@ impl<'a> AstResolver<'a> {
         for (name, argument) in missing {
             if require_all {
                 return Err(Error::MissingInstantiationArg {
-                    name: name.clone(),
+                    name,
                     package: expr.package.string.to_string(),
                     span: expr.package.span,
                 });
@@ -1745,7 +1809,8 @@ impl<'a> AstResolver<'a> {
                 expr.package.name,
                 expr.package.span,
             )?;
-            arguments.insert(name, item);
+
+            arguments.insert(name, (item, expr.package.span));
         }
 
         Ok(state
@@ -1753,7 +1818,7 @@ impl<'a> AstResolver<'a> {
             .items
             .alloc(Item::Instantiation(super::Instantiation {
                 package: pkg,
-                arguments,
+                arguments: arguments.into_iter().map(|(n, (i, _))| (n, i)).collect(),
             })))
     }
 
@@ -1771,7 +1836,7 @@ impl<'a> AstResolver<'a> {
             // Check if the implicit import would conflict with an explicit import
             if import.package.is_none() {
                 return Err(Error::InstantiationArgConflict {
-                    name: name.to_owned(),
+                    name,
                     kind: kind.as_str(&self.definitions).to_string(),
                     span,
                     import: import.span,
@@ -1810,7 +1875,7 @@ impl<'a> AstResolver<'a> {
                 }
                 (_, kind) => {
                     return Err(Error::UnmergeableInstantiationArg {
-                        name: name.to_owned(),
+                        name,
                         package: import.package.unwrap().to_string(),
                         kind: kind.as_str(&self.definitions).to_string(),
                         span,
@@ -1987,7 +2052,7 @@ impl<'a> AstResolver<'a> {
         Ok((name.to_owned(), item, arg.name.span()))
     }
 
-    fn ident_instantiation_arg(
+    fn inferred_instantiation_arg(
         &mut self,
         state: &mut State<'a>,
         ident: &ast::Ident<'a>,
@@ -2024,6 +2089,39 @@ impl<'a> AstResolver<'a> {
 
         // Finally default to the id itself
         Ok((ident.string.to_owned(), item_id, ident.span))
+    }
+
+    fn spread_instantiation_arg(
+        &mut self,
+        state: &mut State<'a>,
+        id: &ast::Ident,
+        world: WorldId,
+        arguments: &mut IndexMap<String, (ItemId, SourceSpan)>,
+    ) -> ResolutionResult<()> {
+        let item = state.local_item(id)?.0;
+        let world = &self.definitions.worlds[world];
+
+        let exports = self.instance_exports(state, item, id.span, InstanceOperation::Spread)?;
+
+        let mut spread = false;
+        for name in world.imports.keys() {
+            // Check if the argument was already provided
+            if arguments.contains_key(name) {
+                continue;
+            }
+
+            // Alias a matching export of the instance
+            if let Some(aliased) = self.alias_export(state, item, exports, name)? {
+                spread = true;
+                arguments.insert(name.clone(), (aliased, id.span));
+            }
+        }
+
+        if !spread {
+            return Err(Error::SpreadInstantiationNoMatch { span: id.span });
+        }
+
+        Ok(())
     }
 
     fn find_matching_interface_name<'b>(
@@ -2080,18 +2178,27 @@ impl<'a> AstResolver<'a> {
         state: &mut State<'a>,
         item: ItemId,
         expr: &ast::PostfixExpr<'a>,
+        parent_span: SourceSpan,
     ) -> ResolutionResult<ItemId> {
+        let exports = self.instance_exports(state, item, parent_span, InstanceOperation::Access)?;
+
         match expr {
             ast::PostfixExpr::Access(expr) => {
-                let exports = self.instance_exports(state, item, expr.span)?;
                 let name = Self::find_matching_interface_name(expr.id.string, exports)
-                    .unwrap_or(expr.id.string)
-                    .to_owned();
-                self.access_expr(state, item, name, expr.span)
+                    .unwrap_or(expr.id.string);
+
+                self.alias_export(state, item, exports, name)?
+                    .ok_or_else(|| Error::MissingInstanceExport {
+                        name: name.to_owned(),
+                        span: expr.span,
+                    })
             }
-            ast::PostfixExpr::NamedAccess(expr) => {
-                self.access_expr(state, item, expr.string.value.to_owned(), expr.span)
-            }
+            ast::PostfixExpr::NamedAccess(expr) => self
+                .alias_export(state, item, exports, expr.string.value)?
+                .ok_or_else(|| Error::MissingInstanceExport {
+                    name: expr.string.value.to_owned(),
+                    span: expr.span,
+                }),
         }
     }
 
@@ -2100,46 +2207,45 @@ impl<'a> AstResolver<'a> {
         state: &State,
         item: ItemId,
         span: SourceSpan,
+        operation: InstanceOperation,
     ) -> ResolutionResult<&IndexMap<String, ItemKind>> {
         match state.current.items[item].kind() {
             ItemKind::Instance(id) => Ok(&self.definitions.interfaces[id].exports),
             ItemKind::Instantiation(id) => {
                 Ok(&self.definitions.worlds[state.packages[id].world].exports)
             }
-            ItemKind::Type(Type::Interface(_)) => Err(Error::InaccessibleInterface { span }),
-            kind => Err(Error::Inaccessible {
+            kind => Err(Error::NotAnInstance {
                 kind: kind.as_str(&self.definitions).to_string(),
+                operation,
                 span,
             }),
         }
     }
 
-    fn access_expr(
-        &mut self,
+    fn alias_export(
+        &self,
         state: &mut State<'a>,
         item: ItemId,
-        name: String,
-        span: SourceSpan,
-    ) -> ResolutionResult<ItemId> {
-        let exports = self.instance_exports(state, item, span)?;
-        let kind = exports
-            .get(&name)
-            .copied()
-            .ok_or_else(|| Error::MissingInstanceExport {
-                name: name.clone(),
-                span,
-            })?;
+        exports: &IndexMap<String, ItemKind>,
+        name: &str,
+    ) -> ResolutionResult<Option<ItemId>> {
+        let kind = match exports.get(name) {
+            Some(kind) => *kind,
+            None => return Ok(None),
+        };
 
-        match state.aliases.entry((item, name.clone())) {
-            hash_map::Entry::Occupied(e) => Ok(*e.get()),
-            hash_map::Entry::Vacant(e) => {
-                let id = state.current.items.alloc(Item::Alias(super::Alias {
-                    item,
-                    export: name,
-                    kind,
-                }));
-                Ok(*e.insert(id))
-            }
+        let aliases = state.aliases.entry(item).or_default();
+        if let Some(id) = aliases.get(name) {
+            return Ok(Some(*id));
         }
+
+        let id = state.current.items.alloc(Item::Alias(super::Alias {
+            item,
+            export: name.to_owned(),
+            kind,
+        }));
+
+        aliases.insert(name.to_owned(), id);
+        Ok(Some(id))
     }
 }

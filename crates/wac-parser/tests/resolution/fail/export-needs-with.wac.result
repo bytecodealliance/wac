@@ -1,9 +1,9 @@
 failed to resolve document
 
   × export statement requires an `as` clause as the export name cannot be inferred
-   ╭─[tests/resolution/fail/export-needs-with.wac:4:1]
+   ╭─[tests/resolution/fail/export-needs-with.wac:4:8]
  3 │ let i = new foo:bar {};
  4 │ export i;
-   · ───┬──
-   ·    ╰── an `as` clause is required
+   ·        ┬
+   ·        ╰── an `as` clause is required
    ╰────

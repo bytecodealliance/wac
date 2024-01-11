@@ -160,18 +160,20 @@ where
 
                 for arg in &e.arguments {
                     match arg {
+                        InstantiationArgument::Inferred(_)
+                        | InstantiationArgument::Spread(_)
+                        | InstantiationArgument::Fill(_) => continue,
                         InstantiationArgument::Named(a) => {
                             if !self.expr(this, &a.expr)? {
                                 return Ok(false);
                             }
                         }
-                        InstantiationArgument::Ident(_) => continue,
                     }
                 }
 
                 Ok(true)
             }
-            PrimaryExpr::Nested(e) => self.expr(this, &e.0),
+            PrimaryExpr::Nested(e) => self.expr(this, &e.inner),
             PrimaryExpr::Ident(_) => Ok(true),
         }
     }

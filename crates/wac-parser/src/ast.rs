@@ -258,18 +258,13 @@ pub(crate) trait Parse<'a>: Sized {
 
 fn parse_delimited<'a, T: Parse<'a> + Peek>(
     lexer: &mut Lexer<'a>,
-    until: &[Token],
+    until: Token,
     with_commas: bool,
 ) -> ParseResult<Vec<T>> {
-    assert!(
-        !until.is_empty(),
-        "must have at least one token to parse until"
-    );
-
     let mut items = Vec::new();
     loop {
         let mut lookahead = Lookahead::new(lexer);
-        if until.iter().any(|t| lookahead.peek(*t)) {
+        if lookahead.peek(until) {
             break;
         }
 
@@ -279,9 +274,13 @@ fn parse_delimited<'a, T: Parse<'a> + Peek>(
 
         items.push(Parse::parse(lexer)?);
 
-        if with_commas {
-            if let Some((Ok(Token::Comma), _)) = lexer.peek() {
-                lexer.next();
+        if let Some((Ok(next), _)) = lexer.peek() {
+            if next == until {
+                break;
+            }
+
+            if with_commas {
+                parse_token(lexer, Token::Comma)?;
             }
         }
     }

@@ -9,8 +9,8 @@ In the simplest terms, a composition is a collection of components that
 are instantiated in a topological order and certain exports from those
 instances are made available as exports of the composition itself.
 
-WAC currently has three statements that extend the WIT language: imports,
-`let`, and exports.
+WAC currently has three statements that extend the WIT language: import
+statements, let statements, and export statements.
 
 ### Import Statements
 
@@ -41,11 +41,11 @@ resulting composition; in the above example, the import name would be
 The `as` keyword can be used to rename the imported item:
 
 ```wac
-import greeter as "my-greeter": example:greeter/greeter;
+import greeter as my-greeter: example:greeter/greeter;
 ```
 
-Here the name of the import becomes `my-greeter`; the name may be any valid import
-name in the component model.
+Here the name of the import becomes `my-greeter`; the name may be any valid 
+import name in the component model.
 
 The local name `greeter` can then be used to refer to the imported item from
 the rest of the composition.
@@ -95,7 +95,8 @@ let my-instance = new example:my-component { ... };
 
 The special `...` syntax indicates that any arguments that were not specified
 as part of the `new` expression should be imported from the composition and
-passed through to the instantiation.
+passed through to the instantiation. The `...` syntax must be used as the last
+argument to the `new` expression.
 
 The above is equivalent to:
 
@@ -154,10 +155,11 @@ The `let` statement allows for binding a local name in the composition to the
 result of an expression.
 
 Note that local names are not variables and cannot be reassigned; a
-redefinition of a name is an error.
+redefinition of a previous name is an error.
 
-There are currently four expressions in WAC:
+There are currently five expressions in WAC:
 
+* A local name (e.g. `a`), resulting in the value of the name.
 * The `new` expression (e.g `new a:b { }`)
 * The postfix access expression (e.g. `a.b`).
 * The postfix named access expression (e.g. `a["b"]`)
@@ -165,8 +167,8 @@ There are currently four expressions in WAC:
 
 #### New Expressions
 
-A `new` expression instantiates a component and returns an instance
-representing the _exports_ of the component.
+A `new` expression instantiates a component and returns a component instance
+representing its _exports_.
 
 The `new` expression takes the name of the package (i.e. component) to
 instantiate and a list of instantiation arguments (i.e. imports).
@@ -178,35 +180,40 @@ arguments to the instantiation.
 If `...` is not specified, then all instantiation arguments must be explicitly
 specified.
 
-There are two forms of instantiation arguments: implicitly named and explicitly
-named.
+There are three forms of instantiation arguments: inferred arguments,
+named arguments, and spread arguments.
 
-An implicitly named argument is passed by identifier alone:
+##### Inferred Arguments
+
+An inferred argument is passed directly by local name:
 
 ```wac
 let i = new a:b { c };
 ```
 
 Where `i` is the name of the bound instance, `a:b` is the package being
-instantiated, and `c` is the instantiation argument.
+instantiated, and the local name `c` is the instantiation argument.
 
 The name of the instantiation argument is inferred according to these rules (in
 order of precedence):
 
-* If `c` is an instance of an interface with an associated package path (e.g.
-`x:y/z`) and package `a:b` has an import with a matching path, then the path
-will be used as the argument name.
+* If the local name is bound to an instance with an associated package path (
+e.g. `foo:bar/baz`) and the component being instantiated has an import with a
+matching path, then the path will be used as the argument name.
 
-* If `c` is an explicit import or an access of an instance export and the
-package `a:b` has an import with a matching name, then the import/export name
-will be used as the argument name.
+* If the local name is bound to an explicit import or an access of an instance
+export and the component being instantiated has an import with a matching name,
+then the import/export name will be used as the argument name.
 
-* If component `a:b` has exactly one import with `c` as the final component of
-a path (e.g. `x:y/c`), then the path will be used as the argument name.
+* If the component being instantiated has exactly one import that has a path
+which ends with the local name (e.g. `foo:bar/c`), then the path will be used
+as the argument name.
 
-* Lastly, `c` will be used as the argument name.
+* Lastly, the local name will be used as the argument name.
 
-Explicitly named arguments are passed as a name/value pair:
+##### Named Arguments
+
+Named arguments provide the name of the instantiation argument to use:
 
 ```wac
 let i = new a:b { c: d };
@@ -216,19 +223,67 @@ Where `i` is the name of the bound instance, `a:b` is the package being
 instantiated, `c` is the name of the instantiation argument, and `d` is the
 value of the argument.
 
-Even with this form, the name of the instantiation argument is inferred
-according to the last two rules stated above; for example, the explicit
-argument `input-stream: stream` may be used to refer to an import of `wasi:io/
-input-stream` or an import of `input-stream`.
+The name may be specified as a kebab-case identifier (e.g. `foo-bar`) or as a
+string (e.g. `"foo-bar"`).
 
-Explicit argument names may also be strings:
+When using a kebab-case identifier, a special rule is used to determine the
+actual name of the argument:
+
+* If the component being instantiated has exactly one import that has a path
+which ends with the local name (e.g. `foo:bar/foo-bar`), then the path will be
+used as the argument name.
+
+* Otherwise, the kebab-case identifier will be used as the argument name.
+
+With this rule, the following example is valid:
 
 ```wac
-let i = new a:b { "c": d };
+let stream = new my:stream {};
+
+// Assumption: `a:b` has an import with path `wasi:io/input-stream`
+let i = new a:b { input-stream: stream };
 ```
 
-This is equivalent to the previous example except that the argument name `c` is
-_always_ used; no inference is performed.
+##### Spread Arguments
+
+Spread arguments allow for specifying the _exports of an instance_ as arguments
+to the instantiation of a component.
+
+Like the `...` syntax for implicit imports, a `...` precedes a local name as an
+indication to spread the instance's exports as arguments to the instantiation:
+
+```wac
+let i = new a:b { ...c };
+```
+
+Where `i` is the name of the bound instance, `a:b` is the package being
+instantiated and `c` is the local name of an instance.
+
+It in an error for the local name used in a spread argument to name anything
+other than an instance.
+
+With this syntax, the exports of the instance `c` will be spread to any
+_unspecified_ and _unsatisfied_ instantiation arguments.
+
+Note that spread arguments apply _after_ inferred and named arguments and are
+applied _in-order_; this means that the order of spread arguments is important:
+
+```
+let i = new a:b { foo: bar, ...c, baz, ...d };
+```
+
+In the above example, arguments `foo` and `baz` will bind to the instantiation
+arguments of `a:b` first.
+
+Any unsatisfied arguments will then be satisfied by the matching exports of
+instance `c`, followed by any matching the exports of instance `d`.
+
+The above behavior differs from JavaScript's spread argument syntax, which is
+the inspiration for this syntax, because component instantiation arguments are
+_named_ and not _positional_.
+
+Additionally, it is an evaluation error if a spread argument has no matching 
+exports.
 
 #### Access Expressions
 
@@ -242,13 +297,16 @@ let i = new a:b { ... };
 let s = i.outgoing-stream;
 ``````
 
-Access expressions use the following rules to determine the name of the export:
+Taking the above example into consideration, access expressions use the 
+following rules to determine the name of the export:
 
 * If component `a:b` has exactly one export with `outgoing-stream` as the final
 component of a path (e.g. `wasi:io/outgoing-stream`), then the path will be
 used as the export name.
 
 * Otherwise, `outgoing-stream` will be used as the export name.
+
+It is invalid to use an access expression on anything other than an instance.
 
 #### Named Access Expressions
 
@@ -264,47 +322,82 @@ let s = i["wasi:io/outgoing-stream"];
 ```
 
 This is equivalent to the previous example except that the export name is
-_exactly_ what was specified; no inference is performed.
+_exactly_ what is specified by the string; no inference is performed.
 
 The string may be any legal export name in the component model.
+
+It is invalid to use a named access expression on anything other than an
+instance.
 
 ### Export Statements
 
 Export statements are used to export the result of an expression from the
-composition itself.
-
-The export statement can be used to export the item represented by a local name:
+composition itself:
 
 ```wac
-let i = new a:b { ... };
-let s = i.streams;
-export s;
+let my-run = new a:b { ... }.run;
+export my-run;
+
+// note: this is also equivalent to:
+// export new a:b { ... }.run;
 ```
 
-In the above example, component `a:b` is instantiated and `s` is bound to the
-export of `wasi:io/streams` from the instance.
+In the above example, component `a:b` is instantiated and the local name
+`my-run` is bound to the export of `run` from the instance, which we can assume
+in this example to be a function of type `func()`.
 
-The `export` statement is then used to export `s` from the composition.
+The `export` statement is then used to export the `my-run` function from the
+composition using the export name `run` as that is the name that was accessed 
+from the instance.
 
-The name of the export is inferred according to these rules (in order of
-precedence):
-
-* If the item is an instance of an interface with an associated package path (e.g.
-`x:y/z`), then the path is used as the export name.
-
-* If the item is an explicit import or an access of an instance export, then
-that name is used.
-
-In the above example, the export will be named `wasi:io/streams` as that is
-ultimately the name of the export that was accessed from instance `i`.
-
-If the export name cannot be inferred, then the export name must be explicitly
-specified with the `as` keyword:
+The `as` keyword can be used to rename the export:
 
 ```wac
-let i = new a:b { ... };
-export i as "my-instance";
+let my-run = new a:b { ... }.run;
+export my-run as "my-run";
 ```
+
+Like spread arguments in `new` expressions, exports of an instance may be 
+_spread_ as exports of the composition:
+
+```wac
+let my-instance = new a:b { ... };
+export my-instance...;
+```
+
+If we assume that component `a:b` in the above example has the following world:
+
+```wit
+interface setup {
+    setup: func(config: string);
+}
+
+world a:b {
+    export run: func();
+    export setup: setup;
+}
+```
+
+Then the composition will export a `run` function of type `func()` and an
+instance with name `a:b/setup`.
+
+It is an evaluation error if the instance being spread has no exports; it is a
+syntax error to use an `as` clause with a spread export.
+
+Spread exports will only create new exports that do not conflict with
+previously exported items.
+
+If we extend the above example to be:
+
+```wac
+let my-instance = new a:b { ... };
+let run = b:c { ... }.run;
+export run;
+export my-instance...;
+```
+
+Then the `run` function exported by the composition will be from the instance 
+named `b:c` and not the instance named `a:b`.
 
 ### WAC Grammar
 
@@ -403,14 +496,15 @@ expr                    ::= primary-expr postfix-expr*
 primary-expr            ::= new-expr | nested-expr | id
 new-expr                ::= 'new' package-name '{' instantiation-args '}'
 instantiation-args      ::= instantiation-arg (',' instantiation-arg)* (',' '...'?)?
-instantiation-arg       ::= named-instantiation-arg | id
+instantiation-arg       ::= id | '...' id | named-instantiation-arg
 named-instantiation-arg ::= (id | string) ':' expr
 nested-expr             ::= '(' expr ')'
 postfix-expr            ::= access-expr | named-access-expr
 access-expr             ::= '.' id
 named-access-expr       ::= '[' string ']'
 
-export-statement        ::= 'export' expr ('as' (id | string))? ';'
+export-statement        ::= 'export' expr (export-options)? ';'
+export-options          ::= `...` | 'as' (id | string)
 
 id     ::= '%'?[a-z][a-z0-9]*('-'[a-z][a-z0-9]*)*
 string ::= '"' character-that-is-not-a-double-quote* '"'

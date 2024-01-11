@@ -1,0 +1,5 @@
+package test:comp;
+
+import i: interface {};
+
+export i...;

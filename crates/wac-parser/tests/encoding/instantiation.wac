@@ -4,15 +4,22 @@ import i: interface {
     foo: func();
 };
 
+import i2: interface {
+    baz: func();
+};
+
 import f: func();
 
 let baz = f;
 let x1 = new foo:bar { ... };
 let x2 = new foo:bar { baz: f };
 let x3 = new foo:bar { baz };
+let x4 = new foo:bar { ...i2, ... };
 
 let y1 = new bar:baz { ... };
 let y2 = new bar:baz { foo: i };
 let y3 = new bar:baz { foo: x1 };
 let y4 = new bar:baz { foo: x2 };
 let y5 = new bar:baz { foo: x3 };
+
+export x4...;

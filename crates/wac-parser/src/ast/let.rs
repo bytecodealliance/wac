@@ -76,5 +76,11 @@ mod test {
             "package foo:bar;\n\nlet x = new foo:bar {\n    foo,\n    \"bar\": (new baz:qux { ... }),\n    \"baz\": foo[\"baz\"].qux,\n};\n",
         )
         .unwrap();
+
+        roundtrip(
+            "package foo:bar; let x = new foo:bar { foo, ...i, bar: baz, ...i2, ...,};",
+            "package foo:bar;\n\nlet x = new foo:bar {\n    foo,\n    ...i,\n    bar: baz,\n    ...i2,\n    ...\n};\n",
+        )
+        .unwrap();
     }
 }

@@ -1,0 +1,6 @@
+package test:comp;
+
+import i: interface {
+};
+
+let x = new foo:bar { ...i };

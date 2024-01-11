@@ -9,7 +9,7 @@ import foo: interface {
 
     type r2 = r;
 
-    foo: func(r: borrow<r>, r2: borrow<r2>, r3: r, r4: r2) -> tuple<r, r2>;
+    bar: func(r: borrow<r>, r2: borrow<r2>, r3: r, r4: r2) -> tuple<r, r2>;
     baz: func();
 };
 
