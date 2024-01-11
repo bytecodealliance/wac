@@ -1,12 +1,14 @@
 {
   "docs": [],
-  "package": {
-    "string": "test:comp",
-    "name": "test:comp",
-    "version": null,
-    "span": {
-      "offset": 8,
-      "length": 9
+  "directive": {
+    "package": {
+      "string": "test:comp",
+      "name": "test:comp",
+      "version": null,
+      "span": {
+        "offset": 8,
+        "length": 9
+      }
     }
   },
   "statements": [

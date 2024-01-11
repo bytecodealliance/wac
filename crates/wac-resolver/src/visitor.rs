@@ -30,6 +30,16 @@ where
     /// The package names are visited in-order and will not deduplicate
     /// names/versions that are referenced multiple times.
     pub fn visit(&mut self, doc: &'a Document) -> Result<(), Error> {
+        if let Some(targets) = &doc.directive.targets {
+            if !(self.0)(
+                targets.name,
+                targets.version.as_ref(),
+                targets.package_name_span(),
+            ) {
+                return Ok(());
+            }
+        }
+
         for stmt in &doc.statements {
             match stmt {
                 Statement::Import(i) => {
@@ -43,12 +53,12 @@ where
                     }
                 }
                 Statement::Let(l) => {
-                    if !self.expr(doc.package.name, &l.expr)? {
+                    if !self.expr(doc.directive.package.name, &l.expr)? {
                         break;
                     }
                 }
                 Statement::Export(e) => {
-                    if !self.expr(doc.package.name, &e.expr)? {
+                    if !self.expr(doc.directive.package.name, &e.expr)? {
                         break;
                     }
                 }

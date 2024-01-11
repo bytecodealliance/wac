@@ -1,0 +1,113 @@
+{
+  "package": "test:comp",
+  "version": null,
+  "definitions": {
+    "types": [],
+    "resources": [],
+    "funcs": [
+      {
+        "params": {},
+        "results": null
+      },
+      {
+        "params": {},
+        "results": null
+      },
+      {
+        "params": {},
+        "results": null
+      },
+      {
+        "params": {},
+        "results": null
+      }
+    ],
+    "interfaces": [
+      {
+        "id": null,
+        "uses": {},
+        "exports": {
+          "f": {
+            "func": 1
+          }
+        }
+      }
+    ],
+    "worlds": [
+      {
+        "id": "test:comp/world",
+        "uses": {},
+        "imports": {
+          "f": {
+            "func": 0
+          }
+        },
+        "exports": {
+          "i": {
+            "type": {
+              "interface": 0
+            }
+          }
+        }
+      },
+      {
+        "id": null,
+        "uses": {},
+        "imports": {
+          "f": {
+            "func": 3
+          }
+        },
+        "exports": {
+          "f": {
+            "func": 3
+          }
+        }
+      }
+    ],
+    "modules": []
+  },
+  "packages": [
+    {
+      "name": "foo:bar",
+      "version": null,
+      "world": 1,
+      "definitions": {}
+    }
+  ],
+  "items": [
+    {
+      "definition": {
+        "name": "world",
+        "kind": {
+          "type": {
+            "world": 0
+          }
+        }
+      }
+    },
+    {
+      "import": {
+        "name": "f",
+        "kind": {
+          "func": 2
+        }
+      }
+    },
+    {
+      "instantiation": {
+        "package": 0,
+        "arguments": {
+          "f": 1
+        }
+      }
+    }
+  ],
+  "imports": {
+    "f": 1
+  },
+  "exports": {
+    "world": 0,
+    "i": 2
+  }
+}

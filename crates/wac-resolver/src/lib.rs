@@ -124,6 +124,10 @@ pub fn packages<'a>(
 ) -> Result<IndexMap<PackageKey<'a>, SourceSpan>, Error> {
     let mut keys = IndexMap::new();
     let mut visitor = PackageVisitor::new(|name, version, span| {
+        if name == document.directive.package.name {
+            return true;
+        }
+
         if keys.insert(PackageKey { name, version }, span).is_none() {
             if let Some(version) = version {
                 log::debug!("discovered reference to package `{name}` ({version})");

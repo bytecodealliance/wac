@@ -1,0 +1,5 @@
+package foo:bar;
+
+world baz {
+    export hello: func() -> string;
+}

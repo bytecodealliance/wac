@@ -1,0 +1,4 @@
+package test:comp targets test:comp/foo;
+
+world foo {   
+}

@@ -1,0 +1,8 @@
+failed to resolve document
+
+  × unknown package `foo:bar`
+   ╭─[tests/resolution/fail/unknown-target-path.wac:1:27]
+ 1 │ package test:comp targets foo:bar/baz;
+   ·                           ───┬───
+   ·                              ╰── unknown package `foo:bar`
+   ╰────

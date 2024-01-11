@@ -409,7 +409,7 @@ statement ::= import-statement
             | let-statement
             | export-statement
 
-package-decl ::= `package` package-name `;`
+package-decl ::= `package` package-name (`targets` package-path)? `;`
 package-name ::= id (':' id)+ ('@' version)?
 version      ::= <SEMVER>
 

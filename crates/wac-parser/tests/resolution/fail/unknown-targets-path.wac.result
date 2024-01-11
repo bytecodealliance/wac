@@ -1,0 +1,8 @@
+failed to resolve document
+
+  × undefined name `foo`
+   ╭─[tests/resolution/fail/unknown-targets-path.wac:1:37]
+ 1 │ package test:comp targets test:comp/foo;
+   ·                                     ─┬─
+   ·                                      ╰── undefined name `foo`
+   ╰────

@@ -1,0 +1,9 @@
+failed to resolve document
+
+  × import `bar` is not present in target world `test:comp/foo`
+   ╭─[tests/resolution/fail/target-extraneous-import.wac:7:8]
+ 6 │ 
+ 7 │ import bar: func();
+   ·        ─┬─
+   ·         ╰── import `bar` is not in the target world
+   ╰────
