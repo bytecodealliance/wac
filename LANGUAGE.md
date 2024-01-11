@@ -14,8 +14,7 @@ statements, let statements, and export statements.
 
 ### Import Statements
 
-A composition may explicitly import an item in the resulting composition;
-this is done with the `import` statement.
+A composition may explicitly import an item with the `import` statement.
 
 Assume a `greeter` interface definition published to a registry:
 
@@ -44,7 +43,7 @@ The `as` keyword can be used to rename the imported item:
 import greeter as my-greeter: example:greeter/greeter;
 ```
 
-Here the name of the import becomes `my-greeter`; the name may be any valid 
+Here the name of the import becomes `my-greeter`; the name may be any valid
 import name in the component model.
 
 The local name `greeter` can then be used to refer to the imported item from
@@ -282,7 +281,7 @@ The above behavior differs from JavaScript's spread argument syntax, which is
 the inspiration for this syntax, because component instantiation arguments are
 _named_ and not _positional_.
 
-Additionally, it is an evaluation error if a spread argument has no matching 
+Additionally, it is an evaluation error if a spread argument has no matching
 exports.
 
 #### Access Expressions
@@ -297,7 +296,7 @@ let i = new a:b { ... };
 let s = i.outgoing-stream;
 ``````
 
-Taking the above example into consideration, access expressions use the 
+Taking the above example into consideration, access expressions use the
 following rules to determine the name of the export:
 
 * If component `a:b` has exactly one export with `outgoing-stream` as the final
@@ -347,7 +346,7 @@ In the above example, component `a:b` is instantiated and the local name
 in this example to be a function of type `func()`.
 
 The `export` statement is then used to export the `my-run` function from the
-composition using the export name `run` as that is the name that was accessed 
+composition using the export name `run` as that is the name that was accessed
 from the instance.
 
 The `as` keyword can be used to rename the export:
@@ -357,7 +356,7 @@ let my-run = new a:b { ... }.run;
 export my-run as "my-run";
 ```
 
-Like spread arguments in `new` expressions, exports of an instance may be 
+Like spread arguments in `new` expressions, exports of an instance may be
 _spread_ as exports of the composition:
 
 ```wac
@@ -396,7 +395,7 @@ export run;
 export my-instance...;
 ```
 
-Then the `run` function exported by the composition will be from the instance 
+Then the `run` function exported by the composition will be from the instance
 named `b:c` and not the instance named `a:b`.
 
 ### WAC Grammar

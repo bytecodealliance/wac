@@ -97,6 +97,15 @@ deps/
 The `--deps-dir` CLI option may be used to specify a different directory to
 search for dependencies.
 
+Dependencies may also be specified with the `--dep` CLI option:
+
+```
+wac encode --dep foo:bar=./baz.wasm -o output.wasm input.wac
+```
+
+By default, dependencies must be binary-encoded WebAssembly components; to
+enable support for WAT files, use the `wat` build-time feature.
+
 If the `registry` build-time feature is enabled, then dependencies may be
 automatically resolved from a Warg registry and do not need to exist in the
-`deps` subdirectory.
+`deps` subdirectory or specified via the `--dep` CLI option.
