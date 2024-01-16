@@ -2305,6 +2305,7 @@ impl<'a> AstResolver<'a> {
                 .ok_or_else(|| Error::MissingTargetExport {
                     name: name.clone(),
                     world: path.string.to_owned(),
+                    kind: expected.as_str(&self.definitions).to_string(),
                     span: path.span,
                 })?;
 

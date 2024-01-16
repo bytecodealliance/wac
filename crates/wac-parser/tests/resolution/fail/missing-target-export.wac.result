@@ -1,8 +1,8 @@
 failed to resolve document
 
-  × missing export `hello` for target world `foo:bar/baz`
+  × target world `foo:bar/baz` requires an export named `hello`
    ╭─[tests/resolution/fail/missing-target-export.wac:1:27]
  1 │ package test:comp targets foo:bar/baz;
    ·                           ─────┬─────
-   ·                                ╰── must export `hello` to target this world
+   ·                                ╰── must export a function named `hello` to target this world
    ╰────

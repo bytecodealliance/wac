@@ -682,25 +682,27 @@ pub enum Error {
         span: SourceSpan,
     },
     /// An import is not in the target world.
-    #[error("import `{name}` is not present in target world `{world}`")]
+    #[error("target world `{world}` does not have an import named `{name}`")]
     ImportNotInTarget {
         /// The import name.
         name: String,
         /// The target world.
         world: String,
         /// The span where the error occurred.
-        #[label(primary, "import `{name}` is not in the target world")]
+        #[label(primary, "cannot have an import named `{name}`")]
         span: SourceSpan,
     },
     /// Missing an export for the target world.
-    #[error("missing export `{name}` for target world `{world}`")]
+    #[error("target world `{world}` requires an export named `{name}`")]
     MissingTargetExport {
         /// The export name.
         name: String,
+        /// The expected item kind.
+        kind: String,
         /// The target world.
         world: String,
         /// The span where the error occurred.
-        #[label(primary, "must export `{name}` to target this world")]
+        #[label(primary, "must export a {kind} named `{name}` to target this world")]
         span: SourceSpan,
     },
     /// An import or export has a mismatched type for the target world.
