@@ -256,6 +256,10 @@ pub(crate) trait Parse<'a>: Sized {
     fn parse(lexer: &mut Lexer<'a>) -> ParseResult<Self>;
 }
 
+trait Peek {
+    fn peek(lookahead: &mut Lookahead) -> bool;
+}
+
 fn parse_delimited<'a, T: Parse<'a> + Peek>(
     lexer: &mut Lexer<'a>,
     until: Token,
@@ -288,8 +292,25 @@ fn parse_delimited<'a, T: Parse<'a> + Peek>(
     Ok(items)
 }
 
-trait Peek {
-    fn peek(lookahead: &mut Lookahead) -> bool;
+/// Represents a package directive in the AST.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PackageDirective<'a> {
+    /// The name of the package named by the directive.
+    pub package: PackageName<'a>,
+    /// The optional world being targeted by the package.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub targets: Option<PackagePath<'a>>,
+}
+
+impl<'a> Parse<'a> for PackageDirective<'a> {
+    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<Self> {
+        parse_token(lexer, Token::PackageKeyword)?;
+        let package = Parse::parse(lexer)?;
+        let targets = parse_optional(lexer, Token::TargetsKeyword, Parse::parse)?;
+        parse_token(lexer, Token::Semicolon)?;
+        Ok(Self { package, targets })
+    }
 }
 
 /// Represents a top-level WAC document.
@@ -298,8 +319,8 @@ trait Peek {
 pub struct Document<'a> {
     /// The doc comments for the package.
     pub docs: Vec<DocComment<'a>>,
-    /// The package name of the document.
-    pub package: PackageName<'a>,
+    /// The package directive of the document.
+    pub directive: PackageDirective<'a>,
     /// The statements in the document.
     pub statements: Vec<Statement<'a>>,
 }
@@ -312,10 +333,7 @@ impl<'a> Document<'a> {
         let mut lexer = Lexer::new(source).map_err(Error::from)?;
 
         let docs = Parse::parse(&mut lexer)?;
-
-        parse_token(&mut lexer, Token::PackageKeyword)?;
-        let package = Parse::parse(&mut lexer)?;
-        parse_token(&mut lexer, Token::Semicolon)?;
+        let directive = Parse::parse(&mut lexer)?;
 
         let mut statements: Vec<Statement> = Default::default();
         while lexer.peek().is_some() {
@@ -325,7 +343,7 @@ impl<'a> Document<'a> {
         assert!(lexer.next().is_none(), "expected all tokens to be consumed");
         Ok(Self {
             docs,
-            package,
+            directive,
             statements,
         })
     }

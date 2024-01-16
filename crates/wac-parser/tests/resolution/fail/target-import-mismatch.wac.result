@@ -1,0 +1,11 @@
+failed to resolve document
+
+  × import `foo` has a mismatched type for target world `test:comp/foo`
+  ╰─▶ expected function, found instance
+   ╭─[tests/resolution/fail/target-import-mismatch.wac:7:16]
+ 6 │ 
+ 7 │ import foo2 as foo: interface {
+   ·                ─┬─
+   ·                 ╰── mismatched type for import `foo`
+ 8 │ 
+   ╰────

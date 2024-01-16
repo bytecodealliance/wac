@@ -1,0 +1,12 @@
+package test:comp targets test:comp/world;
+
+world %world {
+    import f: func();
+    export i: interface {
+        f: func();
+    };
+}
+
+import f: func();
+
+export new foo:bar { f } as i;

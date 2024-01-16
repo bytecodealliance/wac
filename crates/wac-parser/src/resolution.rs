@@ -681,6 +681,46 @@ pub enum Error {
         #[label(primary, "spreading the exports of this instance has no effect")]
         span: SourceSpan,
     },
+    /// An import is not in the target world.
+    #[error("target world `{world}` does not have an import named `{name}`")]
+    ImportNotInTarget {
+        /// The import name.
+        name: String,
+        /// The target world.
+        world: String,
+        /// The span where the error occurred.
+        #[label(primary, "cannot have an import named `{name}`")]
+        span: SourceSpan,
+    },
+    /// Missing an export for the target world.
+    #[error("target world `{world}` requires an export named `{name}`")]
+    MissingTargetExport {
+        /// The export name.
+        name: String,
+        /// The expected item kind.
+        kind: String,
+        /// The target world.
+        world: String,
+        /// The span where the error occurred.
+        #[label(primary, "must export a {kind} named `{name}` to target this world")]
+        span: SourceSpan,
+    },
+    /// An import or export has a mismatched type for the target world.
+    #[error("{kind} `{name}` has a mismatched type for target world `{world}`")]
+    TargetMismatch {
+        /// The kind of mismatch.
+        kind: ExternKind,
+        /// The mismatched extern name.
+        name: String,
+        /// The target world.
+        world: String,
+        /// The span where the error occurred.
+        #[label(primary, "mismatched type for {kind} `{name}`")]
+        span: SourceSpan,
+        /// The source of the error.
+        #[source]
+        source: anyhow::Error,
+    },
 }
 
 /// Represents a resolution result.
@@ -730,6 +770,17 @@ impl ItemKind {
             ItemKind::Component(_) => "component",
             ItemKind::Module(_) => "module",
             ItemKind::Value(_) => "value",
+        }
+    }
+
+    /// Promote function types, instance types, and component types
+    /// to functions, instances, and components
+    fn promote(&self) -> Self {
+        match *self {
+            ItemKind::Type(Type::Func(id)) => ItemKind::Func(id),
+            ItemKind::Type(Type::Interface(id)) => ItemKind::Instance(id),
+            ItemKind::Type(Type::World(id)) => ItemKind::Component(id),
+            kind => kind,
         }
     }
 }

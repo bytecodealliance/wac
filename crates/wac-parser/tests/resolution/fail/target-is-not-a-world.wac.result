@@ -1,0 +1,9 @@
+failed to resolve document
+
+  × `test:comp/foo` (interface) is not a world
+   ╭─[tests/resolution/fail/target-is-not-a-world.wac:1:27]
+ 1 │ package test:comp targets test:comp/foo;
+   ·                           ──────┬──────
+   ·                                 ╰── `test:comp/foo` is not a world
+ 2 │ 
+   ╰────

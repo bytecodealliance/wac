@@ -235,6 +235,9 @@ pub enum Token {
     /// The `package` keyword.
     #[token("package")]
     PackageKeyword,
+    /// The `targets` keyword.
+    #[token("targets")]
+    TargetsKeyword,
 
     /// The `;` symbol.
     #[token(";")]
@@ -338,6 +341,7 @@ impl fmt::Display for Token {
             Token::IncludeKeyword => write!(f, "`include` keyword"),
             Token::AsKeyword => write!(f, "`as` keyword"),
             Token::PackageKeyword => write!(f, "`package` keyword"),
+            Token::TargetsKeyword => write!(f, "`targets` keyword"),
             Token::Semicolon => write!(f, "`;`"),
             Token::OpenBrace => write!(f, "`{{`"),
             Token::CloseBrace => write!(f, "`}}`"),
@@ -827,6 +831,8 @@ let
 use
 include
 as
+package
+targets
             "#,
             &[
                 (Ok(Token::ImportKeyword), "import", 1..7),
@@ -866,6 +872,8 @@ as
                 (Ok(Token::UseKeyword), "use", 203..206),
                 (Ok(Token::IncludeKeyword), "include", 207..214),
                 (Ok(Token::AsKeyword), "as", 215..217),
+                (Ok(Token::PackageKeyword), "package", 218..225),
+                (Ok(Token::TargetsKeyword), "targets", 226..233),
             ],
         );
     }

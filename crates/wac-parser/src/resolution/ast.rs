@@ -181,11 +181,29 @@ impl<'a> AstResolver<'a> {
             }
         }
 
+        // If there's a target world in the directive, validate the composition
+        // conforms to the target
+        if let Some(path) = &self.document.directive.targets {
+            let item = self.resolve_package_export(&mut state, path)?;
+            match item {
+                ItemKind::Type(Type::World(world)) => {
+                    self.validate_target(&state, path, world)?;
+                }
+                _ => {
+                    return Err(Error::NotWorld {
+                        name: path.string.to_owned(),
+                        kind: item.as_str(&self.definitions).to_owned(),
+                        span: path.span,
+                    });
+                }
+            }
+        }
+
         assert!(state.scopes.is_empty());
 
         Ok(Composition {
-            package: self.document.package.name.to_owned(),
-            version: self.document.package.version.clone(),
+            package: self.document.directive.package.name.to_owned(),
+            version: self.document.directive.package.version.clone(),
             definitions: self.definitions,
             packages: state.packages,
             items: state.current.items,
@@ -227,13 +245,8 @@ impl<'a> AstResolver<'a> {
             ast::ImportType::Ident(id) => (state.local_item(id)?.1.kind(), stmt.id.span),
         };
 
-        // Promote function types, instance types, and component types to functions, instances, and components
-        let kind = match kind {
-            ItemKind::Type(Type::Func(id)) => ItemKind::Func(id),
-            ItemKind::Type(Type::Interface(id)) => ItemKind::Instance(id),
-            ItemKind::Type(Type::World(id)) => ItemKind::Component(id),
-            _ => kind,
-        };
+        // Promote any types to their corresponding item kind
+        let kind = kind.promote();
 
         let (name, span) = if let Some(name) = &stmt.name {
             // Override the span to the `as` clause string
@@ -505,8 +518,8 @@ impl<'a> AstResolver<'a> {
     fn id(&self, name: &str) -> String {
         format!(
             "{pkg}/{name}{version}",
-            pkg = self.document.package.name,
-            version = if let Some(version) = &self.document.package.version {
+            pkg = self.document.directive.package.name,
+            version = if let Some(version) = &self.document.directive.package.version {
                 format!("@{version}")
             } else {
                 String::new()
@@ -1551,7 +1564,7 @@ impl<'a> AstResolver<'a> {
         path: &'a ast::PackagePath<'a>,
     ) -> ResolutionResult<ItemKind> {
         // Check for reference to local item
-        if path.name == self.document.package.name {
+        if path.name == self.document.directive.package.name {
             return self.resolve_local_export(state, path);
         }
 
@@ -1704,7 +1717,7 @@ impl<'a> AstResolver<'a> {
         state: &mut State<'a>,
         expr: &'a ast::NewExpr<'a>,
     ) -> ResolutionResult<ItemId> {
-        if expr.package.name == self.document.package.name {
+        if expr.package.name == self.document.directive.package.name {
             return Err(Error::UnknownPackage {
                 name: expr.package.name.to_string(),
                 span: expr.package.span,
@@ -2247,5 +2260,69 @@ impl<'a> AstResolver<'a> {
 
         aliases.insert(name.to_owned(), id);
         Ok(Some(id))
+    }
+
+    fn validate_target(
+        &self,
+        state: &State,
+        path: &ast::PackagePath,
+        world: WorldId,
+    ) -> ResolutionResult<()> {
+        let world = &self.definitions.worlds[world];
+
+        let mut checker = SubtypeChecker::new(&self.definitions, &state.packages);
+
+        // The output is allowed to import a subset of the world's imports
+        for (name, import) in &state.imports {
+            let expected = world
+                .imports
+                .get(name)
+                .ok_or_else(|| Error::ImportNotInTarget {
+                    name: name.clone(),
+                    world: path.string.to_owned(),
+                    span: import.span,
+                })?;
+
+            checker
+                .is_subtype(
+                    expected.promote(),
+                    state.root_scope().items[import.item].kind(),
+                )
+                .map_err(|e| Error::TargetMismatch {
+                    kind: ExternKind::Import,
+                    name: name.clone(),
+                    world: path.string.to_owned(),
+                    span: import.span,
+                    source: e,
+                })?;
+        }
+
+        // The output must export every export in the world
+        for (name, expected) in &world.exports {
+            let export = state
+                .exports
+                .get(name)
+                .ok_or_else(|| Error::MissingTargetExport {
+                    name: name.clone(),
+                    world: path.string.to_owned(),
+                    kind: expected.as_str(&self.definitions).to_string(),
+                    span: path.span,
+                })?;
+
+            checker
+                .is_subtype(
+                    expected.promote(),
+                    state.root_scope().items[export.item].kind(),
+                )
+                .map_err(|e| Error::TargetMismatch {
+                    kind: ExternKind::Export,
+                    name: name.clone(),
+                    world: path.string.to_owned(),
+                    span: export.span,
+                    source: e,
+                })?;
+        }
+
+        Ok(())
     }
 }

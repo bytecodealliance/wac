@@ -1,0 +1,9 @@
+package test:comp targets test:comp/foo;
+
+world foo {
+    import foo: func();
+}
+
+import foo2 as foo: interface {
+
+};

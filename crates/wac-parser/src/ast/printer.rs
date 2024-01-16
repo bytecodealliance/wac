@@ -30,12 +30,7 @@ impl<'a, W: Write> DocumentPrinter<'a, W> {
     /// Prints the given document.
     pub fn document(&mut self, doc: &Document) -> std::fmt::Result {
         self.docs(&doc.docs)?;
-        writeln!(
-            self.writer,
-            "package {package};",
-            package = self.source(doc.package.span),
-        )?;
-        self.newline()?;
+        self.package_directive(&doc.directive)?;
 
         for (i, statement) in doc.statements.iter().enumerate() {
             if i > 0 {
@@ -47,6 +42,24 @@ impl<'a, W: Write> DocumentPrinter<'a, W> {
         }
 
         Ok(())
+    }
+
+    /// Prints the given package directive.
+    pub fn package_directive(&mut self, directive: &PackageDirective) -> std::fmt::Result {
+        self.indent()?;
+        write!(
+            self.writer,
+            "package {package}",
+            package = self.source(directive.package.span),
+        )?;
+
+        if let Some(targets) = &directive.targets {
+            write!(self.writer, " ")?;
+            self.package_path(targets)?;
+        }
+
+        writeln!(self.writer, ";")?;
+        self.newline()
     }
 
     /// Prints the given statement.

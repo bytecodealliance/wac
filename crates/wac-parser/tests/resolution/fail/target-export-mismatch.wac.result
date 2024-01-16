@@ -1,0 +1,12 @@
+failed to resolve document
+
+  × export `foo` has a mismatched type for target world `test:comp/world`
+  ├─▶ mismatched type for export `foo`
+  ├─▶ mismatched type for function parameter `x`
+  ╰─▶ expected string, found u32
+    ╭─[tests/resolution/fail/target-export-mismatch.wac:15:8]
+ 14 │ };
+ 15 │ export foo;
+    ·        ─┬─
+    ·         ╰── mismatched type for export `foo`
+    ╰────
