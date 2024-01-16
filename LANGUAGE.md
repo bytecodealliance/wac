@@ -2,12 +2,40 @@
 
 WAC is a superset of the [WIT language](https://github.com/WebAssembly/component-model/blob/main/design/mvp/WIT.md).
 
+However, unlike WIT, WAC is evaluated in a top-down fashion and is not a 
+declarative language. Consequently, types must be declared before they are used 
+in WAC.
+
 In addition to being able to declare types, interfaces, and worlds, WAC
 also allows for defining a _composition_.
 
 In the simplest terms, a composition is a collection of components that
 are instantiated in a topological order and certain exports from those
 instances are made available as exports of the composition itself.
+
+## Package Directive
+
+Each WAC document must begin with a `package` directive:
+
+```wac
+package example:composition;
+```
+
+The directive identifies the namespace and name of the package being defined.
+
+Additionally, the `package` directive may include a `targets` clause:
+
+```wac
+package example:composition targets wasi:http/proxy;
+```
+
+The package path following a `targets` clause must name a world. The parser 
+will then ensure that the composition is valid for the given world.
+
+If the composition is not valid for the given world, then an error will be
+emitted.
+
+## Statements
 
 WAC currently has three statements that extend the WIT language: import
 statements, let statements, and export statements.
@@ -398,7 +426,7 @@ export my-instance...;
 Then the `run` function exported by the composition will be from the instance
 named `b:c` and not the instance named `a:b`.
 
-### WAC Grammar
+## WAC Grammar
 
 The current WAC grammar:
 
