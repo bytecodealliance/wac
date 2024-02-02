@@ -20,7 +20,7 @@ repository = "https://github.com/bytecodealliance/wac"
 
 [dependencies]
 wac-resolver = { workspace = true, default-features = false }
-wac-parser = { workspace = true, default-features = false}
+wac-parser = { workspace = true, default-features = false }
 anyhow = { workspace = true }
 clap = { workspace = true }
 pretty_env_logger = { workspace = true }
@@ -37,10 +37,10 @@ indexmap = { workspace = true }
 # TODO: use the next release which has support for primary labels
 miette = { git = "https://github.com/zkat/miette", features = ["fancy"] }
 semver = { workspace = true }
-indicatif = { workspace = true, optional = true}
+indicatif = { workspace = true, optional = true }
 
 [features]
-default = []
+default = ["wit"]
 wat = ["wac-resolver/wat"]
 wit = ["wac-resolver/wit"]
 registry = ["wac-resolver/registry", "indicatif"]
