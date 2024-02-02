@@ -1,17 +1,7 @@
 failed to resolve document
 
   × failed to parse package `foo:bar`
-  ╰─▶ magic header not detected: bad magic number - expected=[
-          0x0,
-          0x61,
-          0x73,
-          0x6d,
-      ] actual=[
-          0x74,
-          0x68,
-          0x69,
-          0x73,
-      ] (at offset 0x0)
+  ╰─▶ package `foo:bar` is expected to be a binary WebAssembly component binary but is not
    ╭─[tests/resolution/fail/package-not-wasm.wac:3:13]
  2 │ 
  3 │ import foo: foo:bar/qux;
