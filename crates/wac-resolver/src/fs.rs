@@ -79,41 +79,46 @@ impl FileSystemPackageResolver {
             // First check to see if a directory exists.
             // If so, then treat it as a textual WIT package.
             #[cfg(feature = "wit")]
-            if path.is_dir() {
-                log::debug!(
-                    "loading WIT package from directory `{path}`",
-                    path = path.display()
-                );
-
+            {
+                let pkg_res_failure = |e| Error::PackageResolutionFailure {
+                    name: key.name.to_string(),
+                    span: *span,
+                    source: e,
+                };
                 let mut resolve = wit_parser::Resolve::new();
-                let (pkg, _) =
-                    resolve
-                        .push_dir(&path)
-                        .map_err(|e| Error::PackageResolutionFailure {
-                            name: key.name.to_string(),
-                            span: *span,
-                            source: e,
-                        })?;
+                let pkg = if path.is_dir() {
+                    log::debug!(
+                        "loading WIT package from directory `{path}`",
+                        path = path.display()
+                    );
 
-                packages.insert(
-                    *key,
-                    Arc::new(
-                        wit_component::encode(Some(true), &resolve, pkg)
-                            .with_context(|| {
-                                format!(
-                                    "failed to encode WIT package from directory `{path}`",
-                                    path = path.display()
-                                )
-                            })
-                            .map_err(|e| Error::PackageResolutionFailure {
-                                name: key.name.to_string(),
-                                span: *span,
-                                source: e,
-                            })?,
-                    ),
-                );
+                    let (pkg, _) = resolve.push_dir(&path).map_err(pkg_res_failure)?;
+                    Some(pkg)
+                } else if path.extension().and_then(std::ffi::OsStr::to_str) == Some("wit") {
+                    let unresolved = wit_parser::UnresolvedPackage::parse_file(&path)
+                        .map_err(pkg_res_failure)?;
+                    let pkg = resolve.push(unresolved).map_err(pkg_res_failure)?;
+                    Some(pkg)
+                } else {
+                    None
+                };
+                if let Some(pkg) = pkg {
+                    packages.insert(
+                        *key,
+                        Arc::new(
+                            wit_component::encode(Some(true), &resolve, pkg)
+                                .with_context(|| {
+                                    format!(
+                                        "failed to encode WIT package from `{path}`",
+                                        path = path.display()
+                                    )
+                                })
+                                .map_err(pkg_res_failure)?,
+                        ),
+                    );
 
-                continue;
+                    continue;
+                }
             }
 
             if !path.is_file() {

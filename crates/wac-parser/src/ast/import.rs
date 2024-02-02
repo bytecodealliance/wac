@@ -118,7 +118,7 @@ impl<'a> Parse<'a> for ImportType<'a> {
     }
 }
 
-/// Represents a package path in the AST.
+/// AST representation of a path to an item such as a world in a package (e.g. `foo:bar/qux`).
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PackagePath<'a> {

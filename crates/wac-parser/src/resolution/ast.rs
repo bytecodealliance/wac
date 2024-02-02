@@ -184,6 +184,7 @@ impl<'a> AstResolver<'a> {
         // If there's a target world in the directive, validate the composition
         // conforms to the target
         if let Some(path) = &self.document.directive.targets {
+            log::debug!("validating composition targets world `{}`", path.string);
             let item = self.resolve_package_export(&mut state, path)?;
             match item {
                 ItemKind::Type(Type::World(world)) => {
@@ -1563,6 +1564,7 @@ impl<'a> AstResolver<'a> {
         state: &mut State<'a>,
         path: &'a ast::PackagePath<'a>,
     ) -> ResolutionResult<ItemKind> {
+        log::debug!("resolving package export `{}`", path.string);
         // Check for reference to local item
         if path.name == self.document.directive.package.name {
             return self.resolve_local_export(state, path);
