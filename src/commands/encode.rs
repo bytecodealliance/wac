@@ -45,11 +45,13 @@ pub struct EncodeCommand {
     #[clap(long, short = 't')]
     pub wat: bool,
 
-    /// Whether to not to define referenced packages.
+    /// Whether the composed component imports its dependencies.
     ///
-    /// If not specified, all referenced packages will be imported.
-    #[clap(long)]
-    pub define: bool,
+    /// If false, all referenced dependent packages will be defined within the component.
+    ///
+    /// Defaults to false.
+    #[clap(long, short)]
+    pub import_dependencies: bool,
 
     /// The path to write the output to.
     ///
@@ -97,7 +99,7 @@ impl EncodeCommand {
         }
 
         let mut bytes = resolved.encode(EncodingOptions {
-            define_packages: self.define,
+            define_packages: !self.import_dependencies,
         })?;
         if !self.no_validate {
             Validator::new_with_features(WasmFeatures {
