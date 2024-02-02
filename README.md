@@ -65,26 +65,26 @@ wac encode -o output.wasm input.wac
 
 This will encode `input.wac` as a WebAssembly component named `output.wasm`.
 
-By default, `wac` will import dependencies rather than defining  (i.e.
-embedding) them in the output component; to define dependencies in the output
-component, use the `--define` flag:
-
-```
-wac encode --define -o output.wasm input.wac
-```
-
 #### Dependencies
 
-Dependencies (i.e. packages referenced in a WAC source file) may be located
-within a `deps` subdirectory, with an expected structure of:
+By default, `wac` will create a component that embeds its dependencies (i.e. packages
+referenced in a WAC source file) inside of itself rather than importing those dependencies;
+to cause dependencies to be imported in the output component, use the
+`--import-dependencies` flag:
+
+```
+wac encode --import-dependencies -o output.wasm input.wac
+```
+
+Dependencies may be located within a `deps` subdirectory, with an expected structure of:
 
 ```
 deps/
 ├─ <namespace>/
 │  ├─ <package>.wasm
 ``````
-If the `wit` build-time feature is enabled, the dependency may be a directory
-containing a WIT package:
+
+The dependency may be also be a WIT file or a directory containing a WIT package:
 
 ```
 deps/
@@ -97,7 +97,7 @@ deps/
 The `--deps-dir` CLI option may be used to specify a different directory to
 search for dependencies.
 
-Dependencies may also be specified with the `--dep` CLI option:
+The location of specific dependencies may also be specified with the `--dep` CLI option:
 
 ```
 wac encode --dep foo:bar=./baz.wasm -o output.wasm input.wac
