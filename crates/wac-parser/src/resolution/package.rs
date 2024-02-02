@@ -62,6 +62,9 @@ impl Package {
         version: Option<&Version>,
         bytes: Arc<Vec<u8>>,
     ) -> Result<Self> {
+        if !has_magic_header(&bytes) {
+            bail!("package `{name}` is expected to be a binary WebAssembly component binary but is not");
+        }
         let mut parser = Parser::new(0);
         let mut parsers = Vec::new();
         let mut validator = Validator::new_with_features(WasmFeatures {
@@ -180,6 +183,11 @@ impl Package {
 
         defs
     }
+}
+
+/// Whether the given bytes have a magic header indicating a WebAssembly binary.
+fn has_magic_header(bytes: &[u8]) -> bool {
+    bytes.starts_with(b"\0asm")
 }
 
 impl fmt::Debug for Package {
