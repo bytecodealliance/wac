@@ -114,6 +114,15 @@ impl FileSystemPackageResolver {
                 );
 
                 continue;
+            } else if path.extension().and_then(std::ffi::OsStr::to_str) == Some("wit") {
+                return Err(Error::PackageResolutionFailure {
+                    name: key.name.to_string(),
+                    span: *span,
+                    source: anyhow!(
+                        "WIT packages must be directories, not files: `{path}`",
+                        path = path.display()
+                    ),
+                });
             }
 
             if !path.is_file() {
