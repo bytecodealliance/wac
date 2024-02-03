@@ -1,7 +1,7 @@
 failed to resolve document
 
   × mismatched instantiation argument `x`
-  ╰─▶ instance is missing expected export `[method]r.foo`
+  ╰─▶ instance is missing expected function export `[method]r.foo`
    ╭─[tests/resolution/fail/missing-method.wac:8:23]
  7 │ 
  8 │ let i = new foo:bar { x };

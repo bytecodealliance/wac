@@ -38,7 +38,7 @@ impl<'a> Parse<'a> for Expr<'a> {
 
         let start = primary.span();
         let len = postfix.last().map_or(start.len(), |p| {
-            start.offset() + p.span().offset() + p.span().len()
+            p.span().offset() + p.span().len() - start.offset()
         });
 
         Ok(Self {

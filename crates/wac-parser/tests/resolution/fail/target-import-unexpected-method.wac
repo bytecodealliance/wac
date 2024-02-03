@@ -1,0 +1,16 @@
+package test:comp targets test:comp/foo;
+
+world foo {
+    import foo: interface {
+        resource x {
+            constructor();
+        }
+    };
+}
+
+import foo2 as foo: interface {
+    resource x {
+        constructor();
+        f: func(a: u32);
+    }
+};

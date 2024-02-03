@@ -753,10 +753,20 @@ impl fmt::Display for CoreFunc {
     }
 }
 
+/// Represents the kind of subtyping check to perform.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub(crate) enum SubtypeCheckKind {
+    /// The type is a covariant check.
+    Covariant,
+    /// The type is a contravariant check.
+    Contravariant,
+}
+
 /// Implements a subtype checker.
 ///
 /// Subtype checking is used to type check instantiation arguments.
 pub struct SubtypeChecker<'a> {
+    kinds: Vec<SubtypeCheckKind>,
     definitions: &'a Definitions,
     packages: &'a Arena<Package>,
     cache: HashSet<(ItemKind, ItemKind)>,
@@ -766,6 +776,7 @@ impl<'a> SubtypeChecker<'a> {
     /// Creates a new subtype checker.
     pub fn new(definitions: &'a Definitions, packages: &'a Arena<Package>) -> Self {
         Self {
+            kinds: Default::default(),
             definitions,
             packages,
             cache: Default::default(),
@@ -778,55 +789,97 @@ impl<'a> SubtypeChecker<'a> {
             return Ok(());
         }
 
-        let mut check = || match (a, b) {
-            (ItemKind::Resource(a), ItemKind::Resource(b)) => {
-                if a != b {
-                    let a = self.definitions.resolve_resource(a);
-                    let b = self.definitions.resolve_resource(b);
-                    if a.name != b.name {
-                        bail!(
-                            "expected resource `{a}`, found resource `{b}`",
-                            a = a.name,
-                            b = b.name
-                        );
-                    }
-                }
-                Ok(())
-            }
+        let mut is_subtype = |a, b| match (a, b) {
+            (ItemKind::Resource(a), ItemKind::Resource(b)) => self.resource(a, b),
             (ItemKind::Type(a), ItemKind::Type(b)) => self.ty(a, b),
             (ItemKind::Func(a), ItemKind::Func(b)) => self.func(a, b),
             (ItemKind::Instance(a), ItemKind::Instance(b)) => self.interface(a, b),
             (ItemKind::Instantiation(a), ItemKind::Instantiation(b)) => {
                 let a = &self.definitions.worlds[self.packages[a].world];
                 let b = &self.definitions.worlds[self.packages[b].world];
-                self.interface_exports(&a.exports, &b.exports)
+                self.instance_exports(&a.exports, &b.exports)
             }
             (ItemKind::Instantiation(a), ItemKind::Instance(b)) => {
                 let a = &self.definitions.worlds[self.packages[a].world];
                 let b = &self.definitions.interfaces[b];
-                self.interface_exports(&a.exports, &b.exports)
+                self.instance_exports(&a.exports, &b.exports)
             }
             (ItemKind::Instance(a), ItemKind::Instantiation(b)) => {
                 let a = &self.definitions.interfaces[a];
                 let b = &self.definitions.worlds[self.packages[b].world];
-                self.interface_exports(&a.exports, &b.exports)
+                self.instance_exports(&a.exports, &b.exports)
             }
             (ItemKind::Component(a), ItemKind::Component(b)) => self.world(a, b),
             (ItemKind::Module(a), ItemKind::Module(b)) => self.module(a, b),
             (ItemKind::Value(a), ItemKind::Value(b)) => self.value_type(a, b),
-            _ => bail!(
-                "expected {a}, found {b}",
-                a = a.as_str(self.definitions),
-                b = b.as_str(self.definitions)
-            ),
+            _ => {
+                let (expected, found) = self.expected_found(&a, &b);
+                bail!(
+                    "expected {expected}, found {found}",
+                    expected = expected.as_str(self.definitions),
+                    found = found.as_str(self.definitions)
+                )
+            }
         };
 
-        let result = check();
+        let result = is_subtype(a, b);
         if result.is_ok() {
             self.cache.insert((a, b));
         }
 
         result
+    }
+
+    fn expected_found<'b, T>(&self, a: &'b T, b: &'b T) -> (&'b T, &'b T) {
+        match self.kind() {
+            // For covariant checks, the supertype is the expected type
+            SubtypeCheckKind::Covariant => (b, a),
+            // For contravariant checks, the subtype is the expected type
+            SubtypeCheckKind::Contravariant => (a, b),
+        }
+    }
+
+    /// Gets the current check kind.
+    fn kind(&self) -> SubtypeCheckKind {
+        self.kinds
+            .last()
+            .copied()
+            .unwrap_or(SubtypeCheckKind::Covariant)
+    }
+
+    /// Inverts the current check kind.
+    pub(crate) fn invert(&mut self) -> SubtypeCheckKind {
+        let prev = self.kind();
+        self.kinds.push(match prev {
+            SubtypeCheckKind::Covariant => SubtypeCheckKind::Contravariant,
+            SubtypeCheckKind::Contravariant => SubtypeCheckKind::Covariant,
+        });
+        prev
+    }
+
+    /// Reverts to the previous check kind.
+    pub(crate) fn revert(&mut self) {
+        self.kinds.pop().expect("mismatched stack");
+    }
+
+    fn resource(&self, a: ResourceId, b: ResourceId) -> Result<()> {
+        if a == b {
+            return Ok(());
+        }
+
+        let a = self.definitions.resolve_resource(a);
+        let b = self.definitions.resolve_resource(b);
+        if a.name != b.name {
+            let (expected, found) = self.expected_found(a, b);
+
+            bail!(
+                "expected resource `{expected}`, found resource `{found}`",
+                expected = expected.name,
+                found = found.name
+            );
+        }
+
+        Ok(())
     }
 
     fn ty(&mut self, a: Type, b: Type) -> Result<()> {
@@ -839,10 +892,12 @@ impl<'a> SubtypeChecker<'a> {
             _ => {}
         }
 
+        let (expected, found) = self.expected_found(&a, &b);
+
         bail!(
-            "expected {a}, found {b}",
-            a = a.as_str(self.definitions),
-            b = b.as_str(self.definitions)
+            "expected {expected}, found {found}",
+            expected = expected.as_str(self.definitions),
+            found = found.as_str(self.definitions)
         )
     }
 
@@ -859,56 +914,73 @@ impl<'a> SubtypeChecker<'a> {
         // runtimes don't yet support more complex subtyping rules.
 
         if a.params.len() != b.params.len() {
+            let (expected, found) = self.expected_found(a, b);
             bail!(
-                "expected function with parameter count {}, found parameter count {}",
-                a.params.len(),
-                b.params.len(),
+                "expected function with parameter count {expected}, found parameter count {found}",
+                expected = expected.params.len(),
+                found = found.params.len(),
             );
         }
 
         for (i, ((an, a), (bn, b))) in a.params.iter().zip(b.params.iter()).enumerate() {
             if an != bn {
-                bail!("expected function parameter {i} to be named `{an}`, found name `{bn}`");
+                let (expected, found) = self.expected_found(an, bn);
+                bail!("expected function parameter {i} to be named `{expected}`, found name `{found}`");
             }
 
             self.value_type(*a, *b)
-                .with_context(|| format!("mismatched type for function parameter `{an}`"))?;
+                .with_context(|| format!("mismatched type for function parameter `{bn}`"))?;
         }
 
         match (&a.results, &b.results) {
-            (None, None) => {}
-            (None, Some(_)) => {
-                bail!("expected function without results, found function with results")
-            }
-            (Some(_), None) => {
-                bail!("expected function with results, found function without results")
-            }
+            (None, None) => return Ok(()),
             (Some(FuncResult::Scalar(a)), Some(FuncResult::Scalar(b))) => {
-                self.value_type(*a, *b)
-                    .context("mismatched type for function result")?;
-            }
-            (Some(FuncResult::Scalar(_)), Some(_)) => {
-                bail!("expected function with scalar result, found function with named results")
+                return self
+                    .value_type(*a, *b)
+                    .context("mismatched type for function result");
             }
             (Some(FuncResult::List(a)), Some(FuncResult::List(b))) => {
                 for (i, ((an, a), (bn, b))) in a.iter().zip(b.iter()).enumerate() {
                     if an != bn {
-                        bail!("expected function result {i} to be named `{an}`, found name `{bn}`");
+                        let (expected, found) = self.expected_found(an, bn);
+                        bail!("expected function result {i} to be named `{expected}`, found name `{found}`");
                     }
 
                     self.value_type(*a, *b)
-                        .with_context(|| format!("mismatched type for function result `{an}`"))?;
+                        .with_context(|| format!("mismatched type for function result `{bn}`"))?;
                 }
+
+                return Ok(());
             }
-            (Some(FuncResult::List(_)), Some(_)) => {
-                bail!("expected function with named results, found function with scalar result")
+            (Some(FuncResult::List(_)), Some(FuncResult::Scalar(_)))
+            | (Some(FuncResult::Scalar(_)), Some(FuncResult::List(_)))
+            | (Some(_), None)
+            | (None, Some(_)) => {
+                // Handle the mismatch below
             }
         }
 
-        Ok(())
+        let (expected, found) = self.expected_found(a, b);
+        match (&expected.results, &found.results) {
+            (Some(FuncResult::List(_)), Some(FuncResult::Scalar(_))) => {
+                bail!("expected function with named results, found function with scalar result")
+            }
+            (Some(FuncResult::Scalar(_)), Some(FuncResult::List(_))) => {
+                bail!("expected function with scalar result, found function with named results")
+            }
+            (Some(_), None) => {
+                bail!("expected function with results, found function without results")
+            }
+            (None, Some(_)) => {
+                bail!("expected function without results, found function with results")
+            }
+            (Some(FuncResult::Scalar(_)), Some(FuncResult::Scalar(_)))
+            | (Some(FuncResult::List(_)), Some(FuncResult::List(_)))
+            | (None, None) => unreachable!(),
+        }
     }
 
-    fn interface_exports(
+    fn instance_exports(
         &mut self,
         a: &IndexMap<String, ItemKind>,
         b: &IndexMap<String, ItemKind>,
@@ -917,13 +989,26 @@ impl<'a> SubtypeChecker<'a> {
         // instance type must be present in this instance type's
         // exports (i.e. it can export *more* than what this instance
         // type needs).
-        for (k, a) in a.iter() {
-            match b.get(k) {
-                Some(b) => {
+        for (k, b) in b.iter() {
+            match a.get(k) {
+                Some(a) => {
                     self.is_subtype(*a, *b)
                         .with_context(|| format!("mismatched type for export `{k}`"))?;
                 }
-                None => bail!("instance is missing expected export `{k}`"),
+                None => match self.kind() {
+                    SubtypeCheckKind::Covariant => {
+                        bail!(
+                            "instance is missing expected {kind} export `{k}`",
+                            kind = b.as_str(self.definitions)
+                        )
+                    }
+                    SubtypeCheckKind::Contravariant => {
+                        bail!(
+                            "instance has unexpected {kind} export `{k}`",
+                            kind = b.as_str(self.definitions)
+                        )
+                    }
+                },
             }
         }
 
@@ -937,7 +1022,7 @@ impl<'a> SubtypeChecker<'a> {
 
         let a = &self.definitions.interfaces[a];
         let b = &self.definitions.interfaces[b];
-        self.interface_exports(&a.exports, &b.exports)
+        self.instance_exports(&a.exports, &b.exports)
     }
 
     fn world(&mut self, a: WorldId, b: WorldId) -> Result<()> {
@@ -949,23 +1034,52 @@ impl<'a> SubtypeChecker<'a> {
         // can export *more* than what this component type needs).
         // However, for imports, the check is reversed (i.e. it is okay
         // to import *less* than what this component type needs).
+        let prev = self.invert();
         for (k, a) in a.imports.iter() {
             match b.imports.get(k) {
                 Some(b) => {
                     self.is_subtype(*b, *a)
                         .with_context(|| format!("mismatched type for import `{k}`"))?;
                 }
-                None => bail!("missing expected import `{k}`"),
+                None => match prev {
+                    SubtypeCheckKind::Covariant => {
+                        bail!(
+                            "component is missing expected {kind} import `{k}`",
+                            kind = a.as_str(self.definitions)
+                        )
+                    }
+                    SubtypeCheckKind::Contravariant => {
+                        bail!(
+                            "component has unexpected import {kind} `{k}`",
+                            kind = a.as_str(self.definitions)
+                        )
+                    }
+                },
             }
         }
+
+        self.revert();
 
         for (k, b) in b.exports.iter() {
             match a.exports.get(k) {
                 Some(a) => {
                     self.is_subtype(*a, *b)
-                        .with_context(|| format!("mismatched type for export `{k}"))?;
+                        .with_context(|| format!("mismatched type for export `{k}`"))?;
                 }
-                None => bail!("component is missing expected export `{k}`"),
+                None => match prev {
+                    SubtypeCheckKind::Covariant => {
+                        bail!(
+                            "component is missing expected {kind} export `{k}`",
+                            kind = b.as_str(self.definitions)
+                        )
+                    }
+                    SubtypeCheckKind::Contravariant => {
+                        bail!(
+                            "component has unexpected {kind} export `{k}`",
+                            kind = b.as_str(self.definitions)
+                        )
+                    }
+                },
             }
         }
 
@@ -980,6 +1094,8 @@ impl<'a> SubtypeChecker<'a> {
         let a = &self.definitions.modules[a];
         let b = &self.definitions.modules[b];
 
+        let prev = self.invert();
+
         // For module type subtyping, all exports in the other module
         // type must be present in expected module type's exports (i.e. it
         // can export *more* than what is expected module type needs).
@@ -988,28 +1104,48 @@ impl<'a> SubtypeChecker<'a> {
         for (k, a) in a.imports.iter() {
             match b.imports.get(k) {
                 Some(b) => {
-                    Self::core_extern(b, a).with_context(|| {
+                    self.core_extern(b, a).with_context(|| {
                         format!("mismatched type for import `{m}::{n}`", m = k.0, n = k.1)
                     })?;
                 }
-                None => bail!("missing expected import `{m}::{n}`", m = k.0, n = k.1),
+                None => match prev {
+                    SubtypeCheckKind::Covariant => bail!(
+                        "module is missing expected {a} import `{m}::{n}`",
+                        m = k.0,
+                        n = k.1
+                    ),
+                    SubtypeCheckKind::Contravariant => {
+                        bail!(
+                            "module has unexpected {a} import `{m}::{n}`",
+                            m = k.0,
+                            n = k.1
+                        )
+                    }
+                },
             }
         }
 
         for (k, b) in b.exports.iter() {
             match a.exports.get(k) {
                 Some(a) => {
-                    Self::core_extern(a, b)
-                        .with_context(|| format!("mismatched type for export `{k}"))?;
+                    self.core_extern(a, b)
+                        .with_context(|| format!("mismatched type for export `{k}`"))?;
                 }
-                None => bail!("module is missing expected export `{k}`"),
+                None => match prev {
+                    SubtypeCheckKind::Covariant => {
+                        bail!("module is missing expected {b} export `{k}`")
+                    }
+                    SubtypeCheckKind::Contravariant => {
+                        bail!("module has unexpected {b} export `{k}`")
+                    }
+                },
             }
         }
 
         Ok(())
     }
 
-    fn core_extern(a: &CoreExtern, b: &CoreExtern) -> Result<()> {
+    fn core_extern(&self, a: &CoreExtern, b: &CoreExtern) -> Result<()> {
         macro_rules! limits_match {
             ($ai:expr, $am:expr, $bi:expr, $bm:expr) => {{
                 $ai >= $bi
@@ -1022,7 +1158,7 @@ impl<'a> SubtypeChecker<'a> {
         }
 
         match (a, b) {
-            (CoreExtern::Func(a), CoreExtern::Func(b)) => return Self::core_func(a, b),
+            (CoreExtern::Func(a), CoreExtern::Func(b)) => return self.core_func(a, b),
             (
                 CoreExtern::Table {
                     element_type: ae,
@@ -1036,7 +1172,8 @@ impl<'a> SubtypeChecker<'a> {
                 },
             ) => {
                 if ae != be {
-                    bail!("expected table element type {ae}, found {be}");
+                    let (expected, found) = self.expected_found(ae, be);
+                    bail!("expected table element type {expected}, found {found}");
                 }
 
                 if !limits_match!(ai, am, bi, bm) {
@@ -1088,59 +1225,48 @@ impl<'a> SubtypeChecker<'a> {
                 }
 
                 if at != bt {
-                    bail!("expected global type {at}, found {bt}");
+                    let (expected, found) = self.expected_found(at, bt);
+                    bail!("expected global type {expected}, found {found}");
                 }
 
                 return Ok(());
             }
-            (CoreExtern::Tag(a), CoreExtern::Tag(b)) => return Self::core_func(a, b),
+            (CoreExtern::Tag(a), CoreExtern::Tag(b)) => return self.core_func(a, b),
             _ => {}
         }
 
-        bail!("expected {a}, found {b}")
+        let (expected, found) = self.expected_found(a, b);
+        bail!("expected {expected}, found {found}");
     }
 
-    fn core_func(a: &CoreFunc, b: &CoreFunc) -> Result<()> {
+    fn core_func(&self, a: &CoreFunc, b: &CoreFunc) -> Result<()> {
         if a != b {
-            bail!("expected {a}, found {b}");
+            let (expected, found) = self.expected_found(a, b);
+            bail!("expected {expected}, found {found}");
         }
 
         Ok(())
     }
 
     fn value_type(&self, a: ValueType, b: ValueType) -> Result<()> {
-        match (
-            self.definitions.resolve_type(a),
-            self.definitions.resolve_type(b),
-        ) {
-            (ValueType::Primitive(a), ValueType::Primitive(b)) => Self::primitive(a, b),
+        let a = self.definitions.resolve_type(a);
+        let b = self.definitions.resolve_type(b);
+
+        match (a, b) {
+            (ValueType::Primitive(a), ValueType::Primitive(b)) => self.primitive(a, b),
             (ValueType::Defined { id: a, .. }, ValueType::Defined { id: b, .. }) => {
                 self.defined_type(a, b)
             }
             (ValueType::Borrow(a), ValueType::Borrow(b))
-            | (ValueType::Own(a), ValueType::Own(b)) => {
-                if a == b {
-                    return Ok(());
-                }
-
-                let a = self.definitions.resolve_resource(a);
-                let b = self.definitions.resolve_resource(b);
-
-                if a.name != b.name {
-                    bail!(
-                        "expected resource `{a}`, found resource `{b}`",
-                        a = a.name,
-                        b = b.name
-                    );
-                }
-
-                Ok(())
+            | (ValueType::Own(a), ValueType::Own(b)) => self.resource(a, b),
+            _ => {
+                let (expected, found) = self.expected_found(&a, &b);
+                bail!(
+                    "expected {expected}, found {found}",
+                    expected = expected.as_str(self.definitions),
+                    found = found.as_str(self.definitions)
+                )
             }
-            (a, b) => bail!(
-                "expected {a}, found {b}",
-                a = a.as_str(self.definitions),
-                b = b.as_str(self.definitions)
-            ),
         }
     }
 
@@ -1178,16 +1304,17 @@ impl<'a> SubtypeChecker<'a> {
             }
             (DefinedType::Variant(a), DefinedType::Variant(b)) => self.variant(a, b),
             (DefinedType::Record(a), DefinedType::Record(b)) => self.record(a, b),
-            (DefinedType::Flags(a), DefinedType::Flags(b)) => Self::flags(a, b),
-            (DefinedType::Enum(a), DefinedType::Enum(b)) => Self::enum_type(a, b),
+            (DefinedType::Flags(a), DefinedType::Flags(b)) => self.flags(a, b),
+            (DefinedType::Enum(a), DefinedType::Enum(b)) => self.enum_type(a, b),
             (DefinedType::Alias(_), _) | (_, DefinedType::Alias(_)) => {
                 unreachable!("aliases should have been resolved")
             }
             _ => {
+                let (expected, found) = self.expected_found(a, b);
                 bail!(
-                    "expected {a}, found {b}",
-                    a = a.as_str(self.definitions),
-                    b = b.as_str(self.definitions)
+                    "expected {expected}, found {found}",
+                    expected = expected.as_str(self.definitions),
+                    found = found.as_str(self.definitions)
                 )
             }
         }
@@ -1195,21 +1322,32 @@ impl<'a> SubtypeChecker<'a> {
 
     fn result(&self, desc: &str, a: &Option<ValueType>, b: &Option<ValueType>) -> Result<()> {
         match (a, b) {
-            (None, None) => Ok(()),
-            (None, Some(_)) => bail!("expected no `{desc}` for result type"),
+            (None, None) => return Ok(()),
+            (Some(a), Some(b)) => {
+                return self
+                    .value_type(*a, *b)
+                    .with_context(|| format!("mismatched type for result `{desc}`"))
+            }
+            (Some(_), None) | (None, Some(_)) => {
+                // Handle mismatch below
+            }
+        }
+
+        let (expected, found) = self.expected_found(a, b);
+        match (expected, found) {
+            (None, None) | (Some(_), Some(_)) => unreachable!(),
             (Some(_), None) => bail!("expected an `{desc}` for result type"),
-            (Some(a), Some(b)) => self
-                .value_type(*a, *b)
-                .with_context(|| format!("mismatched type for result `{desc}`")),
+            (None, Some(_)) => bail!("expected no `{desc}` for result type"),
         }
     }
 
-    fn enum_type(a: &Enum, b: &Enum) -> Result<()> {
+    fn enum_type(&self, a: &Enum, b: &Enum) -> Result<()> {
         if a.0.len() != b.0.len() {
+            let (expected, found) = self.expected_found(a, b);
             bail!(
-                "expected an enum type case count of {a}, found a count of {b}",
-                a = a.0.len(),
-                b = b.0.len()
+                "expected an enum type case count of {expected}, found a count of {found}",
+                expected = expected.0.len(),
+                found = found.0.len()
             );
         }
 
@@ -1219,18 +1357,20 @@ impl<'a> SubtypeChecker<'a> {
                 .enumerate()
                 .find(|(_, (a, b))| a != b)
         {
-            bail!("expected enum case {index} to be named `{a}`, found an enum case named `{b}`");
+            let (expected, found) = self.expected_found(a, b);
+            bail!("expected enum case {index} to be named `{expected}`, found an enum case named `{found}`");
         }
 
         Ok(())
     }
 
-    fn flags(a: &Flags, b: &Flags) -> Result<()> {
+    fn flags(&self, a: &Flags, b: &Flags) -> Result<()> {
         if a.0.len() != b.0.len() {
+            let (expected, found) = self.expected_found(a, b);
             bail!(
-                "expected a flags type flag count of {a}, found a count of {b}",
-                a = a.0.len(),
-                b = b.0.len()
+                "expected a flags type flag count of {expected}, found a count of {found}",
+                expected = expected.0.len(),
+                found = found.0.len()
             );
         }
 
@@ -1240,7 +1380,8 @@ impl<'a> SubtypeChecker<'a> {
                 .enumerate()
                 .find(|(_, (a, b))| a != b)
         {
-            bail!("expected flag {index} to be named `{a}`, found a flag named `{b}`");
+            let (expected, found) = self.expected_found(a, b);
+            bail!("expected flag {index} to be named `{expected}`, found a flag named `{found}`");
         }
 
         Ok(())
@@ -1248,20 +1389,22 @@ impl<'a> SubtypeChecker<'a> {
 
     fn record(&self, a: &Record, b: &Record) -> Result<()> {
         if a.fields.len() != b.fields.len() {
+            let (expected, found) = self.expected_found(a, b);
             bail!(
-                "expected a record field count of {a}, found a count of {b}",
-                a = a.fields.len(),
-                b = b.fields.len()
+                "expected a record field count of {expected}, found a count of {found}",
+                expected = expected.fields.len(),
+                found = found.fields.len()
             );
         }
 
         for (i, ((an, a), (bn, b))) in a.fields.iter().zip(b.fields.iter()).enumerate() {
             if an != bn {
-                bail!("expected record field {i} to be named `{an}`, found a field named `{bn}`");
+                let (expected, found) = self.expected_found(an, bn);
+                bail!("expected record field {i} to be named `{expected}`, found a field named `{found}`");
             }
 
             self.value_type(*a, *b)
-                .with_context(|| format!("mismatched type for record field `{an}`"))?;
+                .with_context(|| format!("mismatched type for record field `{bn}`"))?;
         }
 
         Ok(())
@@ -1269,29 +1412,37 @@ impl<'a> SubtypeChecker<'a> {
 
     fn variant(&self, a: &Variant, b: &Variant) -> Result<()> {
         if a.cases.len() != b.cases.len() {
+            let (expected, found) = self.expected_found(a, b);
             bail!(
-                "expected a variant case count of {a}, found a count of {b}",
-                a = a.cases.len(),
-                b = b.cases.len()
+                "expected a variant case count of {expected}, found a count of {found}",
+                expected = expected.cases.len(),
+                found = found.cases.len()
             );
         }
 
         for (i, ((an, a), (bn, b))) in a.cases.iter().zip(b.cases.iter()).enumerate() {
             if an != bn {
-                bail!("expected variant case {i} to be named `{an}`, found a case named `{bn}`");
+                let (expected, found) = self.expected_found(an, bn);
+                bail!("expected variant case {i} to be named `{expected}`, found a case named `{found}`");
             }
 
             match (a, b) {
                 (None, None) => {}
-                (None, Some(_)) => {
-                    bail!("expected variant case `{an}` to be untyped, found a typed case")
-                }
-                (Some(_), None) => {
-                    bail!("expected variant case `{an}` to be typed, found an untyped case")
-                }
                 (Some(a), Some(b)) => self
                     .value_type(*a, *b)
-                    .with_context(|| format!("mismatched type for variant case `{an}`"))?,
+                    .with_context(|| format!("mismatched type for variant case `{bn}`"))?,
+                _ => {
+                    let (expected, found) = self.expected_found(a, b);
+                    match (expected, found) {
+                        (None, None) | (Some(_), Some(_)) => unreachable!(),
+                        (None, Some(_)) => {
+                            bail!("expected variant case `{bn}` to be untyped, found a typed case")
+                        }
+                        (Some(_), None) => {
+                            bail!("expected variant case `{bn}` to be typed, found an untyped case")
+                        }
+                    }
+                }
             }
         }
 
@@ -1300,10 +1451,11 @@ impl<'a> SubtypeChecker<'a> {
 
     fn tuple(&self, a: &Vec<ValueType>, b: &Vec<ValueType>) -> Result<()> {
         if a.len() != b.len() {
+            let (expected, found) = self.expected_found(a, b);
             bail!(
-                "expected a tuple of size {a}, found a tuple of size {b}",
-                a = a.len(),
-                b = b.len()
+                "expected a tuple of size {expected}, found a tuple of size {found}",
+                expected = expected.len(),
+                found = found.len()
             );
         }
 
@@ -1315,12 +1467,17 @@ impl<'a> SubtypeChecker<'a> {
         Ok(())
     }
 
-    fn primitive(a: PrimitiveType, b: PrimitiveType) -> Result<()> {
+    fn primitive(&self, a: PrimitiveType, b: PrimitiveType) -> Result<()> {
         // Note: currently subtyping for primitive types is done in terms of equality
         // rather than actual subtyping; the reason for this is that implementing
         // runtimes don't yet support more complex subtyping rules.
         if a != b {
-            bail!("expected {a}, found {b}", a = a.as_str(), b = b.as_str());
+            let (expected, found) = self.expected_found(&a, &b);
+            bail!(
+                "expected {expected}, found {found}",
+                expected = expected.as_str(),
+                found = found.as_str()
+            );
         }
 
         Ok(())

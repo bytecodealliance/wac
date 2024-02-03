@@ -1,0 +1,12 @@
+failed to resolve document
+
+  × import `foo` has a mismatched type for target world `test:comp/foo`
+  ├─▶ mismatched type for export `foo`
+  ╰─▶ expected function parameter 0 to be named `a`, found name `x`
+    ╭─[tests/resolution/fail/target-import-param-name-mismatch.wac:9:16]
+  8 │ 
+  9 │ import foo2 as foo: interface {
+    ·                ─┬─
+    ·                 ╰── mismatched type for import `foo`
+ 10 │     foo: func(x: u32);
+    ╰────
