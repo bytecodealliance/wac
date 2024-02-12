@@ -2,7 +2,7 @@ failed to resolve document
 
   × mismatched instantiation argument `x`
   ├─▶ mismatched type for export `f`
-  ╰─▶ expected function with named results, found function with scalar result
+  ╰─▶ expected function that returns a named result, found function with a single result type
    ╭─[tests/resolution/fail/expected-result-named.wac:7:23]
  6 │ 
  7 │ let i = new foo:bar { x };

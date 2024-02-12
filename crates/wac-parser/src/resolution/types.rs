@@ -963,16 +963,16 @@ impl<'a> SubtypeChecker<'a> {
         let (expected, found) = self.expected_found(a, b);
         match (&expected.results, &found.results) {
             (Some(FuncResult::List(_)), Some(FuncResult::Scalar(_))) => {
-                bail!("expected function with named results, found function with scalar result")
+                bail!("expected function that returns a named result, found function with a single result type")
             }
             (Some(FuncResult::Scalar(_)), Some(FuncResult::List(_))) => {
-                bail!("expected function with scalar result, found function with named results")
+                bail!("expected function that returns a single result type, found function that returns a named result")
             }
             (Some(_), None) => {
-                bail!("expected function with results, found function without results")
+                bail!("expected function with a result, found function without a result")
             }
             (None, Some(_)) => {
-                bail!("expected function without results, found function with results")
+                bail!("expected function without a result, found function with a result")
             }
             (Some(FuncResult::Scalar(_)), Some(FuncResult::Scalar(_)))
             | (Some(FuncResult::List(_)), Some(FuncResult::List(_)))
