@@ -49,6 +49,12 @@ impl<'a> Parse<'a> for Expr<'a> {
     }
 }
 
+impl Peek for Expr<'_> {
+    fn peek(lookahead: &mut Lookahead) -> bool {
+        PrimaryExpr::peek(lookahead)
+    }
+}
+
 /// Represents a primary expression in the AST.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -87,14 +93,61 @@ impl<'a> Parse<'a> for PrimaryExpr<'a> {
     }
 }
 
+impl Peek for PrimaryExpr<'_> {
+    fn peek(lookahead: &mut Lookahead) -> bool {
+        NewExpr::peek(lookahead) | NestedExpr::peek(lookahead) | Ident::peek(lookahead)
+    }
+}
+
+/// Represents a component reference in a new expression.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum ComponentRef<'a> {
+    /// The component is referenced by a local name.
+    Local(Ident<'a>),
+    /// The component is referenced by package name.
+    Package(PackageName<'a>),
+}
+
+impl<'a> Parse<'a> for ComponentRef<'a> {
+    fn parse(lexer: &mut Lexer<'a>) -> ParseResult<Self> {
+        let mut lookahead = Lookahead::new(lexer);
+        if lookahead.peek(Token::PackageName) {
+            Parse::parse(lexer).map(ComponentRef::Package)
+        } else if lookahead.peek(Token::Ident) {
+            Parse::parse(lexer).map(ComponentRef::Local)
+        } else {
+            Err(lookahead.error())
+        }
+    }
+}
+
+impl ComponentRef<'_> {
+    /// Gets the span of the component reference.
+    pub fn span(&self) -> SourceSpan {
+        match self {
+            Self::Local(ident) => ident.span,
+            Self::Package(package) => package.span,
+        }
+    }
+
+    /// Returns the name of the [`ComponentRef`].
+    pub fn name(&self) -> &str {
+        match self {
+            Self::Local(ident) => ident.string,
+            Self::Package(package) => package.name,
+        }
+    }
+}
+
 /// Represents a new expression in the AST.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct NewExpr<'a> {
     /// The span of the new expression.
     pub span: SourceSpan,
-    /// The package name in the expression.
-    pub package: PackageName<'a>,
+    /// The component referenced in the expression.
+    pub component: ComponentRef<'a>,
     /// The instantiation arguments in the expression.
     pub arguments: Vec<InstantiationArgument<'a>>,
 }
@@ -102,7 +155,7 @@ pub struct NewExpr<'a> {
 impl<'a> Parse<'a> for NewExpr<'a> {
     fn parse(lexer: &mut Lexer<'a>) -> ParseResult<Self> {
         let start = parse_token(lexer, Token::NewKeyword)?;
-        let package = PackageName::parse(lexer)?;
+        let component = ComponentRef::parse(lexer)?;
         parse_token(lexer, Token::OpenBrace)?;
         let arguments = parse_delimited(lexer, Token::CloseBrace, true)?;
         let end = parse_token(lexer, Token::CloseBrace)?;
@@ -111,7 +164,7 @@ impl<'a> Parse<'a> for NewExpr<'a> {
                 start.offset().into(),
                 ((end.offset() + end.len()) - start.offset()).into(),
             ),
-            package,
+            component,
             arguments,
         })
     }

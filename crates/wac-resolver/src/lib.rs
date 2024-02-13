@@ -46,6 +46,20 @@ pub enum Error {
         #[label(primary, "cannot instantiate self")]
         span: SourceSpan,
     },
+    /// Cannot transform the package being defined.
+    #[error("cannot transform the package being defined")]
+    CannotTransformSelf {
+        /// The span where the error occurred.
+        #[label(primary, "cannot transform self")]
+        span: SourceSpan,
+    },
+    /// An invalid transformer was encountered.
+    #[error("invalid transformer")]
+    InvalidTransformer {
+        /// The span where the error occurred.
+        #[label(primary, "invalid component")]
+        span: SourceSpan,
+    },
     /// Cannot instantiate the package being defined.
     #[error("package `{name}` does not exist in the registry")]
     PackageDoesNotExist {

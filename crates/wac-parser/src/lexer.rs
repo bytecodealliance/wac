@@ -4,7 +4,7 @@ use logos::{Logos, SpannedIter};
 use miette::SourceSpan;
 use std::fmt;
 
-fn to_source_span(span: logos::Span) -> SourceSpan {
+pub(crate) fn to_source_span(span: logos::Span) -> SourceSpan {
     SourceSpan::new(span.start.into(), (span.end - span.start).into())
 }
 
@@ -238,7 +238,9 @@ pub enum Token {
     /// The `targets` keyword.
     #[token("targets")]
     TargetsKeyword,
-
+    /// The `transform` keyword.
+    #[token("transform")]
+    TransformKeyword,
     /// The `;` symbol.
     #[token(";")]
     Semicolon,
@@ -342,6 +344,7 @@ impl fmt::Display for Token {
             Token::AsKeyword => write!(f, "`as` keyword"),
             Token::PackageKeyword => write!(f, "`package` keyword"),
             Token::TargetsKeyword => write!(f, "`targets` keyword"),
+            Token::TransformKeyword => write!(f, "`transform` keyword"),
             Token::Semicolon => write!(f, "`;`"),
             Token::OpenBrace => write!(f, "`{{`"),
             Token::CloseBrace => write!(f, "`}}`"),
@@ -448,7 +451,7 @@ mod helpers {
 pub type LexerResult<T> = Result<T, Error>;
 
 /// Implements a WAC lexer.
-pub struct Lexer<'a>(SpannedIter<'a, Token>);
+pub struct Lexer<'a>(pub(crate) SpannedIter<'a, Token>);
 
 impl<'a> Lexer<'a> {
     /// Creates a new lexer for the given source string.
@@ -833,6 +836,7 @@ include
 as
 package
 targets
+transform
             "#,
             &[
                 (Ok(Token::ImportKeyword), "import", 1..7),
@@ -874,6 +878,7 @@ targets
                 (Ok(Token::AsKeyword), "as", 215..217),
                 (Ok(Token::PackageKeyword), "package", 218..225),
                 (Ok(Token::TargetsKeyword), "targets", 226..233),
+                (Ok(Token::TransformKeyword), "transform", 234..243),
             ],
         );
     }

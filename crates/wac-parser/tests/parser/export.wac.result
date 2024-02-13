@@ -257,13 +257,15 @@
                 "offset": 408,
                 "length": 19
               },
-              "package": {
-                "string": "foo:bar",
-                "name": "foo:bar",
-                "version": null,
-                "span": {
-                  "offset": 412,
-                  "length": 7
+              "component": {
+                "package": {
+                  "string": "foo:bar",
+                  "name": "foo:bar",
+                  "version": null,
+                  "span": {
+                    "offset": 412,
+                    "length": 7
+                  }
                 }
               },
               "arguments": [
