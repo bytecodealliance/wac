@@ -1,7 +1,7 @@
 failed to resolve document
 
   × mismatched instantiation argument `x`
-  ╰─▶ instance is missing expected export `f`
+  ╰─▶ instance is missing expected function export `f`
    ╭─[tests/resolution/fail/missing-interface-export.wac:6:23]
  5 │ 
  6 │ let i = new foo:bar { x };

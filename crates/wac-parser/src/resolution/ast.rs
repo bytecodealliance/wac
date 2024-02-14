@@ -1535,8 +1535,8 @@ impl<'a> AstResolver<'a> {
             hash_map::Entry::Occupied(e) => Ok(*e.get()),
             hash_map::Entry::Vacant(e) => {
                 log::debug!("resolving package `{name}`");
-                let bytes = match self.packages.remove(&PackageKey { name, version }) {
-                    Some(bytes) => bytes,
+                let bytes = match self.packages.get(&PackageKey { name, version }) {
+                    Some(bytes) => bytes.clone(),
                     None => {
                         return Err(Error::UnknownPackage {
                             name: name.to_string(),
@@ -1790,7 +1790,7 @@ impl<'a> AstResolver<'a> {
             );
 
             SubtypeChecker::new(&self.definitions, &state.packages)
-                .is_subtype(*expected, state.current.items[*item].kind())
+                .is_subtype(state.current.items[*item].kind(), *expected)
                 .map_err(|e| Error::MismatchedInstantiationArg {
                     name: name.clone(),
                     span: *span,
@@ -1967,10 +1967,10 @@ impl<'a> AstResolver<'a> {
 
                     match (
                         checker
-                            .is_subtype(*target_kind, *source_kind)
+                            .is_subtype(*source_kind, *target_kind)
                             .with_context(|| format!("mismatched type for export `{name}`")),
                         checker
-                            .is_subtype(*source_kind, *target_kind)
+                            .is_subtype(*target_kind, *source_kind)
                             .with_context(|| format!("mismatched type for export `{name}`")),
                     ) {
                         (Ok(_), Ok(_)) => {
@@ -2275,6 +2275,7 @@ impl<'a> AstResolver<'a> {
         let mut checker = SubtypeChecker::new(&self.definitions, &state.packages);
 
         // The output is allowed to import a subset of the world's imports
+        checker.invert();
         for (name, import) in &state.imports {
             let expected = world
                 .imports
@@ -2299,6 +2300,8 @@ impl<'a> AstResolver<'a> {
                 })?;
         }
 
+        checker.revert();
+
         // The output must export every export in the world
         for (name, expected) in &world.exports {
             let export = state
@@ -2313,8 +2316,8 @@ impl<'a> AstResolver<'a> {
 
             checker
                 .is_subtype(
-                    expected.promote(),
                     state.root_scope().items[export.item].kind(),
+                    expected.promote(),
                 )
                 .map_err(|e| Error::TargetMismatch {
                     kind: ExternKind::Export,

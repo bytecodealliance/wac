@@ -1,0 +1,11 @@
+failed to resolve document
+
+  × import `foo` has a mismatched type for target world `test:comp/foo`
+  ╰─▶ instance has unexpected resource export `y`
+    ╭─[tests/resolution/fail/target-import-mismatch-resource.wac:11:16]
+ 10 │ 
+ 11 │ import foo2 as foo: interface {
+    ·                ─┬─
+    ·                 ╰── mismatched type for import `foo`
+ 12 │     resource y {
+    ╰────

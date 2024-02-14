@@ -1,0 +1,11 @@
+package test:comp targets test:comp/foo;
+
+world foo {
+    import foo: interface {
+        foo: func(a: u32);
+    };
+}
+
+import foo2 as foo: interface {
+    foo: func(a: string);
+};
