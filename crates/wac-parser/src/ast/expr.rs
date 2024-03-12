@@ -42,7 +42,7 @@ impl<'a> Parse<'a> for Expr<'a> {
         });
 
         Ok(Self {
-            span: SourceSpan::new(start.offset().into(), len.into()),
+            span: SourceSpan::new(start.offset().into(), len),
             primary,
             postfix,
         })
@@ -109,7 +109,7 @@ impl<'a> Parse<'a> for NewExpr<'a> {
         Ok(Self {
             span: SourceSpan::new(
                 start.offset().into(),
-                ((end.offset() + end.len()) - start.offset()).into(),
+                (end.offset() + end.len()) - start.offset(),
             ),
             package,
             arguments,
@@ -265,7 +265,7 @@ impl<'a> Parse<'a> for NestedExpr<'a> {
         Ok(Self {
             span: SourceSpan::new(
                 start.offset().into(),
-                ((end.offset() + end.len()) - start.offset()).into(),
+                (end.offset() + end.len()) - start.offset(),
             ),
             inner,
         })
@@ -315,7 +315,7 @@ impl<'a> Parse<'a> for AccessExpr<'a> {
         Ok(Self {
             span: SourceSpan::new(
                 start.offset().into(),
-                (id.span.offset() - start.offset() + id.span.len()).into(),
+                id.span.offset() - start.offset() + id.span.len(),
             ),
             id,
         })
@@ -346,7 +346,7 @@ impl<'a> Parse<'a> for NamedAccessExpr<'a> {
         Ok(Self {
             span: SourceSpan::new(
                 opening.offset().into(),
-                ((closing.offset() + closing.len()) - opening.offset()).into(),
+                (closing.offset() + closing.len()) - opening.offset(),
             ),
             string,
         })

@@ -745,7 +745,7 @@ impl<'a> Parse<'a> for Type<'a> {
                 types,
                 SourceSpan::new(
                     span.offset().into(),
-                    ((close.offset() + close.len()) - span.offset()).into(),
+                    (close.offset() + close.len()) - span.offset(),
                 ),
             ))
         } else if lookahead.peek(Token::ListKeyword) {
@@ -757,7 +757,7 @@ impl<'a> Parse<'a> for Type<'a> {
                 ty,
                 SourceSpan::new(
                     span.offset().into(),
-                    ((close.offset() + close.len()) - span.offset()).into(),
+                    (close.offset() + close.len()) - span.offset(),
                 ),
             ))
         } else if lookahead.peek(Token::OptionKeyword) {
@@ -769,12 +769,13 @@ impl<'a> Parse<'a> for Type<'a> {
                 ty,
                 SourceSpan::new(
                     span.offset().into(),
-                    ((close.offset() + close.len()) - span.offset()).into(),
+                    (close.offset() + close.len()) - span.offset(),
                 ),
             ))
         } else if lookahead.peek(Token::ResultKeyword) {
             let mut span = lexer.next().unwrap().1;
-            let (ok, err) = match parse_optional(lexer, Token::OpenAngle, |lexer| {
+
+            let parse = |lexer: &mut Lexer<'a>| {
                 let mut lookahead = Lookahead::new(lexer);
                 let ok = if lookahead.peek(Token::Underscore) {
                     lexer.next();
@@ -801,10 +802,12 @@ impl<'a> Parse<'a> for Type<'a> {
                 let close = parse_token(lexer, Token::CloseAngle)?;
                 span = SourceSpan::new(
                     span.offset().into(),
-                    ((close.offset() + close.len()) - span.offset()).into(),
+                    (close.offset() + close.len()) - span.offset(),
                 );
                 Ok((ok, err))
-            })? {
+            };
+
+            let (ok, err) = match parse_optional(lexer, Token::OpenAngle, parse)? {
                 Some((ok, err)) => (ok, err),
                 None => (None, None),
             };
@@ -818,7 +821,7 @@ impl<'a> Parse<'a> for Type<'a> {
                 id,
                 SourceSpan::new(
                     span.offset().into(),
-                    ((close.offset() + close.len()) - span.offset()).into(),
+                    (close.offset() + close.len()) - span.offset(),
                 ),
             ))
         } else if Ident::peek(&mut lookahead) {

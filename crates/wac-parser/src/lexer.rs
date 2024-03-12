@@ -5,7 +5,7 @@ use miette::SourceSpan;
 use std::fmt;
 
 fn to_source_span(span: logos::Span) -> SourceSpan {
-    SourceSpan::new(span.start.into(), (span.end - span.start).into())
+    SourceSpan::new(span.start.into(), span.end - span.start)
 }
 
 /// Represents a lexer error.
@@ -52,7 +52,7 @@ fn detect_invalid_input(source: &str) -> Result<(), (Error, SourceSpan)> {
             | '\u{2067}' | '\u{2068}' | '\u{2069}' => {
                 return Err((
                     Error::DisallowedBidirectionalOverride(ch),
-                    SourceSpan::new(offset.into(), ch.len_utf8().into()),
+                    SourceSpan::new(offset.into(), ch.len_utf8()),
                 ));
             }
 
@@ -67,7 +67,7 @@ fn detect_invalid_input(source: &str) -> Result<(), (Error, SourceSpan)> {
             | '\u{17b4}' | '\u{17b5}' => {
                 return Err((
                     Error::DiscouragedUnicodeCodepoint(ch),
-                    SourceSpan::new(offset.into(), ch.len_utf8().into()),
+                    SourceSpan::new(offset.into(), ch.len_utf8()),
                 ));
             }
 
@@ -77,7 +77,7 @@ fn detect_invalid_input(source: &str) -> Result<(), (Error, SourceSpan)> {
             ch if ch.is_control() => {
                 return Err((
                     Error::DisallowedControlCode(ch),
-                    SourceSpan::new(offset.into(), ch.len_utf8().into()),
+                    SourceSpan::new(offset.into(), ch.len_utf8()),
                 ));
             }
 
@@ -480,21 +480,21 @@ impl<'a> Lexer<'a> {
 
     /// Peeks at the next token.
     pub fn peek(&self) -> Option<(LexerResult<Token>, SourceSpan)> {
-        let mut lexer = self.0.clone().spanned();
+        let mut lexer = self.0.clone();
         lexer.next().map(|(r, s)| (r, to_source_span(s)))
     }
 
     /// Peeks at the token after the next token.
     pub fn peek2(&self) -> Option<(LexerResult<Token>, SourceSpan)> {
-        let mut lexer = self.0.clone().spanned();
+        let mut lexer = self.0.clone();
         lexer.next();
         lexer.next().map(|(r, s)| (r, to_source_span(s)))
     }
 
     /// Consumes available documentation comment tokens.
-    pub fn comments<'b>(&'b self) -> Result<Vec<(&'a str, SourceSpan)>, (Error, SourceSpan)> {
+    pub fn comments(&self) -> Result<Vec<(&'a str, SourceSpan)>, (Error, SourceSpan)> {
         let mut comments = Vec::new();
-        let mut lexer = self.0.clone().morph::<helpers::CommentToken>().spanned();
+        let mut lexer = (*self.0).clone().morph::<helpers::CommentToken>().spanned();
         while let Some((Ok(token), span)) = lexer.next() {
             match token {
                 helpers::CommentToken::Comment(c) | helpers::CommentToken::BlockComment(c) => {
@@ -537,7 +537,7 @@ mod test {
         source: &'a Token::Source,
         tokens: &[(
             Result<Token, Token::Error>,
-            &'a <Token::Source as Source>::Slice,
+            <Token::Source as Source>::Slice<'a>,
             Range<usize>,
         )],
     ) where

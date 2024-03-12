@@ -617,6 +617,7 @@ impl fmt::Display for CoreRefType {
             (true, HeapType::Struct) => "structref",
             (true, HeapType::Array) => "arrayref",
             (true, HeapType::I31) => "i31ref",
+            (true, HeapType::Exn) => "exnref",
             (false, HeapType::Func) => "(ref func)",
             (false, HeapType::Extern) => "(ref extern)",
             (false, HeapType::Concrete(i)) => return write!(f, "(ref {i})"),
@@ -628,6 +629,7 @@ impl fmt::Display for CoreRefType {
             (false, HeapType::Struct) => "(ref struct)",
             (false, HeapType::Array) => "(ref array)",
             (false, HeapType::I31) => "(ref i31)",
+            (false, HeapType::Exn) => "(ref exn)",
         };
 
         f.write_str(s)
@@ -677,6 +679,10 @@ pub enum HeapType {
     Array,
     /// The i31 heap type.
     I31,
+    /// The abstraction `exception` heap type.
+    ///
+    /// Introduced in the exception-handling proposal.
+    Exn,
 }
 
 impl From<wasmparser::HeapType> for HeapType {
@@ -692,6 +698,7 @@ impl From<wasmparser::HeapType> for HeapType {
             wasmparser::HeapType::NoFunc => Self::NoFunc,
             wasmparser::HeapType::Struct => Self::Struct,
             wasmparser::HeapType::Array => Self::Array,
+            wasmparser::HeapType::Exn => Self::Exn,
             wasmparser::HeapType::Concrete(index) => {
                 Self::Concrete(index.as_module_index().unwrap())
             }
@@ -713,6 +720,7 @@ impl From<HeapType> for wasm_encoder::HeapType {
             HeapType::Struct => Self::Struct,
             HeapType::Array => Self::Array,
             HeapType::I31 => Self::I31,
+            HeapType::Exn => Self::Exn,
         }
     }
 }

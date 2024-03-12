@@ -19,11 +19,12 @@ wit-component = { workspace = true }
 indexmap = { workspace = true }
 wat = { workspace = true, optional = true }
 wit-parser = { workspace = true, optional = true }
-# TODO: use the next release which has support for primary labels
-miette = { git = "https://github.com/zkat/miette", features = ["fancy"] }
+miette = { workspace = true }
 warg-client = { workspace = true, optional = true }
 warg-protocol = { workspace = true, optional = true }
 warg-crypto = { workspace = true, optional = true }
+warg-credentials = { workspace = true, optional = true }
+secrecy = { workspace = true, optional = true }
 tokio = { workspace = true, optional = true }
 futures = { workspace = true, optional = true }
 
@@ -38,4 +39,4 @@ tempdir = "0.3.7"
 default = ["registry"]
 wat = ["dep:wat"]
 wit = ["wit-parser"]
-registry = ["warg-client", "warg-protocol", "warg-crypto", "tokio", "futures"]
+registry = ["warg-client", "warg-protocol", "warg-crypto", "warg-credentials", "secrecy", "tokio", "futures"]

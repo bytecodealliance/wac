@@ -14,7 +14,10 @@ use std::{
     collections::{hash_map, HashMap, HashSet},
     sync::Arc,
 };
-use wasmparser::names::{ComponentName, ComponentNameKind};
+use wasmparser::{
+    names::{ComponentName, ComponentNameKind},
+    BinaryReaderError,
+};
 
 #[derive(Default)]
 struct Scope {
@@ -427,21 +430,20 @@ impl<'a> AstResolver<'a> {
         span: SourceSpan,
         show_hint: bool,
     ) -> Result<(), Error> {
-        match ComponentName::new(&name, 0)
-            .map_err(|e| {
-                let msg = e.to_string();
-                Error::InvalidExternName {
-                    name: name.clone(),
-                    kind: ExternKind::Export,
-                    span,
-                    source: anyhow::anyhow!(
-                        "{msg}",
-                        msg = msg.strip_suffix(" (at offset 0x0)").unwrap_or(&msg)
-                    ),
-                }
-            })?
-            .kind()
-        {
+        let map_err = |e: BinaryReaderError| {
+            let msg = e.to_string();
+            Error::InvalidExternName {
+                name: name.clone(),
+                kind: ExternKind::Export,
+                span,
+                source: anyhow::anyhow!(
+                    "{msg}",
+                    msg = msg.strip_suffix(" (at offset 0x0)").unwrap_or(&msg)
+                ),
+            }
+        };
+
+        match ComponentName::new(&name, 0).map_err(map_err)?.kind() {
             ComponentNameKind::Hash(_)
             | ComponentNameKind::Url(_)
             | ComponentNameKind::Dependency(_) => {
