@@ -111,7 +111,8 @@ export i2.foo as "bar";
   (@producers
     (processed-by "wac-parser" "0.1.0")
   )
-)"#
+)
+"#
     );
 
     Ok(())

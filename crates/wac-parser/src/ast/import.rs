@@ -137,14 +137,14 @@ pub struct PackagePath<'a> {
 impl<'a> PackagePath<'a> {
     /// Gets the span of only the package name.
     pub fn package_name_span(&self) -> SourceSpan {
-        SourceSpan::new(self.span.offset().into(), self.name.len().into())
+        SourceSpan::new(self.span.offset().into(), self.name.len())
     }
 
     /// Iterates over the segments of the package path.
     pub fn segment_spans<'b>(&'b self) -> impl Iterator<Item = (&'a str, SourceSpan)> + 'b {
         self.segments.split('/').map(|s| {
             let start = self.span.offset() + s.as_ptr() as usize - self.name.as_ptr() as usize;
-            (s, SourceSpan::new(start.into(), s.len().into()))
+            (s, SourceSpan::new(start.into(), s.len()))
         })
     }
 }
@@ -163,10 +163,7 @@ impl<'a> Parse<'a> for PackagePath<'a> {
                 let start = span.offset() + at + 1;
                 version.parse().map_err(|_| Error::InvalidVersion {
                     version: version.to_owned(),
-                    span: SourceSpan::new(
-                        start.into(),
-                        ((span.offset() + span.len()) - start).into(),
-                    ),
+                    span: SourceSpan::new(start.into(), (span.offset() + span.len()) - start),
                 })
             })
             .transpose()?;
@@ -213,10 +210,7 @@ impl<'a> Parse<'a> for PackageName<'a> {
                 let start = span.offset() + at + 1;
                 version.parse().map_err(|_| Error::InvalidVersion {
                     version: version.to_string(),
-                    span: SourceSpan::new(
-                        start.into(),
-                        ((span.offset() + span.len()) - start).into(),
-                    ),
+                    span: SourceSpan::new(start.into(), (span.offset() + span.len()) - start),
                 })
             })
             .transpose()?;
