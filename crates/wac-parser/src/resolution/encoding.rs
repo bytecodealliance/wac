@@ -377,7 +377,7 @@ impl From<PrimitiveType> for PrimitiveValType {
             PrimitiveType::S32 => Self::S32,
             PrimitiveType::U64 => Self::U64,
             PrimitiveType::S64 => Self::S64,
-            PrimitiveType::Float32 => Self::Float64,
+            PrimitiveType::Float32 => Self::Float32,
             PrimitiveType::Float64 => Self::Float64,
             PrimitiveType::Char => Self::Char,
             PrimitiveType::Bool => Self::Bool,
