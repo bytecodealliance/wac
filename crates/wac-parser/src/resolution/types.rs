@@ -875,6 +875,7 @@ impl<'a> SubtypeChecker<'a> {
             return Ok(());
         }
 
+        // Currently, just check that the resources have the same name
         let a = self.definitions.resolve_resource(a);
         let b = self.definitions.resolve_resource(b);
         if a.name != b.name {
