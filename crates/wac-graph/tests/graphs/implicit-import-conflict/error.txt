@@ -1,0 +1,4 @@
+failed to encode the graph
+
+Caused by:
+    an instantiation node implicitly imports an item named `foo`, but it conflicts with an explicit import node of the same name

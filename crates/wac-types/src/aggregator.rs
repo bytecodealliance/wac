@@ -63,8 +63,7 @@ impl TypeAggregator {
     ) -> Result<Self> {
         if let Some(existing) = self.names.get(name).copied() {
             let mut checker = SubtypeChecker::new(cache);
-            self.merge_item_kind(existing, types, kind, &mut checker)
-                .with_context(|| format!("failed to merge type `{name}`"))?;
+            self.merge_item_kind(existing, types, kind, &mut checker)?;
             return Ok(self);
         }
 

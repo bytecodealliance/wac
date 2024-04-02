@@ -1,4 +1,4 @@
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{bail, Context, Result};
 use pretty_assertions::assert_eq;
 use semver::Version;
 use serde::Deserialize;
@@ -6,7 +6,6 @@ use std::{
     collections::HashMap,
     fs::{self, File},
     path::{Path, PathBuf},
-    sync::Arc,
 };
 use wac_graph::{CompositionGraph, EncodeOptions, NodeId, PackageId};
 use wac_types::Package;
@@ -116,14 +115,13 @@ impl GraphFile {
                 )
             })?;
 
-            let package =
-                Package::from_bytes(&package.name, package.version.as_ref(), Arc::new(bytes))
-                    .with_context(|| {
-                        format!(
-                            "failed to decode package `{path}` for test case `{test_case}`",
-                            path = path.display()
-                        )
-                    })?;
+            let package = Package::from_bytes(&package.name, package.version.as_ref(), bytes)
+                .with_context(|| {
+                    format!(
+                        "failed to decode package `{path}` for test case `{test_case}`",
+                        path = path.display()
+                    )
+                })?;
 
             let id = graph.register_package(package).with_context(|| {
                 format!(
@@ -199,7 +197,9 @@ impl GraphFile {
                 format!("invalid target node index {target} referenced in argument {index} for test case `{test_case}`", target = argument.target)
             }).copied()?;
 
-            graph.add_argument_edge(source, target, &argument.name)?;
+            graph.add_argument_edge(source, target, &argument.name).with_context(|| {
+                format!("failed to add argument edge from source node {source} to target node {target} referenced in argument {index} for test case `{test_case}`", source = argument.source, target = argument.target)
+            })?;
         }
 
         Ok(())
@@ -255,13 +255,13 @@ fn encoding() -> Result<()> {
             .and_then(|graph| {
                 graph
                     .encode(EncodeOptions::default())
-                    .map_err(|e| anyhow!(e))
+                    .context("failed to encode the graph")
             });
 
         let (output, baseline_path) = if error_path.is_file() {
             match r {
                 Ok(_) => bail!("expected a test failure for test case `{test_case}`"),
-                Err(e) => (format!("{e:#}\n").replace('\\', "/"), &error_path),
+                Err(e) => (format!("{e:?}\n").replace('\\', "/"), &error_path),
             }
         } else {
             let bytes =

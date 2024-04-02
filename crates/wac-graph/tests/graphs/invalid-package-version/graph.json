@@ -1,0 +1,9 @@
+{
+    "nodes": [
+        {
+            "type": "import",
+            "name": "foo",
+            "path": "foo:bar@nope/baz"
+        }
+    ]
+}

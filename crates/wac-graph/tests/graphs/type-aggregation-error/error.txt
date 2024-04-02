@@ -1,0 +1,6 @@
+failed to encode the graph
+
+Caused by:
+    0: failed to aggregate type definition for import `foo`
+    1: mismatched type for export `baz`
+    2: expected function, found instance

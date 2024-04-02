@@ -167,7 +167,12 @@ impl Package {
     }
 
     /// Creates a new package from the given bytes.
-    pub fn from_bytes(name: &str, version: Option<&Version>, bytes: Arc<Vec<u8>>) -> Result<Self> {
+    pub fn from_bytes(
+        name: &str,
+        version: Option<&Version>,
+        bytes: impl Into<Arc<Vec<u8>>>,
+    ) -> Result<Self> {
+        let bytes = bytes.into();
         if !Parser::is_component(&bytes) {
             bail!("package `{name}` is not a binary-encoded WebAssembly component");
         }

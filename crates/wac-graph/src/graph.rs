@@ -74,7 +74,7 @@ pub enum Error {
         path: String,
     },
     /// The specified package version is invalid.
-    #[error("package version `{version}` is not a valid: {error}")]
+    #[error("package version `{version}` is not a valid semantic version")]
     InvalidPackageVersion {
         /// The version that was invalid.
         version: String,
@@ -144,7 +144,7 @@ pub enum Error {
         node: NodeId,
     },
     /// The instance does not export an item with the given name.
-    #[error("instance does not have an export `{export}`")]
+    #[error("instance does not have an export named `{export}`")]
     InstanceMissingExport {
         /// The instance node that is missing the export.
         node: NodeId,
@@ -195,7 +195,7 @@ pub enum Error {
     #[error("the node cannot be unmarked from export as it is a type definition")]
     MustExportDefinition,
     /// An implicit import on an instantiation conflicts with an explicit import node.
-    #[error("an instantiation node implicitly imports an item named `{name}`, but it conflicts with an explicit export of the same name")]
+    #[error("an instantiation node implicitly imports an item named `{name}`, but it conflicts with an explicit import node of the same name")]
     ImplicitImportConfig {
         /// The existing import node.
         import: NodeId,
@@ -205,9 +205,12 @@ pub enum Error {
         name: String,
     },
     /// An error occurred while aggregating a type.
-    #[error(transparent)]
+    #[error("failed to aggregate type definition for import `{import}`")]
     TypeAggregationError {
+        /// The name of the import being aggregated.
+        import: String,
         /// The type aggregation error.
+        #[source]
         source: anyhow::Error,
     },
 }
@@ -1436,7 +1439,10 @@ impl<'a, C> CompositionGraphEncoder<'a, C> {
 
                 aggregator = aggregator
                     .aggregate(name, package.types(), *kind, &mut cache)
-                    .map_err(|e| Error::TypeAggregationError { source: e })?;
+                    .map_err(|e| Error::TypeAggregationError {
+                        import: name.clone(),
+                        source: e,
+                    })?;
                 arguments.push((node, name));
             }
         }
@@ -1723,5 +1729,156 @@ impl<'a, C> CompositionGraphEncoder<'a, C> {
         if !names.is_empty() {
             encoded.custom_section(&names.as_custom());
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use wac_types::{DefinedType, PrimitiveType, Resource, ValueType};
+
+    #[test]
+    fn it_errors_with_type_not_defined() {
+        let mut graph = CompositionGraph::new();
+        // Define the type in a different type collection
+        let mut types = Types::new();
+        let id = types.add_defined_type(DefinedType::Alias(ValueType::Primitive(
+            PrimitiveType::Bool,
+        )));
+        assert!(matches!(
+            graph
+                .add_type_definition_node(
+                    "foo",
+                    Type::Value(ValueType::Defined {
+                        id,
+                        contains_borrow: false
+                    }),
+                    ()
+                )
+                .unwrap_err(),
+            Error::TypeNotDefined { .. }
+        ));
+    }
+
+    #[test]
+    fn it_adds_a_type_definition() {
+        let mut graph = CompositionGraph::new();
+        let id = graph
+            .types_mut()
+            .add_defined_type(DefinedType::Alias(ValueType::Primitive(
+                PrimitiveType::Bool,
+            )));
+        assert!(graph
+            .add_type_definition_node(
+                "foo",
+                Type::Value(ValueType::Defined {
+                    id,
+                    contains_borrow: false
+                }),
+                ()
+            )
+            .is_ok());
+    }
+
+    #[test]
+    fn it_cannot_define_a_resource() {
+        let mut graph = CompositionGraph::new();
+        let id = graph.types_mut().add_resource(Resource {
+            name: "a".to_string(),
+            alias_of: None,
+        });
+        assert!(matches!(
+            graph
+                .add_type_definition_node("foo", Type::Resource(id), ())
+                .unwrap_err(),
+            Error::CannotDefineResource
+        ));
+    }
+
+    #[test]
+    fn it_validates_package_ids() {
+        let mut graph = CompositionGraph::new();
+        let old = graph
+            .register_package(
+                Package::from_bytes("foo:bar", None, wat::parse_str("(component)").unwrap())
+                    .unwrap(),
+            )
+            .unwrap();
+
+        assert_eq!(old.index, 0);
+        assert_eq!(old.generation, 0);
+
+        graph.unregister_package(old).unwrap();
+
+        let new = graph
+            .register_package(
+                Package::from_bytes("foo:bar", None, wat::parse_str("(component)").unwrap())
+                    .unwrap(),
+            )
+            .unwrap();
+
+        assert_eq!(new.index, 0);
+        assert_eq!(new.generation, 1);
+
+        assert!(matches!(
+            graph.add_instantiation_node(old, ()).unwrap_err(),
+            Error::InvalidPackageId,
+        ));
+
+        graph.add_instantiation_node(new, ()).unwrap();
+    }
+
+    #[test]
+    fn it_validates_node_ids() {
+        let mut graph = CompositionGraph::new();
+        let pkg = graph
+            .register_package(
+                Package::from_bytes(
+                    "foo:bar",
+                    None,
+                    wat::parse_str(r#"(component (import "foo" (func)) (export "foo" (func 0)))"#)
+                        .unwrap(),
+                )
+                .unwrap(),
+            )
+            .unwrap();
+
+        let old = graph.add_instantiation_node(pkg, ()).unwrap();
+        assert_eq!(old.index, 0);
+        assert_eq!(old.generation, 0);
+
+        assert!(graph.remove_node(old));
+        let new = graph.add_instantiation_node(pkg, ()).unwrap();
+        assert_eq!(new.index, 0);
+        assert_eq!(new.generation, 1);
+
+        assert!(matches!(
+            graph.add_alias_node(old, "foo", ()).unwrap_err(),
+            Error::InvalidNodeId,
+        ));
+
+        graph.add_alias_node(new, "foo", ()).unwrap();
+    }
+
+    #[test]
+    fn it_must_export_a_type_definition() {
+        let mut graph = CompositionGraph::new();
+        let id = graph
+            .types_mut()
+            .add_defined_type(DefinedType::Alias(ValueType::Primitive(PrimitiveType::S32)));
+        let id = graph
+            .add_type_definition_node(
+                "foo",
+                Type::Value(ValueType::Defined {
+                    id,
+                    contains_borrow: false,
+                }),
+                (),
+            )
+            .unwrap();
+        assert!(matches!(
+            graph.unexport_node(id).unwrap_err(),
+            Error::MustExportDefinition
+        ));
     }
 }
