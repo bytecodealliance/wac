@@ -1,5 +1,5 @@
 use crate::encoding::{State, TypeEncoder};
-use indexmap::IndexSet;
+use indexmap::{IndexMap, IndexSet};
 use petgraph::{algo::toposort, graphmap::DiGraphMap, Direction};
 use semver::Version;
 use std::{
@@ -434,7 +434,7 @@ pub struct CompositionGraph<C = ()> {
     /// The import nodes of the graph.
     imports: HashMap<String, NodeId>,
     /// The set of used export names.
-    exports: HashSet<String>,
+    exports: IndexMap<String, NodeId>,
     /// The map of package keys to package ids.
     package_map: HashMap<PackageKey, PackageId>,
     /// The registered packages.
@@ -550,7 +550,7 @@ impl<C> CompositionGraph<C> {
         }
 
         let name = name.into();
-        if self.exports.contains(&name) {
+        if self.exports.contains_key(&name) {
             return Err(Error::ExternAlreadyExists {
                 kind: ExternKind::Export,
                 name,
@@ -576,8 +576,8 @@ impl<C> CompositionGraph<C> {
         let id = self.alloc_node(data);
         self.graph.add_node(id);
 
-        let inserted = self.exports.insert(name);
-        assert!(inserted);
+        let prev = self.exports.insert(name, id);
+        assert!(prev.is_none());
         Ok(id)
     }
 
@@ -811,7 +811,7 @@ impl<C> CompositionGraph<C> {
         self.get_node(id).ok_or(Error::InvalidPackageId)?;
 
         let name = name.into();
-        if self.exports.contains(&name) {
+        if self.exports.contains_key(&name) {
             return Err(Error::ExternAlreadyExists {
                 kind: ExternKind::Export,
                 name,
@@ -846,8 +846,8 @@ impl<C> CompositionGraph<C> {
 
         self.node_data_mut(id).export = Some(name.clone());
 
-        let inserted = self.exports.insert(name);
-        assert!(inserted);
+        let prev = self.exports.insert(name, id);
+        assert!(prev.is_none());
         Ok(())
     }
 
@@ -864,8 +864,8 @@ impl<C> CompositionGraph<C> {
         }
 
         if let Some(name) = data.export.take() {
-            let removed = self.exports.remove(&name);
-            assert!(removed);
+            let removed = self.exports.swap_remove(&name);
+            assert!(removed.is_some());
         }
 
         Ok(())
@@ -1386,6 +1386,15 @@ impl<'a, C> CompositionGraphEncoder<'a, C> {
 
             let prev = state.node_indexes.insert(node, index);
             assert!(prev.is_none());
+        }
+
+        // Encode the exports
+        for (name, node) in &self.0.exports {
+            let index = state.node_indexes[node];
+            let data = self.0.node_data(*node);
+            state
+                .builder()
+                .export(name, data.item_kind.into(), index, None);
         }
 
         let mut builder = std::mem::take(state.builder());

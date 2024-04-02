@@ -55,4 +55,5 @@
     )
   )
   (alias export $bar "e" (func $e2 (;2;)))
+  (export (;3;) "e2" (func $e2))
 )
