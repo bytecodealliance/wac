@@ -10,6 +10,8 @@ keywords = { workspace = true }
 repository = { workspace = true }
 
 [dependencies]
+wac-graph = { workspace = true }
+wac-types = { workspace = true }
 anyhow = { workspace = true }
 logos = { workspace = true }
 thiserror = { workspace = true }
