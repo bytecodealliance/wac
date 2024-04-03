@@ -11,7 +11,8 @@ use std::{
     sync::atomic::{AtomicUsize, Ordering},
 };
 use support::fmt_err;
-use wac_parser::{ast::Document, Composition, EncodingOptions};
+use wac_graph::EncodeOptions;
+use wac_parser::Document;
 use wac_resolver::{packages, FileSystemPackageResolver};
 
 mod support;
@@ -19,6 +20,7 @@ mod support;
 fn find_tests() -> Vec<PathBuf> {
     let mut tests = Vec::new();
     find_tests("tests/encoding", &mut tests);
+    find_tests("tests/encoding/fail", &mut tests);
     tests.sort();
     return tests;
 
@@ -39,15 +41,20 @@ fn find_tests() -> Vec<PathBuf> {
     }
 }
 
-fn normalize(s: &str) -> String {
-    // Normalize line endings
+fn normalize(s: &str, should_fail: bool) -> String {
+    if should_fail {
+        // Normalize paths in any error messages
+        return s.replace('\\', "/").replace("\r\n", "\n");
+    }
+
+    // Otherwise, just normalize line endings
     s.replace("\r\n", "\n")
 }
 
-fn compare_result(test: &Path, result: &str) -> Result<()> {
-    let path = test.with_extension("wat.result");
+fn compare_result(test: &Path, result: &str, should_fail: bool) -> Result<()> {
+    let path = test.with_extension("wac.result");
 
-    let result = normalize(result);
+    let result = normalize(result, should_fail);
     if env::var_os("BLESS").is_some() {
         fs::write(&path, &result).with_context(|| {
             format!(
@@ -73,48 +80,58 @@ fn compare_result(test: &Path, result: &str) -> Result<()> {
 }
 
 fn run_test(test: &Path, ntests: &AtomicUsize) -> Result<()> {
+    let should_fail = test.parent().map(|p| p.ends_with("fail")).unwrap_or(false);
     let source = std::fs::read_to_string(test)?.replace("\r\n", "\n");
 
     let document = Document::parse(&source).map_err(|e| anyhow!(fmt_err(e, test, &source)))?;
 
-    let resolver = FileSystemPackageResolver::new(
-        test.parent().unwrap().join(test.file_stem().unwrap()),
-        Default::default(),
-        true,
-    );
+    let encode = || {
+        let resolver = FileSystemPackageResolver::new(
+            test.parent().unwrap().join(test.file_stem().unwrap()),
+            Default::default(),
+            true,
+        );
 
-    let packages = resolver.resolve(&packages(&document)?)?;
+        let packages = resolver
+            .resolve(&packages(&document).map_err(|e| fmt_err(e, test, &source))?)
+            .map_err(|e| fmt_err(e, test, &source))?;
 
-    let bytes = Composition::from_ast(&document, packages)
-        .map_err(|e| anyhow!(fmt_err(e, test, &source)))?
-        .encode(EncodingOptions::default())
-        .with_context(|| {
-            format!(
-                "failed to encode the composition `{path}`",
-                path = test.display()
-            )
-        })?;
+        let resolution = document
+            .resolve(packages)
+            .map_err(|e| fmt_err(e, test, &source))?;
 
-    wasmparser::Validator::new_with_features(wasmparser::WasmFeatures {
-        component_model: true,
-        ..Default::default()
-    })
-    .validate_all(&bytes)
-    .with_context(|| {
-        format!(
-            "failed to validate the encoded composition `{path}`",
-            path = test.display()
-        )
-    })?;
+        resolution
+            .encode(EncodeOptions {
+                define_components: false,
+                ..Default::default()
+            })
+            .map_err(|e| fmt_err(e, test, &source))
+    };
 
-    let result = wasmprinter::print_bytes(bytes).with_context(|| {
-        format!(
-            "failed to convert binary wasm output to text `{path}`",
-            path = test.display()
-        )
-    })?;
+    let result = match encode() {
+        Ok(bytes) => {
+            if should_fail {
+                bail!("the encoding was successful but it was expected to fail");
+            }
 
-    compare_result(test, &result)?;
+            wasmprinter::print_bytes(bytes).with_context(|| {
+                format!(
+                    "failed to convert binary wasm output to text `{path}`",
+                    path = test.display()
+                )
+            })?
+        }
+        Err(e) => {
+            if !should_fail {
+                return Err(anyhow!(e))
+                    .context("the resolution failed but it was expected to succeed");
+            }
+
+            e
+        }
+    };
+
+    compare_result(test, &result, should_fail)?;
 
     ntests.fetch_add(1, Ordering::SeqCst);
     Ok(())

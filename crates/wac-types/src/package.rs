@@ -8,7 +8,7 @@ use indexmap::IndexMap;
 use semver::Version;
 use std::borrow::Borrow;
 use std::fmt;
-use std::{collections::HashMap, path::Path, rc::Rc, sync::Arc};
+use std::{collections::HashMap, path::Path, rc::Rc};
 use wasmparser::{
     names::{ComponentName, ComponentNameKind},
     types::{self as wasm, ComponentAnyTypeId},
@@ -32,6 +32,16 @@ impl PackageKey {
             version: package.version.clone(),
         }
     }
+
+    /// Gets the name of the package.
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    /// Gets the version of the package.
+    pub fn version(&self) -> Option<&Version> {
+        self.version.as_ref()
+    }
 }
 
 impl fmt::Display for PackageKey {
@@ -48,8 +58,10 @@ impl fmt::Display for PackageKey {
 /// A borrowed package key.
 #[derive(Copy, Clone, Hash, PartialEq, Eq)]
 pub struct BorrowedPackageKey<'a> {
-    name: &'a str,
-    version: Option<&'a Version>,
+    /// The package name.
+    pub name: &'a str,
+    /// The optional package version.
+    pub version: Option<&'a Version>,
 }
 
 impl<'a> BorrowedPackageKey<'a> {
@@ -142,9 +154,7 @@ pub struct Package {
     ///
     /// The bytes are a binary-encoded WebAssembly component.
     #[cfg_attr(feature = "serde", serde(skip))]
-    bytes: Arc<Vec<u8>>,
-    /// The types of the package.
-    types: Types,
+    bytes: Vec<u8>,
     /// The type of the represented component.
     ty: WorldId,
     /// The type resulting from instantiating the component.
@@ -154,23 +164,34 @@ pub struct Package {
 }
 
 impl Package {
+    /// Gets the package key for the package.
+    pub fn key(&self) -> BorrowedPackageKey {
+        BorrowedPackageKey::new(self)
+    }
+
     /// Creates a new package from the given file path.
+    ///
+    /// The package will populate its types into the provided type collection.
     pub fn from_file(
         name: &str,
         version: Option<&Version>,
         path: impl AsRef<Path>,
+        types: &mut Types,
     ) -> Result<Self> {
         let path = path.as_ref();
         let bytes = std::fs::read(path)
             .with_context(|| format!("failed to read `{path}`", path = path.display()))?;
-        Self::from_bytes(name, version, Arc::new(bytes))
+        Self::from_bytes(name, version, bytes, types)
     }
 
     /// Creates a new package from the given bytes.
+    ///
+    /// The package will populate its types into the provided type collection.
     pub fn from_bytes(
         name: &str,
         version: Option<&Version>,
-        bytes: impl Into<Arc<Vec<u8>>>,
+        bytes: impl Into<Vec<u8>>,
+        types: &mut Types,
     ) -> Result<Self> {
         let bytes = bytes.into();
         if !Parser::is_component(&bytes) {
@@ -183,11 +204,10 @@ impl Package {
             component_model: true,
             ..Default::default()
         });
-        let mut types = Types::default();
         let mut imports = Vec::new();
         let mut exports = Vec::new();
 
-        let mut cur = bytes.as_ref().as_ref();
+        let mut cur = bytes.as_ref();
         loop {
             match parser.parse(cur, true)? {
                 Chunk::Parsed { payload, consumed } => {
@@ -227,7 +247,7 @@ impl Package {
                         ValidPayload::End(wasm_types) => match parsers.pop() {
                             Some(parent) => parser = parent,
                             None => {
-                                let mut converter = TypeConverter::new(&mut types, wasm_types);
+                                let mut converter = TypeConverter::new(types, wasm_types);
 
                                 let imports = imports
                                     .into_iter()
@@ -252,13 +272,12 @@ impl Package {
                                     exports,
                                 });
 
-                                let definitions = Self::find_definitions(&types, ty);
+                                let definitions = Self::find_definitions(types, ty);
 
                                 return Ok(Self {
                                     name: name.to_owned(),
                                     version: version.map(ToOwned::to_owned),
                                     bytes,
-                                    types,
                                     ty,
                                     instance_type,
                                     definitions,
@@ -285,13 +304,8 @@ impl Package {
     /// Gets the bytes of the package.
     ///
     /// The bytes are a binary-encoded WebAssembly component.
-    pub fn bytes(&self) -> &Arc<Vec<u8>> {
+    pub fn bytes(&self) -> &[u8] {
         &self.bytes
-    }
-
-    /// Gets the types in the package.
-    pub fn types(&self) -> &Types {
-        &self.types
     }
 
     /// Gets the id of the world (i.e. component type) of the package.
@@ -308,11 +322,6 @@ impl Package {
     /// Gets the interfaces and worlds defined in this package.
     pub fn definitions(&self) -> &IndexMap<String, ItemKind> {
         &self.definitions
-    }
-
-    /// Gets an export of the given name from the package's component type.
-    pub fn export(&self, name: &str) -> Option<ItemKind> {
-        self.types[self.ty].exports.get(name).copied()
     }
 
     fn find_definitions(types: &Types, world: WorldId) -> IndexMap<String, ItemKind> {

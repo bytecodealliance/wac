@@ -9,12 +9,14 @@
         {
             "type": "import",
             "name": "foo",
-            "path": "test:foo/bar"
+            "package": 0,
+            "export": "bar"
         },
         {
             "type": "import",
             "name": "bar",
-            "path": "test:foo/bar"
+            "package": 0,
+            "export": "bar"
         }
     ],
     "arguments": [

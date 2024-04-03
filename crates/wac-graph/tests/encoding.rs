@@ -16,9 +16,18 @@ use wit_parser::Resolve;
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase", tag = "type")]
 enum Node {
-    Import { name: String, path: String },
-    Instantiation { package: usize },
-    Alias { source: usize, export: String },
+    Import {
+        name: String,
+        package: usize,
+        export: String,
+    },
+    Instantiation {
+        package: usize,
+    },
+    Alias {
+        source: usize,
+        export: String,
+    },
 }
 
 /// Represents an argument to connect to an instantiation node.
@@ -103,9 +112,7 @@ impl GraphFile {
                 .with_context(|| format!("invalid node index {node} referenced in name {index} for test case `{test_case}`", node = name.node))
                 .copied()?;
 
-            graph
-                .set_node_name(id, &name.name)
-                .with_context(|| format!("failed to set node name for node {node} in name {index} for test case `{test_case}`", node = name.node))?;
+            graph.set_node_name(id, &name.name);
         }
 
         Ok(graph)
@@ -170,13 +177,18 @@ impl GraphFile {
                 ),
             };
 
-            let package = Package::from_bytes(&package.name, package.version.as_ref(), bytes)
-                .with_context(|| {
-                    format!(
-                        "failed to decode package `{path}` for test case `{test_case}`",
-                        path = path.display()
-                    )
-                })?;
+            let package = Package::from_bytes(
+                &package.name,
+                package.version.as_ref(),
+                bytes,
+                graph.types_mut(),
+            )
+            .with_context(|| {
+                format!(
+                    "failed to decode package `{path}` for test case `{test_case}`",
+                    path = path.display()
+                )
+            })?;
 
             let id = graph.register_package(package).with_context(|| {
                 format!(
@@ -200,8 +212,18 @@ impl GraphFile {
         let mut nodes = HashMap::new();
         for (index, node) in self.nodes.iter().enumerate() {
             let id = match node {
-                Node::Import { name, path } => {
-                    graph.import_by_path(name, path).with_context(|| {
+                Node::Import {
+                    name,
+                    package,
+                    export,
+                } => {
+                    let id = packages.get(package).with_context(|| {
+                        format!("invalid package index {package} referenced in node {index} for test case `{test_case}`")
+                    }).copied()?;
+                    let kind = graph.types()[graph[id].ty()].exports.get(export).copied().with_context(|| {
+                        format!("invalid package export `{export}` referenced in node {index} for test case `{test_case}`")
+                    })?.promote();
+                    graph.import(name, kind).with_context(|| {
                         format!("failed to add import node {index} for test case `{test_case}`")
                     })?
                 }
@@ -213,11 +235,7 @@ impl GraphFile {
                         })
                         .copied()?;
 
-                    graph.instantiate(package).with_context(|| {
-                        format!(
-                            "failed to add instantiation node {index} for test case `{test_case}`"
-                        )
-                    })?
+                    graph.instantiate(package)
                 }
                 Node::Alias { source, export } => {
                     let source = nodes.get(source).with_context(|| {
@@ -320,6 +338,7 @@ fn encoding() -> Result<()> {
                         // more readable and to test encoding a bit more.
                         define_components: false,
                         validate: true,
+                        ..Default::default()
                     })
                     .context("failed to encode the graph")
             });

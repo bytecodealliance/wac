@@ -11,7 +11,7 @@ use std::{
     sync::atomic::{AtomicUsize, Ordering},
 };
 use support::fmt_err;
-use wac_parser::ast::Document;
+use wac_parser::Document;
 
 mod support;
 

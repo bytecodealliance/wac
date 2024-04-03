@@ -1,7 +1,8 @@
 failed to resolve document
 
-  × implicit instantiation argument `foo` (function) conflicts with an implicitly imported argument from the instantiation of `bar:baz`
-   ╭─[tests/resolution/fail/unmergeable-args.wac:4:13]
+  × failed to merge the type definition for implicit import `foo` due to conflicting types
+  ╰─▶ function cannot be merged with instance
+   ╭─[tests/encoding/fail/unmergeable-args.wac:4:13]
  2 │ 
  3 │ let a = new bar:baz { ... };
    ·             ───┬───

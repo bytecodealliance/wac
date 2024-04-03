@@ -2,7 +2,7 @@ use crate::{fmt_err, PackageResolver};
 use anyhow::{Context, Result};
 use clap::Args;
 use std::{fs, path::PathBuf};
-use wac_parser::{ast::Document, Composition};
+use wac_parser::Document;
 
 fn parse<T, U>(s: &str) -> Result<(T, U)>
 where
@@ -19,7 +19,7 @@ where
     ))
 }
 
-/// Resolves a composition into a JSON representation.
+/// Resolves a WAC source file into a DOT representation.
 #[derive(Args)]
 #[clap(disable_version_flag = true)]
 pub struct ResolveCommand {
@@ -36,7 +36,7 @@ pub struct ResolveCommand {
     #[clap(long, value_name = "URL")]
     pub registry: Option<String>,
 
-    /// The path to the composition file.
+    /// The path to the source file.
     #[clap(value_name = "PATH")]
     pub path: PathBuf,
 }
@@ -63,11 +63,11 @@ impl ResolveCommand {
             .await
             .map_err(|e| fmt_err(e, &self.path, &contents))?;
 
-        let resolved = Composition::from_ast(&document, packages)
+        let resolution = document
+            .resolve(packages)
             .map_err(|e| fmt_err(e, &self.path, &contents))?;
 
-        serde_json::to_writer_pretty(std::io::stdout(), &resolved)?;
-        println!();
+        print!("{:?}", resolution.into_graph());
 
         Ok(())
     }

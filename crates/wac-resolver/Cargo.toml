@@ -30,6 +30,7 @@ tokio = { workspace = true, optional = true }
 futures = { workspace = true, optional = true }
 
 [dev-dependencies]
+wac-graph = { workspace = true }
 wasmprinter = { workspace = true }
 warg-server = { workspace = true }
 pretty_assertions = { workspace = true }

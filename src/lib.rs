@@ -9,10 +9,10 @@ use std::{
     collections::HashMap,
     io::IsTerminal,
     path::{Path, PathBuf},
-    sync::Arc,
 };
-use wac_parser::{ast::Document, PackageKey};
+use wac_parser::Document;
 use wac_resolver::{packages, Error, FileSystemPackageResolver};
+use wac_types::BorrowedPackageKey;
 
 pub mod commands;
 
@@ -71,7 +71,7 @@ impl PackageResolver {
     pub async fn resolve<'a>(
         &self,
         document: &'a Document<'a>,
-    ) -> Result<IndexMap<PackageKey<'a>, Arc<Vec<u8>>>, Error> {
+    ) -> Result<IndexMap<BorrowedPackageKey<'a>, Vec<u8>>, Error> {
         let mut keys = packages(document)?;
 
         // Next, we resolve as many of the packages from the file system as possible

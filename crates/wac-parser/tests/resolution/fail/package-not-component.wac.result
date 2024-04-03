@@ -1,7 +1,7 @@
 failed to resolve document
 
   × failed to parse package `foo:bar`
-  ╰─▶ input is not a WebAssembly component
+  ╰─▶ package `foo:bar` is not a binary-encoded WebAssembly component
    ╭─[tests/resolution/fail/package-not-component.wac:3:13]
  2 │ 
  3 │ import foo: foo:bar/qux;

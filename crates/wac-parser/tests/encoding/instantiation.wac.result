@@ -1,54 +1,54 @@
 (component
-  (type (;0;)
+  (type (;0;) (func))
+  (import "baz" (func (;0;) (type 0)))
+  (type (;1;)
     (instance
       (type (;0;) (func))
       (export (;0;) "foo" (func (type 0)))
     )
   )
-  (import "i" (instance (;0;) (type 0)))
-  (type (;1;)
+  (import "foo" (instance (;0;) (type 1)))
+  (type (;2;)
+    (instance
+      (type (;0;) (func))
+      (export (;0;) "foo" (func (type 0)))
+    )
+  )
+  (import "i" (instance (;1;) (type 2)))
+  (type (;3;)
     (instance
       (type (;0;) (func))
       (export (;0;) "baz" (func (type 0)))
     )
   )
-  (import "i2" (instance (;1;) (type 1)))
-  (type (;2;) (func))
-  (import "f" (func (;0;) (type 2)))
-  (type (;3;) (func))
-  (import "baz" (func (;1;) (type 3)))
-  (type (;4;)
+  (import "i2" (instance (;2;) (type 3)))
+  (type (;4;) (func))
+  (import "f" (func (;1;) (type 4)))
+  (type (;5;)
     (component
       (type (;0;) (func))
       (import "baz" (func (;0;) (type 0)))
       (export (;1;) "foo" (func (type 0)))
     )
   )
-  (import "unlocked-dep=<foo:bar>" (component (;0;) (type 4)))
-  (instance (;2;) (instantiate 0
-      (with "baz" (func 1))
-    )
-  )
+  (import "unlocked-dep=<foo:bar>" (component (;0;) (type 5)))
   (instance (;3;) (instantiate 0
       (with "baz" (func 0))
     )
   )
   (instance (;4;) (instantiate 0
-      (with "baz" (func 0))
+      (with "baz" (func 1))
     )
   )
-  (alias export 1 "baz" (func (;2;)))
   (instance (;5;) (instantiate 0
+      (with "baz" (func 1))
+    )
+  )
+  (alias export 2 "baz" (func (;2;)))
+  (instance (;6;) (instantiate 0
       (with "baz" (func 2))
     )
   )
-  (type (;5;)
-    (instance
-      (type (;0;) (func))
-      (export (;0;) "foo" (func (type 0)))
-    )
-  )
-  (import "foo" (instance (;6;) (type 5)))
   (type (;6;)
     (component
       (type (;0;)
@@ -62,26 +62,26 @@
   )
   (import "unlocked-dep=<bar:baz>" (component (;1;) (type 6)))
   (instance (;7;) (instantiate 1
-      (with "foo" (instance 6))
-    )
-  )
-  (instance (;8;) (instantiate 1
       (with "foo" (instance 0))
     )
   )
-  (instance (;9;) (instantiate 1
-      (with "foo" (instance 2))
+  (instance (;8;) (instantiate 1
+      (with "foo" (instance 1))
     )
   )
-  (instance (;10;) (instantiate 1
+  (instance (;9;) (instantiate 1
       (with "foo" (instance 3))
     )
   )
-  (instance (;11;) (instantiate 1
+  (instance (;10;) (instantiate 1
       (with "foo" (instance 4))
     )
   )
-  (alias export 5 "foo" (func (;3;)))
+  (instance (;11;) (instantiate 1
+      (with "foo" (instance 5))
+    )
+  )
+  (alias export 6 "foo" (func (;3;)))
   (export (;4;) "foo" (func 3))
   (@producers
     (processed-by "wac-parser" "0.1.0")

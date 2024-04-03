@@ -99,3 +99,22 @@ world t {
     }
     export f: func(a: a, b: b, c: c) -> tuple<n, o, p>;
 }
+
+// Test encoding of aliases
+type a2 = a;
+type b2 = b;
+type c2 = c;
+type d2 = d;
+type e2 = e;
+type f2 = f;
+type g2 = g;
+type h2 = h;
+type i2 = i;
+type j2 = j;
+type k2 = k;
+type l2 = l;
+type n2 = n;
+type m2 = m;
+type o2 = o;
+type p2 = p;
+type q2 = q;

@@ -11,7 +11,7 @@ use std::{
     sync::atomic::{AtomicUsize, Ordering},
 };
 use support::fmt_err;
-use wac_parser::{ast::Document, Composition};
+use wac_parser::Document;
 use wac_resolver::{packages, FileSystemPackageResolver};
 
 mod support;
@@ -95,16 +95,18 @@ fn run_test(test: &Path, ntests: &AtomicUsize) -> Result<()> {
             .resolve(&packages(&document).map_err(|e| fmt_err(e, test, &source))?)
             .map_err(|e| fmt_err(e, test, &source))?;
 
-        Composition::from_ast(&document, packages).map_err(|e| fmt_err(e, test, &source))
+        document
+            .resolve(packages)
+            .map_err(|e| fmt_err(e, test, &source))
     };
 
     let result = match resolve() {
-        Ok(doc) => {
+        Ok(resolution) => {
             if should_fail {
                 bail!("the resolution was successful but it was expected to fail");
             }
 
-            serde_json::to_string_pretty(&doc)?
+            format!("{:?}", resolution.into_graph())
         }
         Err(e) => {
             if !should_fail {

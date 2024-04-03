@@ -2,7 +2,7 @@
 
 use indexmap::IndexMap;
 use miette::{Diagnostic, SourceSpan};
-use wac_parser::{ast::Document, PackageKey};
+use wac_parser::Document;
 
 mod fs;
 #[cfg(feature = "registry")]
@@ -13,6 +13,7 @@ pub use fs::*;
 #[cfg(feature = "registry")]
 pub use registry::*;
 pub use visitor::*;
+use wac_types::BorrowedPackageKey;
 
 /// Represents a package resolution error.
 #[derive(thiserror::Error, Diagnostic, Debug)]
@@ -121,14 +122,20 @@ pub enum Error {
 /// which references the package.
 pub fn packages<'a>(
     document: &'a Document<'a>,
-) -> Result<IndexMap<PackageKey<'a>, SourceSpan>, Error> {
+) -> Result<IndexMap<BorrowedPackageKey<'a>, SourceSpan>, Error> {
     let mut keys = IndexMap::new();
     let mut visitor = PackageVisitor::new(|name, version, span| {
         if name == document.directive.package.name {
             return true;
         }
 
-        if keys.insert(PackageKey { name, version }, span).is_none() {
+        if keys
+            .insert(
+                BorrowedPackageKey::from_name_and_version(name, version),
+                span,
+            )
+            .is_none()
+        {
             if let Some(version) = version {
                 log::debug!("discovered reference to package `{name}` ({version})");
             } else {

@@ -2,8 +2,8 @@
 
 #![deny(missing_docs)]
 
-pub mod ast;
+mod ast;
 pub mod lexer;
-mod resolution;
+pub mod resolution;
 
-pub use resolution::*;
+pub use ast::*;

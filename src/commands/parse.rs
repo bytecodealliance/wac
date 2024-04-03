@@ -2,13 +2,13 @@ use crate::fmt_err;
 use anyhow::{Context, Result};
 use clap::Args;
 use std::{fs, path::PathBuf};
-use wac_parser::ast::Document;
+use wac_parser::Document;
 
-/// Parses a composition into a JSON AST representation.
+/// Parses a WAC source file into a JSON AST representation.
 #[derive(Args)]
 #[clap(disable_version_flag = true)]
 pub struct ParseCommand {
-    /// The path to the composition file.
+    /// The path to the source file.
     #[clap(value_name = "PATH")]
     pub path: PathBuf,
 }

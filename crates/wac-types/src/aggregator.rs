@@ -1,7 +1,7 @@
 use crate::{
     DefinedType, DefinedTypeId, FuncResult, FuncType, FuncTypeId, Interface, InterfaceId, ItemKind,
-    ModuleTypeId, Record, Resource, ResourceAlias, ResourceId, SubtypeCheck, SubtypeChecker, Type,
-    Types, UsedType, ValueType, Variant, World, WorldId,
+    ModuleTypeId, Record, Resource, ResourceAlias, ResourceId, SubtypeChecker, Type, Types,
+    UsedType, ValueType, Variant, World, WorldId,
 };
 use anyhow::{bail, Context, Result};
 use indexmap::IndexMap;
@@ -122,13 +122,7 @@ impl TypeAggregator {
             if let Some(target_kind) = self.types[existing].exports.get(name).copied() {
                 // If the source kind is already a subtype of the target, do nothing
                 if checker
-                    .is_subtype(
-                        *source_kind,
-                        types,
-                        target_kind,
-                        &self.types,
-                        SubtypeCheck::Covariant,
-                    )
+                    .is_subtype(*source_kind, types, target_kind, &self.types)
                     .is_ok()
                 {
                     // Keep track that the source type should be replaced with the
@@ -140,13 +134,7 @@ impl TypeAggregator {
                 // Otherwise, the target *must* be a subtype of the source
                 // We'll remap the source below and replace
                 checker
-                    .is_subtype(
-                        target_kind,
-                        &self.types,
-                        *source_kind,
-                        types,
-                        SubtypeCheck::Covariant,
-                    )
+                    .is_subtype(target_kind, &self.types, *source_kind, types)
                     .with_context(|| format!("mismatched type for export `{name}`"))?;
             }
 
@@ -224,17 +212,12 @@ impl TypeAggregator {
         self.merge_world_used_types(existing, types, id, checker)?;
 
         // Merge the worlds's imports
+        checker.invert();
         for (name, source_kind) in &types[id].imports {
             if let Some(target_kind) = self.types[existing].imports.get(name).copied() {
                 // If the target kind is already a subtype of the source, do nothing
                 if checker
-                    .is_subtype(
-                        target_kind,
-                        &self.types,
-                        *source_kind,
-                        types,
-                        SubtypeCheck::Contravariant,
-                    )
+                    .is_subtype(target_kind, &self.types, *source_kind, types)
                     .is_ok()
                 {
                     continue;
@@ -243,13 +226,7 @@ impl TypeAggregator {
                 // Otherwise, the source *must* be a subtype of the target
                 // We'll remap the source below and replace
                 checker
-                    .is_subtype(
-                        *source_kind,
-                        types,
-                        target_kind,
-                        &self.types,
-                        SubtypeCheck::Contravariant,
-                    )
+                    .is_subtype(*source_kind, types, target_kind, &self.types)
                     .with_context(|| format!("mismatched type for export `{name}`"))?;
             }
 
@@ -257,18 +234,14 @@ impl TypeAggregator {
             self.types[existing].imports.insert(name.clone(), remapped);
         }
 
+        checker.revert();
+
         // Merge the worlds's exports
         for (name, source_kind) in &types[id].exports {
             if let Some(target_kind) = self.types[existing].exports.get(name).copied() {
                 // If the source kind is already a subtype of the target, do nothing
                 if checker
-                    .is_subtype(
-                        *source_kind,
-                        types,
-                        target_kind,
-                        &self.types,
-                        SubtypeCheck::Covariant,
-                    )
+                    .is_subtype(*source_kind, types, target_kind, &self.types)
                     .is_ok()
                 {
                     continue;
@@ -277,13 +250,7 @@ impl TypeAggregator {
                 // Otherwise, the target *must* be a subtype of the source
                 // We'll remap the source below and replace
                 checker
-                    .is_subtype(
-                        target_kind,
-                        &self.types,
-                        *source_kind,
-                        types,
-                        SubtypeCheck::Covariant,
-                    )
+                    .is_subtype(target_kind, &self.types, *source_kind, types)
                     .with_context(|| format!("mismatched type for export `{name}`"))?;
             }
 
@@ -365,14 +332,12 @@ impl TypeAggregator {
             types,
             ItemKind::Func(existing),
             &self.types,
-            SubtypeCheck::Covariant,
         )?;
         checker.is_subtype(
             ItemKind::Func(existing),
             &self.types,
             ItemKind::Func(id),
             types,
-            SubtypeCheck::Covariant,
         )?;
 
         Ok(())
@@ -386,20 +351,20 @@ impl TypeAggregator {
         checker: &mut SubtypeChecker,
     ) -> Result<()> {
         // Merge the module type's imports
+        checker.invert();
         for (name, source_extern) in &types[id].imports {
             if let Some(target_extern) = self.types[existing].imports.get(name) {
                 // If the target extern is already a subtype of the source, do nothing
-                checker.kinds.push(SubtypeCheck::Contravariant);
-                let r = checker.core_extern(target_extern, &self.types, source_extern, types);
-                checker.kinds.pop();
-                if r.is_ok() {
+                if checker
+                    .core_extern(target_extern, &self.types, source_extern, types)
+                    .is_ok()
+                {
                     continue;
                 }
 
                 // Otherwise, the source *must* be a subtype of the target
                 // We'll remap the source below and replace
-                checker.kinds.push(SubtypeCheck::Contravariant);
-                let r = checker
+                checker
                     .core_extern(source_extern, types, target_extern, &self.types)
                     .with_context(|| {
                         format!(
@@ -407,9 +372,7 @@ impl TypeAggregator {
                             m = name.0,
                             n = name.1
                         )
-                    });
-                checker.kinds.pop();
-                r?;
+                    })?;
             }
 
             self.types[existing]
@@ -417,26 +380,25 @@ impl TypeAggregator {
                 .insert(name.clone(), source_extern.clone());
         }
 
+        checker.revert();
+
         // Merge the module type's exports
         for (name, source_extern) in &types[id].exports {
             if let Some(target_extern) = self.types[existing].exports.get(name) {
                 // If the source kind is already a subtype of the target, do nothing
                 // If the target extern is already a subtype of the source, do nothing
-                checker.kinds.push(SubtypeCheck::Contravariant);
-                let r = checker.core_extern(source_extern, types, target_extern, &self.types);
-                checker.kinds.pop();
-                if r.is_ok() {
+                if checker
+                    .core_extern(source_extern, types, target_extern, &self.types)
+                    .is_ok()
+                {
                     continue;
                 }
 
                 // Otherwise, the target *must* be a subtype of the source
                 // We'll remap the source below and replace
-                checker.kinds.push(SubtypeCheck::Contravariant);
-                let r = checker
+                checker
                     .core_extern(target_extern, &self.types, source_extern, types)
-                    .with_context(|| format!("mismatched type for export `{name}`"));
-                checker.kinds.pop();
-                r?;
+                    .with_context(|| format!("mismatched type for export `{name}`"))?;
             }
 
             self.types[existing]
@@ -495,7 +457,6 @@ impl TypeAggregator {
             types,
             ItemKind::Type(Type::Resource(existing)),
             &self.types,
-            SubtypeCheck::Covariant,
         )?;
 
         checker.is_subtype(
@@ -503,7 +464,6 @@ impl TypeAggregator {
             &self.types,
             ItemKind::Type(Type::Resource(id)),
             types,
-            SubtypeCheck::Covariant,
         )?;
 
         Ok(())
@@ -522,7 +482,6 @@ impl TypeAggregator {
             types,
             ItemKind::Value(existing),
             &self.types,
-            SubtypeCheck::Covariant,
         )?;
 
         checker.is_subtype(
@@ -530,7 +489,6 @@ impl TypeAggregator {
             &self.types,
             ItemKind::Value(ty),
             types,
-            SubtypeCheck::Covariant,
         )?;
 
         Ok(())

@@ -2,8 +2,8 @@ use super::Error;
 use anyhow::{anyhow, Context, Result};
 use indexmap::IndexMap;
 use miette::SourceSpan;
-use std::{collections::HashMap, fs, path::PathBuf, sync::Arc};
-use wac_parser::PackageKey;
+use std::{collections::HashMap, fs, path::PathBuf};
+use wac_types::BorrowedPackageKey;
 
 /// Used to resolve packages from the file system.
 pub struct FileSystemPackageResolver {
@@ -29,8 +29,8 @@ impl FileSystemPackageResolver {
     /// Resolves the provided package keys to packages.
     pub fn resolve<'a>(
         &self,
-        keys: &IndexMap<PackageKey<'a>, SourceSpan>,
-    ) -> Result<IndexMap<PackageKey<'a>, Arc<Vec<u8>>>, Error> {
+        keys: &IndexMap<BorrowedPackageKey<'a>, SourceSpan>,
+    ) -> Result<IndexMap<BorrowedPackageKey<'a>, Vec<u8>>, Error> {
         let mut packages = IndexMap::new();
         for (key, span) in keys.iter() {
             let path = match self.overrides.get(key.name) {
@@ -105,16 +105,14 @@ impl FileSystemPackageResolver {
                 if let Some(pkg) = pkg {
                     packages.insert(
                         *key,
-                        Arc::new(
-                            wit_component::encode(Some(true), &resolve, pkg)
-                                .with_context(|| {
-                                    format!(
-                                        "failed to encode WIT package from `{path}`",
-                                        path = path.display()
-                                    )
-                                })
-                                .map_err(pkg_res_failure)?,
-                        ),
+                        wit_component::encode(Some(true), &resolve, pkg)
+                            .with_context(|| {
+                                format!(
+                                    "failed to encode WIT package from `{path}`",
+                                    path = path.display()
+                                )
+                            })
+                            .map_err(pkg_res_failure)?,
                     );
 
                     continue;
@@ -162,11 +160,11 @@ impl FileSystemPackageResolver {
                     }
                 };
 
-                packages.insert(*key, Arc::new(bytes));
+                packages.insert(*key, bytes);
                 continue;
             }
 
-            packages.insert(*key, Arc::new(bytes));
+            packages.insert(*key, bytes);
         }
 
         Ok(packages)

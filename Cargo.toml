@@ -19,6 +19,8 @@ keywords = ["webassembly", "wasm", "components", "component-model"]
 repository = "https://github.com/bytecodealliance/wac"
 
 [dependencies]
+wac-types = { workspace = true }
+wac-graph = { workspace = true }
 wac-resolver = { workspace = true, default-features = false }
 wac-parser = { workspace = true, default-features = false }
 anyhow = { workspace = true }
@@ -30,7 +32,6 @@ owo-colors = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 wat = { workspace = true }
-wasmparser = { workspace = true }
 wasmprinter = { workspace = true }
 thiserror = { workspace = true }
 indexmap = { workspace = true }

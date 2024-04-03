@@ -1,7 +1,8 @@
 failed to resolve document
 
-  × implicit instantiation argument `foo` (instance) conflicts with an implicitly imported argument from the instantiation of `foo:bar`
-   ╭─[tests/resolution/fail/arg-merge-failure.wac:4:13]
+  × failed to merge the type definition for implicit import `foo` due to conflicting types
+  ╰─▶ instance cannot be merged with function
+   ╭─[tests/encoding/fail/arg-merge-failure.wac:4:13]
  2 │ 
  3 │ let a = new foo:bar { ... };
    ·             ───┬───

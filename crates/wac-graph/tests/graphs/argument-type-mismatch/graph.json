@@ -9,7 +9,8 @@
         {
             "type": "import",
             "name": "foo",
-            "path": "test:foo/bar"
+            "package": 0,
+            "export": "bar"
         },
         {
             "type": "instantiation",

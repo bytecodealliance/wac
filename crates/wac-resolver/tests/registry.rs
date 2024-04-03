@@ -2,7 +2,8 @@ use crate::support::{publish_component, publish_wit, spawn_server};
 use anyhow::Result;
 use pretty_assertions::assert_eq;
 use tempdir::TempDir;
-use wac_parser::{ast::Document, Composition, EncodingOptions};
+use wac_graph::EncodeOptions;
+use wac_parser::Document;
 use wac_resolver::{packages, RegistryPackageResolver};
 
 mod support;
@@ -63,8 +64,11 @@ export i2.foo as "bar";
     let resolver = RegistryPackageResolver::new_with_config(None, &config, None)?;
     let packages = resolver.resolve(&packages(&document)?).await?;
 
-    let composition = Composition::from_ast(&document, packages)?;
-    let bytes = composition.encode(EncodingOptions::default())?;
+    let resolution = document.resolve(packages)?;
+    let bytes = resolution.encode(EncodeOptions {
+        define_components: false,
+        ..Default::default()
+    })?;
 
     assert_eq!(
         wasmprinter::print_bytes(bytes)?,
