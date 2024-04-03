@@ -274,25 +274,25 @@
           "alias": {
             "docs": [
               {
-                "comment": "float32",
+                "comment": "f32",
                 "span": {
                   "offset": 192,
-                  "length": 11
+                  "length": 7
                 }
               }
             ],
             "id": {
               "string": "i",
               "span": {
-                "offset": 209,
+                "offset": 205,
                 "length": 1
               }
             },
             "kind": {
               "type": {
-                "float32": {
-                  "offset": 213,
-                  "length": 7
+                "f32": {
+                  "offset": 209,
+                  "length": 3
                 }
               }
             }
@@ -306,25 +306,25 @@
           "alias": {
             "docs": [
               {
-                "comment": "float64",
+                "comment": "f64",
                 "span": {
-                  "offset": 222,
-                  "length": 11
+                  "offset": 214,
+                  "length": 7
                 }
               }
             ],
             "id": {
               "string": "j",
               "span": {
-                "offset": 239,
+                "offset": 227,
                 "length": 1
               }
             },
             "kind": {
               "type": {
-                "float64": {
-                  "offset": 243,
-                  "length": 7
+                "f64": {
+                  "offset": 231,
+                  "length": 3
                 }
               }
             }
@@ -340,7 +340,7 @@
               {
                 "comment": "bool",
                 "span": {
-                  "offset": 252,
+                  "offset": 236,
                   "length": 8
                 }
               }
@@ -348,14 +348,14 @@
             "id": {
               "string": "k",
               "span": {
-                "offset": 266,
+                "offset": 250,
                 "length": 1
               }
             },
             "kind": {
               "type": {
                 "bool": {
-                  "offset": 270,
+                  "offset": 254,
                   "length": 4
                 }
               }
@@ -372,7 +372,7 @@
               {
                 "comment": "char",
                 "span": {
-                  "offset": 276,
+                  "offset": 260,
                   "length": 8
                 }
               }
@@ -380,14 +380,14 @@
             "id": {
               "string": "l",
               "span": {
-                "offset": 290,
+                "offset": 274,
                 "length": 1
               }
             },
             "kind": {
               "type": {
                 "char": {
-                  "offset": 294,
+                  "offset": 278,
                   "length": 4
                 }
               }
@@ -404,7 +404,7 @@
               {
                 "comment": "string",
                 "span": {
-                  "offset": 300,
+                  "offset": 284,
                   "length": 10
                 }
               }
@@ -412,14 +412,14 @@
             "id": {
               "string": "m",
               "span": {
-                "offset": 316,
+                "offset": 300,
                 "length": 1
               }
             },
             "kind": {
               "type": {
                 "string": {
-                  "offset": 320,
+                  "offset": 304,
                   "length": 6
                 }
               }
@@ -436,7 +436,7 @@
               {
                 "comment": "tuple<u8, s8>",
                 "span": {
-                  "offset": 328,
+                  "offset": 312,
                   "length": 17
                 }
               }
@@ -444,7 +444,7 @@
             "id": {
               "string": "n",
               "span": {
-                "offset": 351,
+                "offset": 335,
                 "length": 1
               }
             },
@@ -454,19 +454,19 @@
                   [
                     {
                       "u8": {
-                        "offset": 361,
+                        "offset": 345,
                         "length": 2
                       }
                     },
                     {
                       "s8": {
-                        "offset": 365,
+                        "offset": 349,
                         "length": 2
                       }
                     }
                   ],
                   {
-                    "offset": 355,
+                    "offset": 339,
                     "length": 13
                   }
                 ]
@@ -484,7 +484,7 @@
               {
                 "comment": "list<tuple<u8>>",
                 "span": {
-                  "offset": 370,
+                  "offset": 354,
                   "length": 19
                 }
               }
@@ -492,7 +492,7 @@
             "id": {
               "string": "o",
               "span": {
-                "offset": 395,
+                "offset": 379,
                 "length": 1
               }
             },
@@ -504,19 +504,19 @@
                       [
                         {
                           "u8": {
-                            "offset": 410,
+                            "offset": 394,
                             "length": 2
                           }
                         }
                       ],
                       {
-                        "offset": 404,
+                        "offset": 388,
                         "length": 9
                       }
                     ]
                   },
                   {
-                    "offset": 399,
+                    "offset": 383,
                     "length": 15
                   }
                 ]
@@ -534,7 +534,7 @@
               {
                 "comment": "option<string>",
                 "span": {
-                  "offset": 416,
+                  "offset": 400,
                   "length": 18
                 }
               }
@@ -542,7 +542,7 @@
             "id": {
               "string": "p",
               "span": {
-                "offset": 440,
+                "offset": 424,
                 "length": 1
               }
             },
@@ -551,12 +551,12 @@
                 "option": [
                   {
                     "string": {
-                      "offset": 451,
+                      "offset": 435,
                       "length": 6
                     }
                   },
                   {
-                    "offset": 444,
+                    "offset": 428,
                     "length": 14
                   }
                 ]
@@ -574,7 +574,7 @@
               {
                 "comment": "result",
                 "span": {
-                  "offset": 460,
+                  "offset": 444,
                   "length": 10
                 }
               }
@@ -582,7 +582,7 @@
             "id": {
               "string": "q",
               "span": {
-                "offset": 476,
+                "offset": 460,
                 "length": 1
               }
             },
@@ -592,7 +592,7 @@
                   "ok": null,
                   "err": null,
                   "span": {
-                    "offset": 480,
+                    "offset": 464,
                     "length": 6
                   }
                 }
@@ -610,7 +610,7 @@
               {
                 "comment": "result<u8>",
                 "span": {
-                  "offset": 488,
+                  "offset": 472,
                   "length": 14
                 }
               }
@@ -618,7 +618,7 @@
             "id": {
               "string": "r",
               "span": {
-                "offset": 508,
+                "offset": 492,
                 "length": 1
               }
             },
@@ -627,13 +627,13 @@
                 "result": {
                   "ok": {
                     "u8": {
-                      "offset": 519,
+                      "offset": 503,
                       "length": 2
                     }
                   },
                   "err": null,
                   "span": {
-                    "offset": 512,
+                    "offset": 496,
                     "length": 10
                   }
                 }
@@ -651,7 +651,7 @@
               {
                 "comment": "result<_, s8>",
                 "span": {
-                  "offset": 524,
+                  "offset": 508,
                   "length": 17
                 }
               }
@@ -659,7 +659,7 @@
             "id": {
               "string": "s",
               "span": {
-                "offset": 547,
+                "offset": 531,
                 "length": 1
               }
             },
@@ -669,12 +669,12 @@
                   "ok": null,
                   "err": {
                     "s8": {
-                      "offset": 561,
+                      "offset": 545,
                       "length": 2
                     }
                   },
                   "span": {
-                    "offset": 551,
+                    "offset": 535,
                     "length": 13
                   }
                 }
@@ -692,7 +692,7 @@
               {
                 "comment": "result<u8, string>",
                 "span": {
-                  "offset": 566,
+                  "offset": 550,
                   "length": 22
                 }
               }
@@ -700,7 +700,7 @@
             "id": {
               "string": "t",
               "span": {
-                "offset": 594,
+                "offset": 578,
                 "length": 1
               }
             },
@@ -709,18 +709,18 @@
                 "result": {
                   "ok": {
                     "u8": {
-                      "offset": 605,
+                      "offset": 589,
                       "length": 2
                     }
                   },
                   "err": {
                     "string": {
-                      "offset": 609,
+                      "offset": 593,
                       "length": 6
                     }
                   },
                   "span": {
-                    "offset": 598,
+                    "offset": 582,
                     "length": 18
                   }
                 }
@@ -738,7 +738,7 @@
               {
                 "comment": "borrow<x>",
                 "span": {
-                  "offset": 618,
+                  "offset": 602,
                   "length": 13
                 }
               }
@@ -746,7 +746,7 @@
             "id": {
               "string": "u",
               "span": {
-                "offset": 637,
+                "offset": 621,
                 "length": 1
               }
             },
@@ -756,12 +756,12 @@
                   {
                     "string": "x",
                     "span": {
-                      "offset": 648,
+                      "offset": 632,
                       "length": 1
                     }
                   },
                   {
-                    "offset": 641,
+                    "offset": 625,
                     "length": 9
                   }
                 ]
@@ -779,7 +779,7 @@
               {
                 "comment": "x",
                 "span": {
-                  "offset": 652,
+                  "offset": 636,
                   "length": 5
                 }
               }
@@ -787,7 +787,7 @@
             "id": {
               "string": "v",
               "span": {
-                "offset": 663,
+                "offset": 647,
                 "length": 1
               }
             },
@@ -796,7 +796,7 @@
                 "ident": {
                   "string": "x",
                   "span": {
-                    "offset": 667,
+                    "offset": 651,
                     "length": 1
                   }
                 }
@@ -814,7 +814,7 @@
               {
                 "comment": "keyword",
                 "span": {
-                  "offset": 670,
+                  "offset": 654,
                   "length": 11
                 }
               }
@@ -822,7 +822,7 @@
             "id": {
               "string": "type",
               "span": {
-                "offset": 687,
+                "offset": 671,
                 "length": 5
               }
             },
@@ -831,7 +831,7 @@
                 "ident": {
                   "string": "v",
                   "span": {
-                    "offset": 695,
+                    "offset": 679,
                     "length": 1
                   }
                 }

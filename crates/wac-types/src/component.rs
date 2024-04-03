@@ -464,10 +464,10 @@ pub enum PrimitiveType {
     U64,
     /// A `s64` type.
     S64,
-    /// A `float32` type.
-    Float32,
-    /// A `float64` type.
-    Float64,
+    /// A `f32` type.
+    F32,
+    /// A `f64` type.
+    F64,
     /// A `char` type.
     Char,
     /// A `bool` type.
@@ -488,8 +488,8 @@ impl PrimitiveType {
             Self::S32 => "s32",
             Self::U64 => "u64",
             Self::S64 => "s64",
-            Self::Float32 => "float32",
-            Self::Float64 => "float64",
+            Self::F32 => "f32",
+            Self::F64 => "f64",
             Self::Char => "char",
             Self::Bool => "bool",
             Self::String => "string",
@@ -509,8 +509,8 @@ impl From<wasmparser::PrimitiveValType> for PrimitiveType {
             wasmparser::PrimitiveValType::U32 => Self::U32,
             wasmparser::PrimitiveValType::S64 => Self::S64,
             wasmparser::PrimitiveValType::U64 => Self::U64,
-            wasmparser::PrimitiveValType::Float32 => Self::Float32,
-            wasmparser::PrimitiveValType::Float64 => Self::Float64,
+            wasmparser::PrimitiveValType::F32 => Self::F32,
+            wasmparser::PrimitiveValType::F64 => Self::F64,
             wasmparser::PrimitiveValType::Char => Self::Char,
             wasmparser::PrimitiveValType::String => Self::String,
         }
@@ -528,8 +528,8 @@ impl From<PrimitiveType> for wasm_encoder::PrimitiveValType {
             PrimitiveType::S32 => Self::S32,
             PrimitiveType::U64 => Self::U64,
             PrimitiveType::S64 => Self::S64,
-            PrimitiveType::Float32 => Self::Float64,
-            PrimitiveType::Float64 => Self::Float64,
+            PrimitiveType::F32 => Self::F32,
+            PrimitiveType::F64 => Self::F64,
             PrimitiveType::Char => Self::Char,
             PrimitiveType::Bool => Self::Bool,
             PrimitiveType::String => Self::String,

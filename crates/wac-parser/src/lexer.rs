@@ -193,12 +193,12 @@ pub enum Token {
     /// The `s64` keyword.
     #[token("s64")]
     S64Keyword,
-    /// The `float32` keyword.
-    #[token("float32")]
-    Float32Keyword,
-    /// The `float64` keyword.
-    #[token("float64")]
-    Float64Keyword,
+    /// The `f32` keyword.
+    #[token("f32")]
+    F32Keyword,
+    /// The `f64` keyword.
+    #[token("f64")]
+    F64Keyword,
     /// The `char` keyword.
     #[token("char")]
     CharKeyword,
@@ -327,8 +327,8 @@ impl fmt::Display for Token {
             Token::S32Keyword => write!(f, "`s32` keyword"),
             Token::U64Keyword => write!(f, "`u64` keyword"),
             Token::S64Keyword => write!(f, "`s64` keyword"),
-            Token::Float32Keyword => write!(f, "`float32` keyword"),
-            Token::Float64Keyword => write!(f, "`float64` keyword"),
+            Token::F32Keyword => write!(f, "`f32` keyword"),
+            Token::F64Keyword => write!(f, "`f64` keyword"),
             Token::CharKeyword => write!(f, "`char` keyword"),
             Token::BoolKeyword => write!(f, "`bool` keyword"),
             Token::StringKeyword => write!(f, "`string` keyword"),
@@ -818,8 +818,8 @@ u32
 s32
 u64
 s64
-float32
-float64
+f32
+f64
 char
 bool
 string
@@ -859,21 +859,21 @@ targets
                 (Ok(Token::S32Keyword), "s32", 127..130),
                 (Ok(Token::U64Keyword), "u64", 131..134),
                 (Ok(Token::S64Keyword), "s64", 135..138),
-                (Ok(Token::Float32Keyword), "float32", 139..146),
-                (Ok(Token::Float64Keyword), "float64", 147..154),
-                (Ok(Token::CharKeyword), "char", 155..159),
-                (Ok(Token::BoolKeyword), "bool", 160..164),
-                (Ok(Token::StringKeyword), "string", 165..171),
-                (Ok(Token::InterfaceKeyword), "interface", 172..181),
-                (Ok(Token::WorldKeyword), "world", 182..187),
-                (Ok(Token::ExportKeyword), "export", 188..194),
-                (Ok(Token::NewKeyword), "new", 195..198),
-                (Ok(Token::LetKeyword), "let", 199..202),
-                (Ok(Token::UseKeyword), "use", 203..206),
-                (Ok(Token::IncludeKeyword), "include", 207..214),
-                (Ok(Token::AsKeyword), "as", 215..217),
-                (Ok(Token::PackageKeyword), "package", 218..225),
-                (Ok(Token::TargetsKeyword), "targets", 226..233),
+                (Ok(Token::F32Keyword), "f32", 139..142),
+                (Ok(Token::F64Keyword), "f64", 143..146),
+                (Ok(Token::CharKeyword), "char", 147..151),
+                (Ok(Token::BoolKeyword), "bool", 152..156),
+                (Ok(Token::StringKeyword), "string", 157..163),
+                (Ok(Token::InterfaceKeyword), "interface", 164..173),
+                (Ok(Token::WorldKeyword), "world", 174..179),
+                (Ok(Token::ExportKeyword), "export", 180..186),
+                (Ok(Token::NewKeyword), "new", 187..190),
+                (Ok(Token::LetKeyword), "let", 191..194),
+                (Ok(Token::UseKeyword), "use", 195..198),
+                (Ok(Token::IncludeKeyword), "include", 199..206),
+                (Ok(Token::AsKeyword), "as", 207..209),
+                (Ok(Token::PackageKeyword), "package", 210..217),
+                (Ok(Token::TargetsKeyword), "targets", 218..225),
             ],
         );
     }

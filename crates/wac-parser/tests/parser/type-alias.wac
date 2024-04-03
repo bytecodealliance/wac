@@ -16,10 +16,10 @@ type f = s32;
 type g = u64;
 /// s64
 type h = s64;
-/// float32
-type i = float32;
-/// float64
-type j = float64;
+/// f32
+type i = f32;
+/// f64
+type j = f64;
 /// bool
 type k = bool;
 /// char
