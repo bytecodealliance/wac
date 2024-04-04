@@ -679,8 +679,8 @@ impl TypeAggregator {
             .get(&ItemKind::Type(Type::Value(ValueType::Defined(id))))
         {
             return match kind {
-                ItemKind::Value(ValueType::Defined(id)) => *id,
-                _ => panic!("expected a defined type"),
+                ItemKind::Type(Type::Value(ValueType::Defined(id))) => *id,
+                _ => panic!("expected a defined type got {kind:?}"),
             };
         }
 
