@@ -1,4 +1,4 @@
 failed to add import node 0 for test case `unknown-package`
 
 Caused by:
-    package `foo:bar@1.2.3` has not been registered with the graph
+    package `foo:bar@1.2.3` has not been registered with the graph (use the `CompositionGraph::register_package` method)

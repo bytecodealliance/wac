@@ -6,3 +6,4 @@ pub(crate) mod encoding;
 mod graph;
 
 pub use graph::*;
+pub use wac_types as types;

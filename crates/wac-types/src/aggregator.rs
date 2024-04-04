@@ -508,7 +508,7 @@ impl TypeAggregator {
         if let Some(kind) = self.aggregated.get(&ItemKind::Type(Type::Resource(id))) {
             return match kind {
                 ItemKind::Type(Type::Resource(id)) => *id,
-                _ => unreachable!(),
+                _ => panic!("expected a resource"),
             };
         }
 
@@ -531,7 +531,7 @@ impl TypeAggregator {
         if let Some(kind) = self.aggregated.get(&ItemKind::Type(Type::Func(id))) {
             return match kind {
                 ItemKind::Type(Type::Func(id)) => *id,
-                _ => unreachable!(),
+                _ => panic!("expected a function type"),
             };
         }
 
@@ -566,13 +566,7 @@ impl TypeAggregator {
             ValueType::Primitive(ty) => ValueType::Primitive(ty),
             ValueType::Borrow(id) => ValueType::Borrow(self.remap_resource(types, id)),
             ValueType::Own(id) => ValueType::Own(self.remap_resource(types, id)),
-            ValueType::Defined {
-                id,
-                contains_borrow,
-            } => ValueType::Defined {
-                id: self.remap_defined_type(types, id, contains_borrow),
-                contains_borrow,
-            },
+            ValueType::Defined(id) => ValueType::Defined(self.remap_defined_type(types, id)),
         }
     }
 
@@ -580,7 +574,7 @@ impl TypeAggregator {
         if let Some(kind) = self.aggregated.get(&ItemKind::Type(Type::Interface(id))) {
             return match kind {
                 ItemKind::Type(Type::Interface(id)) => *id,
-                _ => unreachable!(),
+                _ => panic!("expected an interface"),
             };
         }
 
@@ -620,7 +614,7 @@ impl TypeAggregator {
         if let Some(kind) = self.aggregated.get(&ItemKind::Type(Type::World(id))) {
             return match kind {
                 ItemKind::Type(Type::World(id)) => *id,
-                _ => unreachable!(),
+                _ => panic!("expected a world"),
             };
         }
 
@@ -665,7 +659,7 @@ impl TypeAggregator {
         if let Some(kind) = self.aggregated.get(&ItemKind::Type(Type::Module(id))) {
             return match kind {
                 ItemKind::Type(Type::Module(id)) => *id,
-                _ => unreachable!(),
+                _ => panic!("expected a module type"),
             };
         }
 
@@ -679,22 +673,14 @@ impl TypeAggregator {
         remapped
     }
 
-    fn remap_defined_type(
-        &mut self,
-        types: &Types,
-        id: DefinedTypeId,
-        contains_borrow: bool,
-    ) -> DefinedTypeId {
+    fn remap_defined_type(&mut self, types: &Types, id: DefinedTypeId) -> DefinedTypeId {
         if let Some(kind) = self
             .aggregated
-            .get(&ItemKind::Type(Type::Value(ValueType::Defined {
-                id,
-                contains_borrow,
-            })))
+            .get(&ItemKind::Type(Type::Value(ValueType::Defined(id))))
         {
             return match kind {
-                ItemKind::Value(ValueType::Defined { id, .. }) => *id,
-                _ => unreachable!(),
+                ItemKind::Value(ValueType::Defined(id)) => *id,
+                _ => panic!("expected a defined type"),
             };
         }
 
@@ -736,14 +722,8 @@ impl TypeAggregator {
 
         let remapped = self.types.add_defined_type(defined);
         let prev = self.aggregated.insert(
-            ItemKind::Type(Type::Value(ValueType::Defined {
-                id,
-                contains_borrow,
-            })),
-            ItemKind::Type(Type::Value(ValueType::Defined {
-                id: remapped,
-                contains_borrow,
-            })),
+            ItemKind::Type(Type::Value(ValueType::Defined(id))),
+            ItemKind::Type(Type::Value(ValueType::Defined(remapped))),
         );
         assert!(prev.is_none());
         remapped

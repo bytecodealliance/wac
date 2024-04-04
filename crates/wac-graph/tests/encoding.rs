@@ -7,9 +7,9 @@ use std::{
     fs::{self, File},
     path::{Path, PathBuf},
 };
-use wac_graph::{CompositionGraph, EncodeOptions, NodeId, PackageId};
-use wac_types::Package;
+use wac_graph::{types::Package, CompositionGraph, EncodeOptions, NodeId, PackageId};
 
+/// Represents a node to add to a composition graph.
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase", tag = "type")]
 enum Node {
@@ -18,6 +18,7 @@ enum Node {
     Alias { source: usize, export: String },
 }
 
+/// Represents an argument to connect to an instantiation node.
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct Argument {
@@ -26,6 +27,8 @@ struct Argument {
     name: String,
 }
 
+/// Represents a package (in WAT) to parse and register with a composition
+/// graph.
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct WatPackage {
@@ -34,6 +37,7 @@ struct WatPackage {
     path: PathBuf,
 }
 
+/// Represents a name to associate with a node in a composition graph.
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct Name {
@@ -41,6 +45,7 @@ struct Name {
     name: String,
 }
 
+/// Represents a node to export from a composition graph.
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct Export {
@@ -51,14 +56,19 @@ struct Export {
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct GraphFile {
+    /// A list of packages to parse and register with the graph.
     #[serde(default)]
     packages: Vec<WatPackage>,
+    /// A list of nodes to add to the graph.
     #[serde(default)]
     nodes: Vec<Node>,
+    /// A list of nodes to connect to instantiation nodes.
     #[serde(default)]
     arguments: Vec<Argument>,
+    /// A list of names to apply to nodes in the graph.
     #[serde(default)]
     names: Vec<Name>,
+    /// A list of nodes to export.
     #[serde(default)]
     exports: Vec<Export>,
 }
@@ -76,7 +86,7 @@ impl GraphFile {
                 .with_context(|| format!("invalid node index {export} referenced in export {index} for test case `{test_case}`", export = export.node))
                 .copied()?;
 
-            graph.export_node(id, &export.name).with_context(|| {
+            graph.export(id, &export.name).with_context(|| {
                 format!(
                     "failed to export node {node} in export {index} for test case `{test_case}`",
                     node = export.node
@@ -145,11 +155,11 @@ impl GraphFile {
         let mut nodes = HashMap::new();
         for (index, node) in self.nodes.iter().enumerate() {
             let id = match node {
-                Node::Import { name, path } => graph
-                    .add_import_node_by_path(name, path, ())
-                    .with_context(|| {
+                Node::Import { name, path } => {
+                    graph.import_by_path(name, path).with_context(|| {
                         format!("failed to add import node {index} for test case `{test_case}`")
-                    })?,
+                    })?
+                }
                 Node::Instantiation { package } => {
                     let package = packages
                         .get(package)
@@ -158,7 +168,7 @@ impl GraphFile {
                         })
                         .copied()?;
 
-                    graph.add_instantiation_node(package, ()).with_context(|| {
+                    graph.instantiate(package).with_context(|| {
                         format!(
                             "failed to add instantiation node {index} for test case `{test_case}`"
                         )
@@ -170,9 +180,11 @@ impl GraphFile {
                     })
                     .copied()?;
 
-                    graph.add_alias_node(source, export, ()).with_context(|| {
-                        format!("failed to add alias node {index} for test case `{test_case}`")
-                    })?
+                    graph
+                        .alias_instance_export(source, export)
+                        .with_context(|| {
+                            format!("failed to add alias node {index} for test case `{test_case}`")
+                        })?
                 }
             };
 
@@ -197,7 +209,7 @@ impl GraphFile {
                 format!("invalid target node index {target} referenced in argument {index} for test case `{test_case}`", target = argument.target)
             }).copied()?;
 
-            graph.add_argument_edge(source, target, &argument.name).with_context(|| {
+            graph.connect_argument(source, target, &argument.name).with_context(|| {
                 format!("failed to add argument edge from source node {source} to target node {target} referenced in argument {index} for test case `{test_case}`", source = argument.source, target = argument.target)
             })?;
         }

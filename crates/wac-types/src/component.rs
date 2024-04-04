@@ -223,7 +223,7 @@ impl Types {
             | Type::Value(ValueType::Own(id)) => self.resources.get(id.0).is_some(),
             Type::Func(id) => self.funcs.get(id.0).is_some(),
             Type::Value(ValueType::Primitive(_)) => true,
-            Type::Value(ValueType::Defined { id, .. }) => self.defined.get(id.0).is_some(),
+            Type::Value(ValueType::Defined(id)) => self.defined.get(id.0).is_some(),
             Type::Interface(id) => self.interfaces.get(id.0).is_some(),
             Type::World(id) => self.worlds.get(id.0).is_some(),
             Type::Module(id) => self.modules.get(id.0).is_some(),
@@ -234,7 +234,7 @@ impl Types {
     pub fn resolve_value_type(&self, mut ty: ValueType) -> ValueType {
         loop {
             match ty {
-                ValueType::Defined { id, .. } => match self[id] {
+                ValueType::Defined(id) => match self[id] {
                     DefinedType::Alias(aliased) => ty = aliased,
                     _ => return ty,
                 },
@@ -547,25 +547,18 @@ pub enum ValueType {
     /// The type is an owned resource type.
     Own(ResourceId),
     /// A defined value type.
-    Defined {
-        /// The id of the defined value type.
-        id: DefinedTypeId,
-        /// Whether or not the defined value type recursively contains a borrow.
-        contains_borrow: bool,
-    },
+    Defined(DefinedTypeId),
 }
 
 impl ValueType {
     /// Checks if the type contains a borrow.
     ///
     /// Function results may not return a type containing a borrow.
-    pub fn contains_borrow(&self) -> bool {
+    pub fn contains_borrow(&self, types: &Types) -> bool {
         match self {
             ValueType::Primitive(_) | ValueType::Own(_) => false,
             ValueType::Borrow(_) => true,
-            ValueType::Defined {
-                contains_borrow, ..
-            } => *contains_borrow,
+            ValueType::Defined(id) => types[*id].contains_borrow(types),
         }
     }
 
@@ -575,7 +568,7 @@ impl ValueType {
             Self::Primitive(ty) => ty.desc(),
             Self::Borrow(_) => "borrow",
             Self::Own(_) => "own",
-            Self::Defined { id, .. } => types[*id].desc(types),
+            Self::Defined(id) => types[*id].desc(types),
         }
     }
 }
@@ -623,18 +616,39 @@ pub enum DefinedType {
 }
 
 impl DefinedType {
+    /// Determines if the defined type recursively contains a borrow.
+    pub fn contains_borrow(&self, types: &Types) -> bool {
+        match self {
+            Self::Tuple(tys) => tys.iter().any(|ty| ty.contains_borrow(types)),
+            Self::List(ty) => ty.contains_borrow(types),
+            Self::Option(ty) => ty.contains_borrow(types),
+            Self::Result { ok, err } => {
+                ok.map(|ty| ty.contains_borrow(types)).unwrap_or(false)
+                    || err.map(|ty| ty.contains_borrow(types)).unwrap_or(false)
+            }
+            Self::Variant(v) => v
+                .cases
+                .values()
+                .any(|ty| ty.map(|ty| ty.contains_borrow(types)).unwrap_or(false)),
+            Self::Record(r) => r.fields.iter().any(|(_, ty)| ty.contains_borrow(types)),
+            Self::Flags(_) => false,
+            Self::Enum(_) => false,
+            Self::Alias(ty) => ty.contains_borrow(types),
+        }
+    }
+
     /// Gets a description of the defined type.
     pub fn desc(&self, types: &Types) -> &'static str {
         match self {
-            DefinedType::Tuple(_) => "tuple",
-            DefinedType::List(_) => "list",
-            DefinedType::Option(_) => "option",
-            DefinedType::Result { .. } => "result",
-            DefinedType::Variant(_) => "variant",
-            DefinedType::Record(_) => "record",
-            DefinedType::Flags(_) => "flags",
-            DefinedType::Enum(_) => "enum",
-            DefinedType::Alias(ty) => ty.desc(types),
+            Self::Tuple(_) => "tuple",
+            Self::List(_) => "list",
+            Self::Option(_) => "option",
+            Self::Result { .. } => "result",
+            Self::Variant(_) => "variant",
+            Self::Record(_) => "record",
+            Self::Flags(_) => "flags",
+            Self::Enum(_) => "enum",
+            Self::Alias(ty) => ty.desc(types),
         }
     }
 }

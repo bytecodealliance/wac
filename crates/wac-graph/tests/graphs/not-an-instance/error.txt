@@ -1,4 +1,4 @@
 failed to add alias node 1 for test case `not-an-instance`
 
 Caused by:
-    expected node to be an instance, but the node is a function
+    expected source node to be an instance, but the node is a function

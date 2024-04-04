@@ -12,6 +12,8 @@ use wasm_encoder::{
     GlobalType, InstanceType, MemoryType, ModuleType, TableType, TagKind, TagType, TypeBounds,
 };
 
+/// A type used to abstract the API differences between a component builder,
+/// component type, and instance type from `wasm-encoder`.
 enum Encodable {
     Builder(ComponentBuilder),
     Instance(InstanceType),
@@ -67,7 +69,7 @@ impl Encodable {
             Encodable::Builder(b) => {
                 b.import(name, ty);
             }
-            _ => unreachable!("expected a component type"),
+            _ => panic!("expected a component type"),
         }
     }
 
@@ -126,10 +128,10 @@ impl State {
     }
 
     pub fn builder(&mut self) -> &mut ComponentBuilder {
-        assert!(self.scopes.is_empty());
+        assert!(self.scopes.is_empty(), "expected scopes to be empty");
         match &mut self.current.encodable {
             Encodable::Builder(builder) => builder,
-            _ => unreachable!("expected a builder"),
+            _ => panic!("expected a builder"),
         }
     }
 
@@ -148,7 +150,10 @@ impl State {
 
     fn pop(&mut self) -> Encodable {
         log::debug!("popping type scope");
-        let prev = std::mem::replace(&mut self.current, self.scopes.pop().unwrap());
+        let prev = std::mem::replace(
+            &mut self.current,
+            self.scopes.pop().expect("expected a scope to pop"),
+        );
         prev.encodable
     }
 
@@ -194,12 +199,12 @@ impl<'a> TypeEncoder<'a> {
         }
 
         let index = match ty {
-            Type::Resource(_) => unreachable!(),
+            Type::Resource(_) => panic!("cannot encode a resource"),
             Type::Func(id) => self.func_type(state, id),
             Type::Value(ValueType::Primitive(ty)) => Self::primitive(state, ty),
             Type::Value(ValueType::Borrow(id)) => self.borrow(state, id),
             Type::Value(ValueType::Own(id)) => self.own(state, id),
-            Type::Value(ValueType::Defined { id, .. }) => self.defined(state, id),
+            Type::Value(ValueType::Defined(id)) => self.defined(state, id),
             Type::Interface(id) => self.instance(state, id, false),
             Type::World(id) => self.component(state, id),
             Type::Module(id) => self.module(state, id),
@@ -260,7 +265,7 @@ impl<'a> TypeEncoder<'a> {
             DefinedType::Alias(ValueType::Primitive(ty)) => Self::primitive(state, *ty),
             DefinedType::Alias(ValueType::Borrow(id)) => self.borrow(state, *id),
             DefinedType::Alias(ValueType::Own(id)) => self.own(state, *id),
-            DefinedType::Alias(ValueType::Defined { id, .. }) => self.defined(state, *id),
+            DefinedType::Alias(ValueType::Defined(id)) => self.defined(state, *id),
         };
 
         log::debug!("defined type {id} encoded to type index {index}");
@@ -322,7 +327,7 @@ impl<'a> TypeEncoder<'a> {
                 log::debug!("instance {id} encoded to type index {index}");
                 index
             }
-            _ => unreachable!(),
+            _ => panic!("expected the pushed encodable to be an instance type"),
         }
     }
 
@@ -353,7 +358,7 @@ impl<'a> TypeEncoder<'a> {
                 log::debug!("world {id} encoded to type index {index}");
                 index
             }
-            _ => unreachable!(),
+            _ => panic!("expected the pushed encodable to be a component type"),
         }
     }
 
@@ -420,7 +425,7 @@ impl<'a> TypeEncoder<'a> {
                 );
                 index
             }
-            _ => unreachable!(),
+            _ => panic!("expected the pushed encodable to be a component type"),
         }
     }
 
@@ -442,7 +447,7 @@ impl<'a> TypeEncoder<'a> {
                 log::debug!("encoded world definition of `{world_id}` to type index {index}");
                 index
             }
-            _ => unreachable!(),
+            _ => panic!("expected the push encodable to be a component type"),
         }
     }
 
@@ -524,7 +529,7 @@ impl<'a> TypeEncoder<'a> {
             ValueType::Primitive(ty) => return ComponentValType::Primitive(ty.into()),
             ValueType::Borrow(id) => self.borrow(state, id),
             ValueType::Own(id) => self.own(state, id),
-            ValueType::Defined { id, .. } => self.defined(state, id),
+            ValueType::Defined(id) => self.defined(state, id),
         };
 
         state.current.type_indexes.insert(Type::Value(ty), index);
@@ -675,7 +680,7 @@ impl<'a> TypeEncoder<'a> {
                 log::debug!("instance {import_index} is available for aliasing as interface {id}");
                 state.current.instances.insert(id, import_index);
             }
-            _ => unreachable!("expected only types, functions, and instance types"),
+            _ => panic!("expected only types, functions, and instance types"),
         }
     }
 
@@ -744,7 +749,7 @@ impl<'a> TypeEncoder<'a> {
                 ItemKind::Type(_) => ComponentTypeRef::Type(TypeBounds::Eq(index)),
                 ItemKind::Func(_) => ComponentTypeRef::Func(index),
                 ItemKind::Instance(_) => ComponentTypeRef::Instance(index),
-                _ => unreachable!("expected only types, functions, and instance types"),
+                _ => panic!("expected only types, functions, and instance types"),
             },
         );
 
@@ -802,7 +807,7 @@ impl<'a> TypeEncoder<'a> {
                 t.export(name, ty);
                 index
             }
-            Encodable::Builder(_) => unreachable!("expected a component or instance type"),
+            Encodable::Builder(_) => panic!("expected a component or instance type"),
         }
     }
 }

@@ -3907,7 +3907,6 @@ dependencies = [
  "tokio",
  "wac-graph",
  "wac-resolver",
- "wac-types",
  "wasm-encoder 0.202.0",
  "wasm-metadata",
  "wasmparser 0.202.0",

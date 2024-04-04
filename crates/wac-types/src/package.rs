@@ -267,7 +267,7 @@ impl Package {
                         },
                     }
                 }
-                Chunk::NeedMoreData(_) => unreachable!(),
+                Chunk::NeedMoreData(_) => panic!("all data should be present"),
             }
         }
     }
@@ -420,7 +420,7 @@ impl<'a> TypeConverter<'a> {
         if let Some(ty) = self.cache.get(&key) {
             match ty {
                 Entity::Type(Type::Func(id)) => return Ok(*id),
-                _ => unreachable!("invalid cached type"),
+                _ => panic!("invalid cached type"),
             }
         }
 
@@ -463,7 +463,7 @@ impl<'a> TypeConverter<'a> {
         if let Some(ty) = self.cache.get(&key) {
             match ty {
                 Entity::Type(Type::Module(id)) => return Ok(*id),
-                _ => unreachable!("invalid cached type"),
+                _ => panic!("invalid cached type"),
             }
         }
 
@@ -521,7 +521,7 @@ impl<'a> TypeConverter<'a> {
                 Entity::Type(Type::Interface(id)) => {
                     return Ok(*id);
                 }
-                _ => unreachable!("invalid cached type"),
+                _ => panic!("invalid cached type"),
             }
         }
 
@@ -615,7 +615,7 @@ impl<'a> TypeConverter<'a> {
         if let Some(ty) = self.cache.get(&key) {
             match ty {
                 Entity::Type(Type::World(id)) => return Ok(*id),
-                _ => unreachable!("invalid cached type"),
+                _ => panic!("invalid cached type"),
             }
         }
 
@@ -658,117 +658,83 @@ impl<'a> TypeConverter<'a> {
         if let Some(ty) = self.cache.get(&key) {
             match ty {
                 Entity::Type(Type::Value(ty)) => return Ok(*ty),
-                _ => unreachable!("invalid cached type"),
+                _ => panic!("invalid cached type"),
             }
         }
 
         let wasm_types = self.wasm_types.clone();
         let ty = match &wasm_types[id] {
-            wasm::ComponentDefinedType::Primitive(ty) => ValueType::Defined {
-                id: self
-                    .types
+            wasm::ComponentDefinedType::Primitive(ty) => ValueType::Defined(
+                self.types
                     .add_defined_type(DefinedType::Alias(ValueType::Primitive((*ty).into()))),
-                contains_borrow: false,
-            },
+            ),
             wasm::ComponentDefinedType::Record(ty) => {
-                let mut contains_borrow = false;
                 let fields = ty
                     .fields
                     .iter()
-                    .map(|(name, ty)| {
-                        let ty = self.component_val_type(*ty)?;
-                        contains_borrow |= ty.contains_borrow();
-                        Ok((name.as_str().to_owned(), ty))
-                    })
+                    .map(|(name, ty)| Ok((name.as_str().to_owned(), self.component_val_type(*ty)?)))
                     .collect::<Result<_>>()?;
 
-                ValueType::Defined {
-                    id: self
-                        .types
+                ValueType::Defined(
+                    self.types
                         .add_defined_type(DefinedType::Record(Record { fields })),
-                    contains_borrow,
-                }
+                )
             }
             wasm::ComponentDefinedType::Variant(ty) => {
-                let mut contains_borrow = false;
                 let cases = ty
                     .cases
                     .iter()
                     .map(|(name, case)| {
-                        let ty = case.ty.map(|ty| self.component_val_type(ty)).transpose()?;
-                        contains_borrow |= ty.as_ref().map_or(false, ValueType::contains_borrow);
-                        Ok((name.as_str().to_owned(), ty))
+                        Ok((
+                            name.as_str().to_owned(),
+                            case.ty.map(|ty| self.component_val_type(ty)).transpose()?,
+                        ))
                     })
                     .collect::<Result<_>>()?;
 
-                ValueType::Defined {
-                    id: self
-                        .types
+                ValueType::Defined(
+                    self.types
                         .add_defined_type(DefinedType::Variant(Variant { cases })),
-                    contains_borrow,
-                }
+                )
             }
             wasm::ComponentDefinedType::List(ty) => {
                 let ty = self.component_val_type(*ty)?;
-                ValueType::Defined {
-                    id: self.types.add_defined_type(DefinedType::List(ty)),
-                    contains_borrow: ty.contains_borrow(),
-                }
+                ValueType::Defined(self.types.add_defined_type(DefinedType::List(ty)))
             }
             wasm::ComponentDefinedType::Tuple(ty) => {
-                let mut contains_borrow = false;
                 let types = ty
                     .types
                     .iter()
-                    .map(|ty| {
-                        let ty = self.component_val_type(*ty)?;
-                        contains_borrow |= ty.contains_borrow();
-                        Ok(ty)
-                    })
+                    .map(|ty| self.component_val_type(*ty))
                     .collect::<Result<_>>()?;
-                ValueType::Defined {
-                    id: self.types.add_defined_type(DefinedType::Tuple(types)),
-                    contains_borrow,
-                }
+                ValueType::Defined(self.types.add_defined_type(DefinedType::Tuple(types)))
             }
             wasm::ComponentDefinedType::Flags(flags) => {
                 let flags = flags.iter().map(|flag| flag.as_str().to_owned()).collect();
-                ValueType::Defined {
-                    id: self
-                        .types
+                ValueType::Defined(
+                    self.types
                         .add_defined_type(DefinedType::Flags(Flags(flags))),
-                    contains_borrow: false,
-                }
+                )
             }
             wasm::ComponentDefinedType::Enum(cases) => {
                 let cases = cases.iter().map(|case| case.as_str().to_owned()).collect();
-                ValueType::Defined {
-                    id: self.types.add_defined_type(DefinedType::Enum(Enum(cases))),
-                    contains_borrow: false,
-                }
+                ValueType::Defined(self.types.add_defined_type(DefinedType::Enum(Enum(cases))))
             }
             wasm::ComponentDefinedType::Option(ty) => {
                 let ty = self.component_val_type(*ty)?;
-                ValueType::Defined {
-                    id: self.types.add_defined_type(DefinedType::Option(ty)),
-                    contains_borrow: ty.contains_borrow(),
-                }
+                ValueType::Defined(self.types.add_defined_type(DefinedType::Option(ty)))
             }
             wasm::ComponentDefinedType::Result { ok, err } => {
                 let ok = ok.map(|ty| self.component_val_type(ty)).transpose()?;
                 let err = err.map(|ty| self.component_val_type(ty)).transpose()?;
-                ValueType::Defined {
-                    id: self.types.add_defined_type(DefinedType::Result { ok, err }),
-                    contains_borrow: ok.as_ref().map_or(false, ValueType::contains_borrow)
-                        || err.as_ref().map_or(false, ValueType::contains_borrow),
-                }
+                ValueType::Defined(self.types.add_defined_type(DefinedType::Result { ok, err }))
             }
             wasm::ComponentDefinedType::Borrow(id) => ValueType::Borrow(
                 match self.cache.get(&wasm::AnyTypeId::Component(
                     wasm::ComponentAnyTypeId::Resource(*id),
                 )) {
                     Some(Entity::Resource(id)) => *id,
-                    _ => unreachable!("expected a resource"),
+                    _ => panic!("expected a resource"),
                 },
             ),
             wasm::ComponentDefinedType::Own(id) => ValueType::Own(
@@ -776,7 +742,7 @@ impl<'a> TypeConverter<'a> {
                     wasm::ComponentAnyTypeId::Resource(*id),
                 )) {
                     Some(Entity::Resource(id)) => *id,
-                    _ => unreachable!("expected a resource"),
+                    _ => panic!("expected a resource"),
                 },
             ),
         };
@@ -790,7 +756,7 @@ impl<'a> TypeConverter<'a> {
         if let Some(ty) = self.cache.get(&key) {
             match ty {
                 Entity::Resource(id) => return *id,
-                _ => unreachable!("invalid cached type"),
+                _ => panic!("invalid cached type"),
             }
         }
 

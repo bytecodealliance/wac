@@ -212,7 +212,7 @@ impl<'a> SubtypeChecker<'a> {
             }
             (Some(FuncResult::Scalar(_)), Some(FuncResult::Scalar(_)))
             | (Some(FuncResult::List(_)), Some(FuncResult::List(_)))
-            | (None, None) => unreachable!(),
+            | (None, None) => panic!("should already be handled"),
         }
     }
 
@@ -500,9 +500,7 @@ impl<'a> SubtypeChecker<'a> {
 
         match (a, b) {
             (ValueType::Primitive(a), ValueType::Primitive(b)) => self.primitive(a, at, b, bt),
-            (ValueType::Defined { id: a, .. }, ValueType::Defined { id: b, .. }) => {
-                self.defined_type(a, at, b, bt)
-            }
+            (ValueType::Defined(a), ValueType::Defined(b)) => self.defined_type(a, at, b, bt),
             (ValueType::Borrow(a), ValueType::Borrow(b))
             | (ValueType::Own(a), ValueType::Own(b)) => self.resource(a, at, b, bt),
             _ => {
@@ -556,7 +554,7 @@ impl<'a> SubtypeChecker<'a> {
             (DefinedType::Flags(a), DefinedType::Flags(b)) => self.flags(a, at, b, bt),
             (DefinedType::Enum(a), DefinedType::Enum(b)) => self.enum_type(a, at, b, bt),
             (DefinedType::Alias(_), _) | (_, DefinedType::Alias(_)) => {
-                unreachable!("aliases should have been resolved")
+                panic!("aliases should have been resolved")
             }
             _ => {
                 let (expected, expected_types, found, found_types) =
@@ -592,9 +590,9 @@ impl<'a> SubtypeChecker<'a> {
 
         let (expected, _, found, _) = self.expected_found(a, at, b, bt);
         match (expected, found) {
-            (None, None) | (Some(_), Some(_)) => unreachable!(),
             (Some(_), None) => bail!("expected an `{desc}` for result type"),
             (None, Some(_)) => bail!("expected no `{desc}` for result type"),
+            (None, None) | (Some(_), Some(_)) => panic!("expected to be handled"),
         }
     }
 
@@ -691,13 +689,13 @@ impl<'a> SubtypeChecker<'a> {
                 _ => {
                     let (expected, _, found, _) = self.expected_found(a, at, b, bt);
                     match (expected, found) {
-                        (None, None) | (Some(_), Some(_)) => unreachable!(),
                         (None, Some(_)) => {
                             bail!("expected variant case `{bn}` to be untyped, found a typed case")
                         }
                         (Some(_), None) => {
                             bail!("expected variant case `{bn}` to be typed, found an untyped case")
                         }
+                        (None, None) | (Some(_), Some(_)) => panic!("expected to be handled"),
                     }
                 }
             }
