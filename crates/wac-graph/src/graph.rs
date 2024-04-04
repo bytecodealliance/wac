@@ -871,11 +871,11 @@ impl CompositionGraph {
     ///
     /// If an edge already exists between the argument and the instantiation node, this method
     /// returns `Ok(_)`.
-    pub fn connect_argument(
+    pub fn set_instantiation_argument(
         &mut self,
-        argument: NodeId,
         instantiation: NodeId,
         argument_name: &str,
+        argument: NodeId,
     ) -> GraphResult<()> {
         fn add_edge(
             graph: &mut CompositionGraph,
@@ -1007,11 +1007,11 @@ impl CompositionGraph {
     ///
     /// If the argument is not connected to the instantiation node, then this
     /// function will be a no-op.
-    pub fn disconnect_argument(
+    pub fn unset_instantiation_argument(
         &mut self,
-        argument: NodeId,
         instantiation: NodeId,
         argument_name: &str,
+        argument: NodeId,
     ) -> GraphResult<()> {
         // Ensure the target is an instantiation node
         let instantiation_data = self

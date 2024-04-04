@@ -209,7 +209,7 @@ impl GraphFile {
                 format!("invalid target node index {target} referenced in argument {index} for test case `{test_case}`", target = argument.target)
             }).copied()?;
 
-            graph.connect_argument(source, target, &argument.name).with_context(|| {
+            graph.set_instantiation_argument(target, &argument.name, source).with_context(|| {
                 format!("failed to add argument edge from source node {source} to target node {target} referenced in argument {index} for test case `{test_case}`", source = argument.source, target = argument.target)
             })?;
         }

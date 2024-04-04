@@ -1,6 +1,5 @@
-use std::fmt;
-
 use indexmap::IndexMap;
+use std::fmt;
 
 /// Represents a core module type.
 #[derive(Debug, Clone, Default)]

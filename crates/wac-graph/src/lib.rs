@@ -27,8 +27,8 @@
 //! // Instantiate package `my:package2`
 //! let instantiation2 = graph.instantiate(package2)?;
 //!
-//! // Connect `a` to the argument `b` of the instantiation
-//! graph.connect_argument(a, instantiation2, "b")?;
+//! // Set argument `b` of the instantiation of `my:package2` to `a`
+//! graph.set_instantiation_argument(instantiation2, "b", a)?;
 //!
 //! // Finally, encode the graph into a new component
 //! let bytes = graph.encode(EncodeOptions::default())?;
