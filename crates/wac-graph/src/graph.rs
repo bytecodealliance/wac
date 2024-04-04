@@ -859,18 +859,22 @@ impl CompositionGraph {
         true
     }
 
-    /// Connects an argument node to an instantiation node by adding an _instantiation argument_
-    /// edge between them.
+    /// Sets an argument of an instantiation node to the provided argument
+    /// node.
     ///
-    /// The provided node must be an instantiation node.
+    /// This method adds an _instantiation argument_ edge from the argument
+    /// node to the instantiation node.
     ///
-    /// The argument node must be type-compatible with the argument of the instantiation node.
+    /// The provided instantiation node must be an instantiation.
     ///
-    /// The argument name must be a valid import on the instantiation node and not already have
-    /// an incoming edge from a different argument node.
+    /// The argument name must be a valid import on the instantiation node
+    /// and not already have an incoming edge from a different argument node.
     ///
-    /// If an edge already exists between the argument and the instantiation node, this method
-    /// returns `Ok(_)`.
+    /// The argument node must be type-compatible with the argument of the
+    /// instantiation node.
+    ///
+    /// If an edge already exists between the argument and the instantiation
+    /// node, this method returns `Ok(_)`.
     pub fn set_instantiation_argument(
         &mut self,
         instantiation: NodeId,
@@ -998,15 +1002,16 @@ impl CompositionGraph {
         result
     }
 
-    /// Disconnects an argument node from an instantiation node by removing the
-    /// *instantiation argument edge* between them.
+    /// Unsets an argument of an instantiation node that was previously
+    /// set to the provided argument node.
     ///
-    /// The provided node must be an instantiation.
+    /// This method removes an _instantiation argument_ edge from the
+    /// argument node to the instantiation node if the nodes are connected;
+    /// if they are not connected, this method is a no-op.
     ///
-    /// The argument name must be a valid import on the target.
+    /// The provided instantiation node must be an instantiation.
     ///
-    /// If the argument is not connected to the instantiation node, then this
-    /// function will be a no-op.
+    /// The argument name must be a valid import on the instantiation node.
     pub fn unset_instantiation_argument(
         &mut self,
         instantiation: NodeId,
