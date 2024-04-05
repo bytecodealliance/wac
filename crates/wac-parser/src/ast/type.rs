@@ -641,10 +641,10 @@ pub enum Type<'a> {
     U64(SourceSpan),
     /// A `s64` type.
     S64(SourceSpan),
-    /// A `float32` type.
-    Float32(SourceSpan),
-    /// A `float64` type.
-    Float64(SourceSpan),
+    /// A `f32` type.
+    F32(SourceSpan),
+    /// A `f64` type.
+    F64(SourceSpan),
     /// A `char` type.
     Char(SourceSpan),
     /// A `bool` type.
@@ -684,8 +684,8 @@ impl<'a> Type<'a> {
             | Self::S32(span)
             | Self::U64(span)
             | Self::S64(span)
-            | Self::Float32(span)
-            | Self::Float64(span)
+            | Self::F32(span)
+            | Self::F64(span)
             | Self::Char(span)
             | Self::Bool(span)
             | Self::String(span)
@@ -718,10 +718,10 @@ impl<'a> Parse<'a> for Type<'a> {
             Ok(Self::U64(lexer.next().unwrap().1))
         } else if lookahead.peek(Token::S64Keyword) {
             Ok(Self::S64(lexer.next().unwrap().1))
-        } else if lookahead.peek(Token::Float32Keyword) {
-            Ok(Self::Float32(lexer.next().unwrap().1))
-        } else if lookahead.peek(Token::Float64Keyword) {
-            Ok(Self::Float64(lexer.next().unwrap().1))
+        } else if lookahead.peek(Token::F32Keyword) {
+            Ok(Self::F32(lexer.next().unwrap().1))
+        } else if lookahead.peek(Token::F64Keyword) {
+            Ok(Self::F64(lexer.next().unwrap().1))
         } else if lookahead.peek(Token::CharKeyword) {
             Ok(Self::Char(lexer.next().unwrap().1))
         } else if lookahead.peek(Token::BoolKeyword) {
@@ -842,8 +842,8 @@ impl Peek for Type<'_> {
             || lookahead.peek(Token::S32Keyword)
             || lookahead.peek(Token::U64Keyword)
             || lookahead.peek(Token::S64Keyword)
-            || lookahead.peek(Token::Float32Keyword)
-            || lookahead.peek(Token::Float64Keyword)
+            || lookahead.peek(Token::F32Keyword)
+            || lookahead.peek(Token::F64Keyword)
             || lookahead.peek(Token::CharKeyword)
             || lookahead.peek(Token::BoolKeyword)
             || lookahead.peek(Token::StringKeyword)
@@ -1562,8 +1562,8 @@ enum foo {
     #[test]
     fn type_alias_roundtrip() {
         roundtrip(
-            r#"package foo:bar; type x = tuple<u8, s8, u16, s16, u32, s32, u64, s64, float32, float64, char, bool, string, tuple<string, list<u8>>, option<list<bool>>, result, result<string>, result<_, string>, result<u8, u8>, borrow<y>, y>;"#,
-            "package foo:bar;\n\ntype x = tuple<u8, s8, u16, s16, u32, s32, u64, s64, float32, float64, char, bool, string, tuple<string, list<u8>>, option<list<bool>>, result, result<string>, result<_, string>, result<u8, u8>, borrow<y>, y>;\n",
+            r#"package foo:bar; type x = tuple<u8, s8, u16, s16, u32, s32, u64, s64, f32, f64, char, bool, string, tuple<string, list<u8>>, option<list<bool>>, result, result<string>, result<_, string>, result<u8, u8>, borrow<y>, y>;"#,
+            "package foo:bar;\n\ntype x = tuple<u8, s8, u16, s16, u32, s32, u64, s64, f32, f64, char, bool, string, tuple<string, list<u8>>, option<list<bool>>, result, result<string>, result<_, string>, result<u8, u8>, borrow<y>, y>;\n",
         )
         .unwrap();
     }

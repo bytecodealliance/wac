@@ -498,8 +498,8 @@ type                ::= u8
                       | s32
                       | u64
                       | s64
-                      | float32
-                      | float64
+                      | f32
+                      | f64
                       | char
                       | bool
                       | string

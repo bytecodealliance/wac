@@ -10,6 +10,7 @@ keywords = { workspace = true }
 repository = { workspace = true }
 
 [dependencies]
+wac-graph = { workspace = true }
 anyhow = { workspace = true }
 logos = { workspace = true }
 thiserror = { workspace = true }
@@ -28,7 +29,7 @@ wac-resolver = { workspace = true, default-features = false, features = ["wat", 
 owo-colors = "4.0.0"
 pretty_assertions = { workspace = true }
 pretty_env_logger = { workspace = true }
-rayon = "1.9.0"
+rayon = "1.10.0"
 tokio = { workspace = true }
 serde_json = { workspace = true }
 wasmprinter = { workspace = true }

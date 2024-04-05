@@ -47,24 +47,26 @@ registry = ["wac-resolver/registry", "indicatif"]
 [workspace.dependencies]
 wac-parser = { path = "crates/wac-parser", default-features = false }
 wac-resolver = { path = "crates/wac-resolver", default-features = false }
-wit-parser = "0.201.0"
-wasmparser = "0.201.0"
-wit-component = "0.201.0"
-wasm-encoder = "0.201.0"
-wasmprinter = "0.201.0"
-wasm-metadata = "0.201.0"
+wac-graph = { path = "crates/wac-graph" }
+wac-types = { path = "crates/wac-types" }
+wit-parser = "0.202.0"
+wasmparser = "0.202.0"
+wit-component = "0.202.0"
+wasm-encoder = "0.202.0"
+wasmprinter = "0.202.0"
+wasm-metadata = "0.202.0"
 anyhow = "1.0.81"
-clap = { version = "4.5.2", features = ["derive"] }
+clap = { version = "4.5.4", features = ["derive"] }
 semver = { version = "1.0.22", features = ["serde"] }
 pretty_env_logger = "0.5.0"
 log = "0.4.21"
-tokio = { version = "1.36.0", default-features = false, features = ["macros", "rt-multi-thread"] }
+tokio = { version = "1.37.0", default-features = false, features = ["macros", "rt-multi-thread"] }
 owo-colors = { version = "4.0.0", features = ["supports-colors"] }
-indexmap = { version = "2.2.5", features = ["serde"] }
+indexmap = { version = "2.2.6", features = ["serde"] }
 id-arena = "2.2.1"
 serde = { version = "1.0.197", features = ["derive"] }
-serde_json = "1.0.114"
-wat = "1.201.0"
+serde_json = "1.0.115"
+wat = "1.202.0"
 logos = "0.14.0"
 miette = "7.2.0"
 thiserror = "1.0.58"
@@ -77,3 +79,4 @@ secrecy = "0.8.0"
 futures = "0.3.30"
 indicatif = "0.17.8"
 pretty_assertions = "1.4.0"
+petgraph = "0.6.4"

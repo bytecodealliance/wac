@@ -1,0 +1,4 @@
+failed to add import node 0 for test case `package-missing-export`
+
+Caused by:
+    package `test:foo` does not export an item for path `bar`

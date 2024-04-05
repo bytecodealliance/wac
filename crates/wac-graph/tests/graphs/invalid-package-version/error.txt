@@ -1,0 +1,5 @@
+failed to add import node 0 for test case `invalid-package-version`
+
+Caused by:
+    0: package version `nope` is not a valid semantic version
+    1: unexpected character 'n' while parsing major version number
