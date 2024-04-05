@@ -23,10 +23,60 @@ together.
 The tool uses the WAC (pronounced "whack") language to define how components
 composed together.
 
-## Language
+## The `wac` Language
 
-See the [language documentation](LANGUAGE.md) for more information on the
-syntax of WAC.
+The `wac` language is a declarative superset of [`wit`](https://component-model.bytecodealliance.org/design/wit.html) 
+for describing how components are composed together.
+
+As an example, imagine two components name.wasm and greeter.wasm.
+
+The wit for name.wasm is:
+
+```wit
+package example:name;
+
+world name {
+  /// Exporting a 'name' function that returns a name to greet.
+  export name: func() -> string;
+}
+```
+
+And the wit for greeter.wasm is:
+
+```wit
+package example:greeter;
+
+world greeter {
+  /// Importing a 'name' function that returns the name to greet.
+  import name: func() -> string;
+  /// Exporting a 'greet' function that returns a greeting using the name.
+  export greet: func() -> string;
+}
+```
+
+The following is an example of a wac file that composes these two components together 
+by plugging name.wasm's "name" export into greeter.wasm's "name" import.
+
+```wac
+package example:composition;
+
+// Instantiate the `name` component
+let n = new example:name {};
+
+// Instantiate the `greeter` component by plugging its `name`
+// import with the `name` export of the `name` component.
+let greeter = new example:greeter {
+  name: n.name,
+};
+
+// Export the greet function from the greeter component
+export greeter.greet;
+```
+
+The result of encoding this composition is a single component that
+does not import anything and only exports the "greet" function.
+
+For a full description of the `wac` language see [the language guide](LANGUAGE.md).
 
 ## Installation
 
