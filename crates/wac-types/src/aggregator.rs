@@ -5,31 +5,29 @@ use crate::{
 };
 use anyhow::{bail, Context, Result};
 use indexmap::IndexMap;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 /// Used to aggregate types defined in different `Types` collections.
 ///
 /// A type aggregator can be used to merge compatible definitions of
 /// the same type into a single supertype definition stored within the
-/// aggregator.
+/// aggregator; this is useful for imports that are shared across
+/// different instantiation arguments.
 ///
-/// It works by first recursively remapping a type from another `Types`
+/// It works by first recursively remapping a type from a foreign `Types`
 /// collection into its own `Types` collection; any further attempt
 /// to aggregate the type causes a merge of type definitions provided
 /// they are compatible.
-///
-/// A type aggregator is primarily used to create types used to import
-/// an implicitly-satisfied instantiation argument in a composition
-/// graph; such a type must be a supertype of all referencing
-/// instantiation arguments.
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct TypeAggregator {
     /// The aggregated types collection.
     types: Types,
-    /// The map from name to aggregated item kind.
+    /// The map from import name to aggregated item kind.
     names: IndexMap<String, ItemKind>,
-    /// The map from original item kind to aggregated item kind.
-    aggregated: HashMap<ItemKind, ItemKind>,
+    /// A map from foreign type to remapped local type.
+    remapped: HashMap<Type, Type>,
+    /// A map of interface names to remapped interface id.
+    interfaces: HashMap<String, InterfaceId>,
 }
 
 impl TypeAggregator {
@@ -49,9 +47,7 @@ impl TypeAggregator {
     }
 
     /// Aggregates a item kind from a specified type collection using the given
-    /// aggregate type name.
-    ///
-    /// The provided cache is used for subtype checking.
+    /// import name.
     ///
     /// Note that if the aggregate operation fails, the aggregator is consumed.
     pub fn aggregate(
@@ -59,15 +55,14 @@ impl TypeAggregator {
         name: &str,
         types: &Types,
         kind: ItemKind,
-        cache: &mut HashSet<(ItemKind, ItemKind)>,
+        checker: &mut SubtypeChecker,
     ) -> Result<Self> {
         if let Some(existing) = self.names.get(name).copied() {
-            let mut checker = SubtypeChecker::new(cache);
-            self.merge_item_kind(existing, types, kind, &mut checker)?;
+            self.merge_item_kind(existing, types, kind, checker)?;
             return Ok(self);
         }
 
-        let ty = self.remap_item_kind(types, kind);
+        let ty = self.remap_item_kind(types, kind, checker)?;
         let prev = self.names.insert(name.to_string(), ty);
         assert!(prev.is_none());
         Ok(self)
@@ -149,7 +144,7 @@ impl TypeAggregator {
                     .with_context(|| format!("mismatched type for export `{name}`"))?;
             }
 
-            let remapped = self.remap_item_kind(types, *source_kind);
+            let remapped = self.remap_item_kind(types, *source_kind, checker)?;
             self.types[existing].exports.insert(name.clone(), remapped);
         }
 
@@ -165,22 +160,49 @@ impl TypeAggregator {
     ) -> Result<()> {
         let source = &types[id];
         for (name, used) in &source.uses {
+            let source_interface = types[used.interface]
+                .id
+                .as_ref()
+                .context("used type has no interface identifier")?;
+
+            // Validate any existing used type of the same name
             if let Some(existing) = self.types[existing].uses.get(name) {
-                if existing.name != used.name {
-                    bail!("mismatched used type names");
+                let existing_interface = self.types[existing.interface]
+                    .id
+                    .as_ref()
+                    .context("used type has no interface identifier")?;
+
+                // The interface names must match
+                if existing_interface != source_interface {
+                    bail!("cannot merge used type `{name}` as it is expected to be from interface `{existing_interface}` but it is from interface `{source_interface}`");
                 }
 
-                self.merge_interface(existing.interface, types, used.interface, checker)?;
-                continue;
+                // The types must be exported with the same name
+                if existing.name != used.name {
+                    bail!("cannot merge used type `{name}` as the export names are mismatched");
+                }
             }
 
-            let remapped = UsedType {
-                interface: self.remap_interface(types, used.interface),
-                name: used.name.clone(),
-            };
-
-            let prev = self.types[existing].uses.insert(name.clone(), remapped);
-            assert!(prev.is_none());
+            // Remap the used interface; this will handle merging if we've seen the interface before
+            let remapped = self.remap_interface(types, used.interface, checker)?;
+            match self.types[existing].uses.get(name) {
+                Some(existing) => {
+                    assert_eq!(
+                        existing.interface, remapped,
+                        "expected a merge to have occurred"
+                    );
+                }
+                None => {
+                    let prev = self.types[existing].uses.insert(
+                        name.clone(),
+                        UsedType {
+                            interface: remapped,
+                            name: used.name.clone(),
+                        },
+                    );
+                    assert!(prev.is_none());
+                }
+            }
         }
 
         Ok(())
@@ -226,7 +248,7 @@ impl TypeAggregator {
                     .with_context(|| format!("mismatched type for export `{name}`"))?;
             }
 
-            let remapped = self.remap_item_kind(types, *source_kind);
+            let remapped = self.remap_item_kind(types, *source_kind, checker)?;
             self.types[existing].imports.insert(name.clone(), remapped);
         }
 
@@ -260,7 +282,7 @@ impl TypeAggregator {
                     .with_context(|| format!("mismatched type for export `{name}`"))?;
             }
 
-            let remapped = self.remap_item_kind(types, *source_kind);
+            let remapped = self.remap_item_kind(types, *source_kind, checker)?;
             self.types[existing].exports.insert(name.clone(), remapped);
         }
 
@@ -276,22 +298,49 @@ impl TypeAggregator {
     ) -> Result<()> {
         let source = &types[id];
         for (name, used) in &source.uses {
+            let source_interface = types[used.interface]
+                .id
+                .as_ref()
+                .context("used type has no interface identifier")?;
+
+            // Validate any existing used type of the same name
             if let Some(existing) = self.types[existing].uses.get(name) {
-                if existing.name != used.name {
-                    bail!("mismatched used type names");
+                let existing_interface = self.types[existing.interface]
+                    .id
+                    .as_ref()
+                    .context("used type has no interface identifier")?;
+
+                // The interface names must match
+                if existing_interface != source_interface {
+                    bail!("cannot merge used type `{name}` as it is expected to be from interface `{existing_interface}` but it is from interface `{source_interface}`");
                 }
 
-                self.merge_interface(existing.interface, types, used.interface, checker)?;
-                continue;
+                // The types must be exported with the same name
+                if existing.name != used.name {
+                    bail!("cannot merge used type `{name}` as the export names are mismatched");
+                }
             }
 
-            let remapped = UsedType {
-                interface: self.remap_interface(types, used.interface),
-                name: used.name.clone(),
-            };
-
-            let prev = self.types[existing].uses.insert(name.clone(), remapped);
-            assert!(prev.is_none());
+            // Remap the used interface; this will handle merging if we've seen the interface before
+            let remapped = self.remap_interface(types, used.interface, checker)?;
+            match self.types[existing].uses.get(name) {
+                Some(existing) => {
+                    assert_eq!(
+                        existing.interface, remapped,
+                        "expected a merge to have occurred"
+                    );
+                }
+                None => {
+                    let prev = self.types[existing].uses.insert(
+                        name.clone(),
+                        UsedType {
+                            interface: remapped,
+                            name: used.name.clone(),
+                        },
+                    );
+                    assert!(prev.is_none());
+                }
+            }
         }
 
         Ok(())
@@ -304,7 +353,7 @@ impl TypeAggregator {
         id: FuncTypeId,
         checker: &mut SubtypeChecker,
     ) -> Result<()> {
-        // Currently function types perform a fully equality for subtype checking, so
+        // Currently function types are full equality for subtype checking, so
         // simply do a subtype check in both directions
         checker.is_subtype(
             ItemKind::Func(id),
@@ -482,32 +531,46 @@ impl TypeAggregator {
         Ok(())
     }
 
-    fn remap_item_kind(&mut self, types: &Types, kind: ItemKind) -> ItemKind {
+    fn remap_item_kind(
+        &mut self,
+        types: &Types,
+        kind: ItemKind,
+        checker: &mut SubtypeChecker,
+    ) -> Result<ItemKind> {
         match kind {
-            ItemKind::Type(ty) => ItemKind::Type(self.remap_type(types, ty)),
-            ItemKind::Func(id) => ItemKind::Func(self.remap_func_type(types, id)),
-            ItemKind::Instance(id) => ItemKind::Instance(self.remap_interface(types, id)),
-            ItemKind::Component(id) => ItemKind::Component(self.remap_world(types, id)),
-            ItemKind::Module(id) => ItemKind::Module(self.remap_module_type(types, id)),
-            ItemKind::Value(ty) => ItemKind::Value(self.remap_value_type(types, ty)),
+            ItemKind::Type(ty) => Ok(ItemKind::Type(self.remap_type(types, ty, checker)?)),
+            ItemKind::Func(id) => Ok(ItemKind::Func(self.remap_func_type(types, id))),
+            ItemKind::Instance(id) => Ok(ItemKind::Instance(
+                self.remap_interface(types, id, checker)?,
+            )),
+            ItemKind::Component(id) => {
+                Ok(ItemKind::Component(self.remap_world(types, id, checker)?))
+            }
+            ItemKind::Module(id) => Ok(ItemKind::Module(self.remap_module_type(types, id))),
+            ItemKind::Value(ty) => Ok(ItemKind::Value(self.remap_value_type(types, ty))),
         }
     }
 
-    fn remap_type(&mut self, types: &Types, ty: Type) -> Type {
+    fn remap_type(
+        &mut self,
+        types: &Types,
+        ty: Type,
+        checker: &mut SubtypeChecker,
+    ) -> Result<Type> {
         match ty {
-            Type::Resource(id) => Type::Resource(self.remap_resource(types, id)),
-            Type::Func(id) => Type::Func(self.remap_func_type(types, id)),
-            Type::Value(ty) => Type::Value(self.remap_value_type(types, ty)),
-            Type::Interface(id) => Type::Interface(self.remap_interface(types, id)),
-            Type::World(id) => Type::World(self.remap_world(types, id)),
-            Type::Module(id) => Type::Module(self.remap_module_type(types, id)),
+            Type::Resource(id) => Ok(Type::Resource(self.remap_resource(types, id))),
+            Type::Func(id) => Ok(Type::Func(self.remap_func_type(types, id))),
+            Type::Value(ty) => Ok(Type::Value(self.remap_value_type(types, ty))),
+            Type::Interface(id) => Ok(Type::Interface(self.remap_interface(types, id, checker)?)),
+            Type::World(id) => Ok(Type::World(self.remap_world(types, id, checker)?)),
+            Type::Module(id) => Ok(Type::Module(self.remap_module_type(types, id))),
         }
     }
 
     fn remap_resource(&mut self, types: &Types, id: ResourceId) -> ResourceId {
-        if let Some(kind) = self.aggregated.get(&ItemKind::Type(Type::Resource(id))) {
+        if let Some(kind) = self.remapped.get(&Type::Resource(id)) {
             return match kind {
-                ItemKind::Type(Type::Resource(id)) => *id,
+                Type::Resource(id) => *id,
                 _ => panic!("expected a resource"),
             };
         }
@@ -519,18 +582,17 @@ impl TypeAggregator {
         };
         let remapped_id = self.types.add_resource(remapped);
 
-        let prev = self.aggregated.insert(
-            ItemKind::Type(Type::Resource(id)),
-            ItemKind::Type(Type::Resource(remapped_id)),
-        );
+        let prev = self
+            .remapped
+            .insert(Type::Resource(id), Type::Resource(remapped_id));
         assert!(prev.is_none());
         remapped_id
     }
 
     fn remap_func_type(&mut self, types: &Types, id: FuncTypeId) -> FuncTypeId {
-        if let Some(kind) = self.aggregated.get(&ItemKind::Type(Type::Func(id))) {
+        if let Some(kind) = self.remapped.get(&Type::Func(id)) {
             return match kind {
-                ItemKind::Type(Type::Func(id)) => *id,
+                Type::Func(id) => *id,
                 _ => panic!("expected a function type"),
             };
         }
@@ -553,10 +615,9 @@ impl TypeAggregator {
         };
 
         let remapped_id = self.types.add_func_type(remapped);
-        let prev = self.aggregated.insert(
-            ItemKind::Type(Type::Func(id)),
-            ItemKind::Type(Type::Func(remapped_id)),
-        );
+        let prev = self
+            .remapped
+            .insert(Type::Func(id), Type::Func(remapped_id));
         assert!(prev.is_none());
         remapped_id
     }
@@ -570,10 +631,25 @@ impl TypeAggregator {
         }
     }
 
-    fn remap_interface(&mut self, types: &Types, id: InterfaceId) -> InterfaceId {
-        if let Some(kind) = self.aggregated.get(&ItemKind::Type(Type::Interface(id))) {
+    fn remap_interface(
+        &mut self,
+        types: &Types,
+        id: InterfaceId,
+        checker: &mut SubtypeChecker,
+    ) -> Result<InterfaceId> {
+        // If we've seen this interface before, perform a merge
+        // This will ensure that there's only a singular definition of "named" interfaces
+        if let Some(name) = types[id].id.as_ref() {
+            if let Some(existing) = self.interfaces.get(name).copied() {
+                self.merge_interface(existing, types, id, checker)
+                    .with_context(|| format!("failed to merge interface `{name}`"))?;
+                return Ok(existing);
+            }
+        }
+
+        if let Some(kind) = self.remapped.get(&Type::Interface(id)) {
             return match kind {
-                ItemKind::Type(Type::Interface(id)) => *id,
+                Type::Interface(id) => Ok(*id),
                 _ => panic!("expected an interface"),
             };
         }
@@ -585,35 +661,49 @@ impl TypeAggregator {
                 .uses
                 .iter()
                 .map(|(n, u)| {
-                    (
+                    if types[u.interface].id.is_none() {
+                        bail!("used type `{n}` is from an interface without an identifier");
+                    }
+
+                    Ok((
                         n.clone(),
                         UsedType {
-                            interface: self.remap_interface(types, u.interface),
+                            interface: self.remap_interface(types, u.interface, checker)?,
                             name: u.name.clone(),
                         },
-                    )
+                    ))
                 })
-                .collect(),
+                .collect::<Result<_>>()?,
             exports: ty
                 .exports
                 .iter()
-                .map(|(n, k)| (n.clone(), self.remap_item_kind(types, *k)))
-                .collect(),
+                .map(|(n, k)| Ok((n.clone(), self.remap_item_kind(types, *k, checker)?)))
+                .collect::<Result<_>>()?,
         };
 
         let remapped = self.types.add_interface(interface);
-        let prev = self.aggregated.insert(
-            ItemKind::Type(Type::Interface(id)),
-            ItemKind::Type(Type::Interface(remapped)),
-        );
+        let prev = self
+            .remapped
+            .insert(Type::Interface(id), Type::Interface(remapped));
         assert!(prev.is_none());
-        remapped
+
+        if let Some(name) = self.types[remapped].id.as_ref() {
+            let prev = self.interfaces.insert(name.clone(), remapped);
+            assert!(prev.is_none());
+        }
+
+        Ok(remapped)
     }
 
-    fn remap_world(&mut self, types: &Types, id: WorldId) -> WorldId {
-        if let Some(kind) = self.aggregated.get(&ItemKind::Type(Type::World(id))) {
+    fn remap_world(
+        &mut self,
+        types: &Types,
+        id: WorldId,
+        checker: &mut SubtypeChecker,
+    ) -> Result<WorldId> {
+        if let Some(kind) = self.remapped.get(&Type::World(id)) {
             return match kind {
-                ItemKind::Type(Type::World(id)) => *id,
+                Type::World(id) => Ok(*id),
                 _ => panic!("expected a world"),
             };
         }
@@ -625,61 +715,59 @@ impl TypeAggregator {
                 .uses
                 .iter()
                 .map(|(n, u)| {
-                    (
+                    if types[u.interface].id.is_none() {
+                        bail!("used type `{n}` is from an interface without an identifier");
+                    }
+
+                    Ok((
                         n.clone(),
                         UsedType {
-                            interface: self.remap_interface(types, u.interface),
+                            interface: self.remap_interface(types, u.interface, checker)?,
                             name: u.name.clone(),
                         },
-                    )
+                    ))
                 })
-                .collect(),
+                .collect::<Result<_>>()?,
             imports: ty
                 .imports
                 .iter()
-                .map(|(n, k)| (n.clone(), self.remap_item_kind(types, *k)))
-                .collect(),
+                .map(|(n, k)| Ok((n.clone(), self.remap_item_kind(types, *k, checker)?)))
+                .collect::<Result<_>>()?,
             exports: ty
                 .exports
                 .iter()
-                .map(|(n, k)| (n.clone(), self.remap_item_kind(types, *k)))
-                .collect(),
+                .map(|(n, k)| Ok((n.clone(), self.remap_item_kind(types, *k, checker)?)))
+                .collect::<Result<_>>()?,
         };
 
         let remapped = self.types.add_world(world);
-        let prev = self.aggregated.insert(
-            ItemKind::Type(Type::World(id)),
-            ItemKind::Type(Type::World(remapped)),
-        );
+        let prev = self.remapped.insert(Type::World(id), Type::World(remapped));
         assert!(prev.is_none());
-        remapped
+
+        Ok(remapped)
     }
 
     fn remap_module_type(&mut self, types: &Types, id: ModuleTypeId) -> ModuleTypeId {
-        if let Some(kind) = self.aggregated.get(&ItemKind::Type(Type::Module(id))) {
+        if let Some(kind) = self.remapped.get(&Type::Module(id)) {
             return match kind {
-                ItemKind::Type(Type::Module(id)) => *id,
+                Type::Module(id) => *id,
                 _ => panic!("expected a module type"),
             };
         }
 
         let ty = &types[id];
         let remapped = self.types.add_module_type(ty.clone());
-        let prev = self.aggregated.insert(
-            ItemKind::Type(Type::Module(id)),
-            ItemKind::Type(Type::Module(remapped)),
-        );
+        let prev = self
+            .remapped
+            .insert(Type::Module(id), Type::Module(remapped));
         assert!(prev.is_none());
         remapped
     }
 
     fn remap_defined_type(&mut self, types: &Types, id: DefinedTypeId) -> DefinedTypeId {
-        if let Some(kind) = self
-            .aggregated
-            .get(&ItemKind::Type(Type::Value(ValueType::Defined(id))))
-        {
+        if let Some(kind) = self.remapped.get(&Type::Value(ValueType::Defined(id))) {
             return match kind {
-                ItemKind::Type(Type::Value(ValueType::Defined(id))) => *id,
+                Type::Value(ValueType::Defined(id)) => *id,
                 _ => panic!("expected a defined type got {kind:?}"),
             };
         }
@@ -721,9 +809,9 @@ impl TypeAggregator {
         };
 
         let remapped = self.types.add_defined_type(defined);
-        let prev = self.aggregated.insert(
-            ItemKind::Type(Type::Value(ValueType::Defined(id))),
-            ItemKind::Type(Type::Value(ValueType::Defined(remapped))),
+        let prev = self.remapped.insert(
+            Type::Value(ValueType::Defined(id)),
+            Type::Value(ValueType::Defined(remapped)),
         );
         assert!(prev.is_none());
         remapped
