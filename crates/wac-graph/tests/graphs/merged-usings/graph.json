@@ -2,11 +2,11 @@
     "packages": [
         {
             "name": "test:foo",
-            "path": "component.wat"
+            "path": "component.wit"
         },
         {
             "name": "test:bar",
-            "path": "component.wat"
+            "path": "component.wit"
         }
     ],
     "nodes": [

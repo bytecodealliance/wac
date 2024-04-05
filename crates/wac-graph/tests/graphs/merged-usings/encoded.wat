@@ -51,7 +51,7 @@
       (export "memory" (memory 0))
       (export "cabi_realloc" (func 3))
       (@producers
-        (processed-by "wit-component" "0.201.0")
+        (processed-by "wit-component" "0.202.0")
       )
     )
     (alias export 0 "x" (type (;3;)))
@@ -96,7 +96,7 @@
     )
     (export (;3;) "foo:bar/qux" (instance 2))
     (@producers
-      (processed-by "wit-component" "0.201.0")
+      (processed-by "wit-component" "0.202.0")
     )
   )
   (instance $component2 (;2;) (instantiate 0
@@ -140,7 +140,7 @@
       (export "memory" (memory 0))
       (export "cabi_realloc" (func 3))
       (@producers
-        (processed-by "wit-component" "0.201.0")
+        (processed-by "wit-component" "0.202.0")
       )
     )
     (alias export 0 "x" (type (;3;)))
@@ -185,7 +185,7 @@
     )
     (export (;3;) "foo:bar/qux" (instance 2))
     (@producers
-      (processed-by "wit-component" "0.201.0")
+      (processed-by "wit-component" "0.202.0")
     )
   )
   (instance $component1 (;4;) (instantiate 1

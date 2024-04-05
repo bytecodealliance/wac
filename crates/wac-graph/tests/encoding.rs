@@ -4,10 +4,13 @@ use semver::Version;
 use serde::Deserialize;
 use std::{
     collections::HashMap,
+    ffi::OsStr,
     fs::{self, File},
     path::{Path, PathBuf},
 };
 use wac_graph::{types::Package, CompositionGraph, EncodeOptions, NodeId, PackageId};
+use wit_component::{ComponentEncoder, StringEncoding};
+use wit_parser::Resolve;
 
 /// Represents a node to add to a composition graph.
 #[derive(Deserialize)]
@@ -118,12 +121,52 @@ impl GraphFile {
 
         for (index, package) in self.packages.iter().enumerate() {
             let path = root.join(&package.path);
-            let bytes = wat::parse_file(&path).with_context(|| {
-                format!(
-                    "failed to parse package `{path}` for test case `{test_case}`",
-                    path = path.display()
-                )
-            })?;
+            let bytes = match path.extension().and_then(OsStr::to_str) {
+                Some("wit") => {
+                    let mut resolve = Resolve::default();
+                    let id = resolve.push_file(&path).with_context(|| {
+                        format!(
+                            "failed to parse package file `{path}` for test case `{test_case}`",
+                            path = path.display()
+                        )
+                    })?;
+                    let world = resolve.select_world(id, None).with_context(|| {
+                        format!(
+                            "failed to select world from `{path}` for test case `{test_case}`",
+                            path = path.display()
+                        )
+                    })?;
+
+                    let mut module = wit_component::dummy_module(&resolve, world);
+                    wit_component::embed_component_metadata(
+                        &mut module,
+                        &resolve,
+                        world,
+                        StringEncoding::default(),
+                    )
+                    .with_context(|| {
+                        format!(
+                            "failed to embed component metadata from package `{path}` for test case `{test_case}`",
+                            path = path.display()
+                        )
+                    })?;
+
+                    let encoder = ComponentEncoder::default().validate(true).module(&module)?;
+                    encoder
+                        .encode()
+                        .with_context(|| format!("failed to encode a component from module derived from package `{path}` for test case `{test_case}`", path = path.display()))?
+                }
+                Some("wat") => wat::parse_file(&path).with_context(|| {
+                    format!(
+                        "failed to parse package `{path}` for test case `{test_case}`",
+                        path = path.display()
+                    )
+                })?,
+                _ => bail!(
+                    "unexpected file extension for package file `{path}`",
+                    path = package.path.display()
+                ),
+            };
 
             let package = Package::from_bytes(&package.name, package.version.as_ref(), bytes)
                 .with_context(|| {
@@ -226,6 +269,9 @@ impl GraphFile {
 /// * [required] `graph.json` - a JSON representation of a composition graph
 ///   (see above for serialization format).
 /// * [optional] `*.wat` - packages (i.e. components) referenced from `graph.json`.
+/// * [optional] `*.wit` - packages (i.e. components) referenced from `graph.json`;
+///   the file is expected to contain a single world representing the world of
+///   the component; a dummy module will be created to implement the component.
 ///
 /// And the output files are one of the following:
 ///
