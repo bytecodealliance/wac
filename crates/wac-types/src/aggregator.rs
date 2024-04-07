@@ -57,6 +57,9 @@ impl TypeAggregator {
         kind: ItemKind,
         checker: &mut SubtypeChecker,
     ) -> Result<Self> {
+        // First check if this import has already been remapped into our
+        // types collection.
+        // If it has already been remapped, do a merge; otherwise, remap it.
         if let Some(existing) = self.names.get(name).copied() {
             self.merge_item_kind(existing, types, kind, checker)?;
             return Ok(self);
@@ -160,7 +163,7 @@ impl TypeAggregator {
     ) -> Result<()> {
         let source = &types[id];
         for (name, used) in &source.uses {
-            let source_interface = types[used.interface]
+            let used_interface = types[used.interface]
                 .id
                 .as_ref()
                 .context("used type has no interface identifier")?;
@@ -173,8 +176,8 @@ impl TypeAggregator {
                     .context("used type has no interface identifier")?;
 
                 // The interface names must match
-                if existing_interface != source_interface {
-                    bail!("cannot merge used type `{name}` as it is expected to be from interface `{existing_interface}` but it is from interface `{source_interface}`");
+                if existing_interface != used_interface {
+                    bail!("cannot merge used type `{name}` as it is expected to be from interface `{existing_interface}` but it is from interface `{used_interface}`");
                 }
 
                 // The types must be exported with the same name
@@ -193,14 +196,13 @@ impl TypeAggregator {
                     );
                 }
                 None => {
-                    let prev = self.types[existing].uses.insert(
+                    self.types[existing].uses.insert(
                         name.clone(),
                         UsedType {
                             interface: remapped,
                             name: used.name.clone(),
                         },
                     );
-                    assert!(prev.is_none());
                 }
             }
         }
@@ -298,7 +300,7 @@ impl TypeAggregator {
     ) -> Result<()> {
         let source = &types[id];
         for (name, used) in &source.uses {
-            let source_interface = types[used.interface]
+            let used_interface = types[used.interface]
                 .id
                 .as_ref()
                 .context("used type has no interface identifier")?;
@@ -311,8 +313,8 @@ impl TypeAggregator {
                     .context("used type has no interface identifier")?;
 
                 // The interface names must match
-                if existing_interface != source_interface {
-                    bail!("cannot merge used type `{name}` as it is expected to be from interface `{existing_interface}` but it is from interface `{source_interface}`");
+                if existing_interface != used_interface {
+                    bail!("cannot merge used type `{name}` as it is expected to be from interface `{existing_interface}` but it is from interface `{used_interface}`");
                 }
 
                 // The types must be exported with the same name
