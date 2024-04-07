@@ -3884,6 +3884,8 @@ dependencies = [
  "wasmparser 0.202.0",
  "wasmprinter 0.202.0",
  "wat",
+ "wit-component",
+ "wit-parser",
 ]
 
 [[package]]
@@ -4604,6 +4606,7 @@ dependencies = [
  "wasm-encoder 0.202.0",
  "wasm-metadata",
  "wasmparser 0.202.0",
+ "wat",
  "wit-parser",
 ]
 

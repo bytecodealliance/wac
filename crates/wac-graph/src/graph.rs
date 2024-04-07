@@ -1351,6 +1351,7 @@ impl<'a> CompositionGraphEncoder<'a> {
         let mut arguments = Vec::new();
         let mut encoded = HashMap::new();
         let mut cache = Default::default();
+        let mut checker = SubtypeChecker::new(&mut cache);
 
         // Enumerate the instantiation nodes and populate the import types
         for node in self.0.nodes() {
@@ -1379,7 +1380,7 @@ impl<'a> CompositionGraphEncoder<'a> {
                 }
 
                 aggregator = aggregator
-                    .aggregate(name, package.types(), *kind, &mut cache)
+                    .aggregate(name, package.types(), *kind, &mut checker)
                     .map_err(|e| Error::ImportTypeMergeConflict {
                         import: name.clone(),
                         source: e,
@@ -1403,6 +1404,11 @@ impl<'a> CompositionGraphEncoder<'a> {
                     ItemKind::Value(_) => ComponentTypeRef::Value(ComponentValType::Type(ty)),
                 },
             );
+
+            // Ensure we insert an instance index into the current scope
+            if let ItemKind::Instance(id) = kind {
+                state.current.instances.insert(id, index);
+            }
 
             let prev = encoded.insert(name, (kind.into(), index));
             assert!(prev.is_none());
