@@ -1405,11 +1405,6 @@ impl<'a> CompositionGraphEncoder<'a> {
                 },
             );
 
-            // Ensure we insert an instance index into the current scope
-            if let ItemKind::Instance(id) = kind {
-                state.current.instances.insert(id, index);
-            }
-
             let prev = encoded.insert(name, (kind.into(), index));
             assert!(prev.is_none());
         }

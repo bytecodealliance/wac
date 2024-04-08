@@ -325,6 +325,7 @@ impl<'a> TypeEncoder<'a> {
                 let index = state.current.encodable.type_count();
                 state.current.encodable.ty().instance(&ty);
                 log::debug!("instance {id} encoded to type index {index}");
+                state.current.instances.insert(id, index);
                 index
             }
             _ => panic!("expected the pushed encodable to be an instance type"),
