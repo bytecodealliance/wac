@@ -312,7 +312,13 @@ fn encoding() -> Result<()> {
             .into_composition_graph(&path, test_case)
             .and_then(|graph| {
                 graph
-                    .encode(EncodeOptions::default())
+                    .encode(EncodeOptions {
+                        // We import the component definitions instead
+                        // of defining them inline to make the encoded wat
+                        // more readable and to test encoding a bit more.
+                        define_components: false,
+                        validate: true,
+                    })
                     .context("failed to encode the graph")
             });
 
