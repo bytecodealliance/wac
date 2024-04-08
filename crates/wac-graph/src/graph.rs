@@ -193,7 +193,7 @@ pub enum Error {
     MustExportDefinition,
     /// An implicit import on an instantiation conflicts with an explicit import node.
     #[error("an instantiation of package `{package}` implicitly imports an item named `{name}`, but it conflicts with an explicit import node of the same name")]
-    ImplicitImportConfig {
+    ImplicitImportConflict {
         /// The existing import node.
         import: NodeId,
         /// The instantiation node with the implicit import
@@ -627,7 +627,7 @@ impl CompositionGraph {
     ///
     /// Initially the instantiation will have no satisfied arguments.
     ///
-    /// Use `add_argument_edge` to satisfy an argument on an instantiation node.
+    /// Use `set_instantiation_argument` to set an argument on an instantiation node.
     pub fn instantiate(&mut self, package: PackageId) -> GraphResult<NodeId> {
         let pkg = self.get_package(package).ok_or(Error::InvalidPackageId)?;
         let node = self.alloc_node(NodeData::new(
@@ -1376,7 +1376,7 @@ impl<'a> CompositionGraphEncoder<'a> {
                 .filter(|(i, _)| !data.is_arg_satisfied(*i))
             {
                 if let Some(import) = self.0.imports.get(name).copied() {
-                    return Err(Error::ImplicitImportConfig {
+                    return Err(Error::ImplicitImportConflict {
                         import,
                         instantiation: node,
                         package: PackageKey::new(package),

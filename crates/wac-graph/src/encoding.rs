@@ -96,9 +96,9 @@ impl Default for Encodable {
 
 #[derive(Default)]
 pub struct Scope {
-    /// The map of types to their encoded indexes.
+    /// The map from types to encoded type index.
     pub type_indexes: IndexMap<Type, u32>,
-    /// The map of imported instances in this scope.
+    /// The map from interface name (i.e. id) to encoded instance index.
     pub instances: IndexMap<String, u32>,
     /// The map of import/export name to their alias indexes.
     type_aliases: IndexMap<String, u32>,
