@@ -1322,7 +1322,10 @@ impl<'a> CompositionGraphEncoder<'a> {
             let data = self.0.node_data(node);
             let index = match &data.kind {
                 NodeKind::Definition => self.definition(&mut state, data),
-                NodeKind::Import(name) => self.import(&mut state, name, data),
+                NodeKind::Import(name) => {
+                    let types = self.0.node_types(data);
+                    self.import(&mut state, name, types, data.item_kind)
+                }
                 NodeKind::Instantiation(_) => self.instantiation(&mut state, node, data, options),
                 NodeKind::Alias => self.alias(&mut state, node, data),
             };
@@ -1352,6 +1355,8 @@ impl<'a> CompositionGraphEncoder<'a> {
         let mut encoded = HashMap::new();
         let mut cache = Default::default();
         let mut checker = SubtypeChecker::new(&mut cache);
+
+        log::debug!("populating implicit imports");
 
         // Enumerate the instantiation nodes and populate the import types
         for node in self.0.nodes() {
@@ -1390,28 +1395,10 @@ impl<'a> CompositionGraphEncoder<'a> {
         }
 
         // Next encode the imports
-        let encoder = TypeEncoder::new(aggregator.types());
         for (name, kind) in aggregator.iter() {
-            let ty = encoder.ty(state, kind.ty(), None);
-            let index = state.builder().import(
-                name,
-                match kind {
-                    ItemKind::Type(_) => ComponentTypeRef::Type(TypeBounds::Eq(ty)),
-                    ItemKind::Func(_) => ComponentTypeRef::Func(ty),
-                    ItemKind::Instance(_) => ComponentTypeRef::Instance(ty),
-                    ItemKind::Component(_) => ComponentTypeRef::Component(ty),
-                    ItemKind::Module(_) => ComponentTypeRef::Module(ty),
-                    ItemKind::Value(_) => ComponentTypeRef::Value(ComponentValType::Type(ty)),
-                },
-            );
-
-            // Ensure we insert an instance index into the current scope
-            if let ItemKind::Instance(id) = kind {
-                state.current.instances.insert(id, index);
-            }
-
-            let prev = encoded.insert(name, (kind.into(), index));
-            assert!(prev.is_none());
+            log::debug!("import `{name}` is being implicitly imported");
+            let index = self.import(state, name, aggregator.types(), kind);
+            encoded.insert(name, (kind.into(), index));
         }
 
         // Finally populate the implicit argument map
@@ -1432,7 +1419,7 @@ impl<'a> CompositionGraphEncoder<'a> {
         let name = data.export.as_deref().unwrap();
 
         log::debug!(
-            "encoding definition `{name}` ({kind})",
+            "encoding definition for {kind} `{name}`",
             kind = data.item_kind.desc(types)
         );
 
@@ -1460,50 +1447,54 @@ impl<'a> CompositionGraphEncoder<'a> {
         index
     }
 
-    fn import(&self, state: &mut State, name: &str, data: &NodeData) -> u32 {
-        let types = self.0.node_types(data);
-
-        log::debug!(
-            "encoding import `{name}` ({kind})",
-            kind = data.item_kind.desc(self.0.node_types(data))
-        );
-
-        let encoder = TypeEncoder::new(types);
-        let ty = match data.item_kind {
-            ItemKind::Type(ty) => {
-                ComponentTypeRef::Type(TypeBounds::Eq(encoder.ty(state, ty, None)))
-            }
-            ItemKind::Func(id) => ComponentTypeRef::Func(encoder.ty(state, Type::Func(id), None)),
-            ItemKind::Instance(id) => {
-                // Check to see if the instance has already been imported
-                // This may occur when an interface uses another
-                if let Some(index) = state.current.instances.get(&id) {
-                    log::debug!("skipping import of interface {id} as it was already imported with instance index {index}");
+    fn import(&self, state: &mut State, name: &str, types: &Types, kind: ItemKind) -> u32 {
+        // Check to see if this is an import of an interface that's already been
+        // imported; this can happen based on importing of shared dependencies
+        if let ItemKind::Instance(id) = kind {
+            if let Some(id) = &types[id].id {
+                if let Some(index) = state.current.instances.get(id) {
                     return *index;
                 }
-
-                ComponentTypeRef::Instance(encoder.ty(state, Type::Interface(id), None))
             }
-            ItemKind::Component(id) => {
-                ComponentTypeRef::Component(encoder.ty(state, Type::World(id), None))
-            }
-            ItemKind::Module(id) => {
-                ComponentTypeRef::Module(encoder.ty(state, Type::Module(id), None))
-            }
-            ItemKind::Value(ty) => ComponentTypeRef::Value(encoder.value_type(state, ty)),
-        };
+        }
 
-        let index = state.builder().import(name, ty);
-        log::debug!("import `{name}` encoded to {ty:?}");
+        log::debug!(
+            "encoding import of {kind} `{name}`",
+            kind = kind.desc(types)
+        );
 
-        match data.item_kind {
+        // Encode the type and import
+        let encoder = TypeEncoder::new(types);
+        let ty = encoder.ty(state, kind.ty(), None);
+        let index = state.builder().import(
+            name,
+            match kind {
+                ItemKind::Type(_) => ComponentTypeRef::Type(TypeBounds::Eq(ty)),
+                ItemKind::Func(_) => ComponentTypeRef::Func(ty),
+                ItemKind::Instance(_) => ComponentTypeRef::Instance(ty),
+                ItemKind::Component(_) => ComponentTypeRef::Component(ty),
+                ItemKind::Module(_) => ComponentTypeRef::Module(ty),
+                ItemKind::Value(_) => ComponentTypeRef::Value(ComponentValType::Type(ty)),
+            },
+        );
+
+        log::debug!(
+            "import `{name}` encoded to {desc} index {index}",
+            desc = kind.desc(types)
+        );
+
+        match kind {
             ItemKind::Type(ty) => {
                 // Remap to the imported index
                 state.current.type_indexes.insert(ty, index);
             }
             ItemKind::Instance(id) => {
-                log::debug!("interface {id} is available for aliasing as instance index {index}");
-                state.current.instances.insert(id, index);
+                if let Some(id) = &types[id].id {
+                    log::debug!(
+                        "interface `{id}` is available for aliasing as instance index {index}"
+                    );
+                    state.current.instances.insert(id.clone(), index);
+                }
             }
             _ => {}
         }
@@ -1597,7 +1588,7 @@ impl<'a> CompositionGraphEncoder<'a> {
         let instance = state.node_indexes[&source];
 
         log::debug!(
-            "encoding alias for export `{export}` ({kind}) of instance {instance}",
+            "encoding alias for {kind} export `{export}` of instance index {instance}",
             kind = kind.desc(types),
         );
 
@@ -1607,7 +1598,10 @@ impl<'a> CompositionGraphEncoder<'a> {
             name: export,
         });
 
-        log::debug!("alias of export `{export}` encoded to index {index} ({kind:?})",);
+        log::debug!(
+            "alias of export `{export}` encoded to {kind} index {index}",
+            kind = kind.desc(types)
+        );
         index
     }
 
