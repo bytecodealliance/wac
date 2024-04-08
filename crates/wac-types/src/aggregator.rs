@@ -131,6 +131,9 @@ impl TypeAggregator {
                     )
                     .is_ok()
                 {
+                    // Keep track that the source type should be replaced with the
+                    // target type wherever it's used.
+                    self.remapped.insert(source_kind.ty(), target_kind.ty());
                     continue;
                 }
 
