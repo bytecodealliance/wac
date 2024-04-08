@@ -111,6 +111,41 @@ impl GraphFile {
         Ok(graph)
     }
 
+    fn load_wit_package(test_case: &str, path: &Path) -> Result<Vec<u8>> {
+        let mut resolve = Resolve::default();
+        let (id, _) = resolve.push_path(path).with_context(|| {
+            format!(
+                "failed to parse package file `{path}` for test case `{test_case}`",
+                path = path.display()
+            )
+        })?;
+        let world = resolve.select_world(id, None).with_context(|| {
+            format!(
+                "failed to select world from `{path}` for test case `{test_case}`",
+                path = path.display()
+            )
+        })?;
+
+        let mut module = wit_component::dummy_module(&resolve, world);
+        wit_component::embed_component_metadata(
+            &mut module,
+            &resolve,
+            world,
+            StringEncoding::default(),
+        )
+        .with_context(|| {
+            format!(
+            "failed to embed component metadata from package `{path}` for test case `{test_case}`",
+            path = path.display()
+        )
+        })?;
+
+        let encoder = ComponentEncoder::default().validate(true).module(&module)?;
+        encoder
+            .encode()
+            .with_context(|| format!("failed to encode a component from module derived from package `{path}` for test case `{test_case}`", path = path.display()))
+    }
+
     fn register_packages(
         &self,
         root: &Path,
@@ -122,40 +157,7 @@ impl GraphFile {
         for (index, package) in self.packages.iter().enumerate() {
             let path = root.join(&package.path);
             let bytes = match path.extension().and_then(OsStr::to_str) {
-                Some("wit") => {
-                    let mut resolve = Resolve::default();
-                    let id = resolve.push_file(&path).with_context(|| {
-                        format!(
-                            "failed to parse package file `{path}` for test case `{test_case}`",
-                            path = path.display()
-                        )
-                    })?;
-                    let world = resolve.select_world(id, None).with_context(|| {
-                        format!(
-                            "failed to select world from `{path}` for test case `{test_case}`",
-                            path = path.display()
-                        )
-                    })?;
-
-                    let mut module = wit_component::dummy_module(&resolve, world);
-                    wit_component::embed_component_metadata(
-                        &mut module,
-                        &resolve,
-                        world,
-                        StringEncoding::default(),
-                    )
-                    .with_context(|| {
-                        format!(
-                            "failed to embed component metadata from package `{path}` for test case `{test_case}`",
-                            path = path.display()
-                        )
-                    })?;
-
-                    let encoder = ComponentEncoder::default().validate(true).module(&module)?;
-                    encoder
-                        .encode()
-                        .with_context(|| format!("failed to encode a component from module derived from package `{path}` for test case `{test_case}`", path = path.display()))?
-                }
+                Some("wit") => Self::load_wit_package(test_case, &path)?,
                 Some("wat") => wat::parse_file(&path).with_context(|| {
                     format!(
                         "failed to parse package `{path}` for test case `{test_case}`",
