@@ -1,7 +1,7 @@
 use crate::{
     CoreExtern, CoreFuncType, DefinedType, Enum, Flags, FuncResult, FuncType, FuncTypeId,
-    Interface, InterfaceId, ItemKind, ModuleType, ModuleTypeId, Record, Resource, ResourceId, Type,
-    Types, UsedType, ValueType, Variant, World, WorldId,
+    Interface, InterfaceId, ItemKind, ModuleType, ModuleTypeId, Record, Resource, ResourceAlias,
+    ResourceId, Type, Types, UsedType, ValueType, Variant, World, WorldId,
 };
 use anyhow::{bail, Context, Result};
 use indexmap::IndexMap;
@@ -764,7 +764,16 @@ impl<'a> TypeConverter<'a> {
         if let Some(resource_id) = self.resource_map.get(&id.resource()) {
             let alias_id = self.types.add_resource(Resource {
                 name: name.to_owned(),
-                alias_of: Some(*resource_id),
+                alias: Some(ResourceAlias {
+                    owner: match self
+                        .find_owner(ComponentAnyTypeId::Resource(id))
+                        .expect("should have owner")
+                    {
+                        (Owner::Interface(id), _) => Some(*id),
+                        _ => None,
+                    },
+                    source: *resource_id,
+                }),
             });
             self.cache.insert(key, Entity::Resource(alias_id));
             return alias_id;
@@ -773,7 +782,7 @@ impl<'a> TypeConverter<'a> {
         // Otherwise, this is a new resource
         let resource_id = self.types.add_resource(Resource {
             name: name.to_owned(),
-            alias_of: None,
+            alias: None,
         });
 
         self.resource_map.insert(id.resource(), resource_id);
