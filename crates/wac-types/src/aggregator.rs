@@ -1,7 +1,7 @@
 use crate::{
     DefinedType, DefinedTypeId, FuncResult, FuncType, FuncTypeId, Interface, InterfaceId, ItemKind,
-    ModuleTypeId, Record, Resource, ResourceId, SubtypeCheck, SubtypeChecker, Type, Types,
-    UsedType, ValueType, Variant, World, WorldId,
+    ModuleTypeId, Record, Resource, ResourceAlias, ResourceId, SubtypeCheck, SubtypeChecker, Type,
+    Types, UsedType, ValueType, Variant, World, WorldId,
 };
 use anyhow::{bail, Context, Result};
 use indexmap::IndexMap;
@@ -544,7 +544,7 @@ impl TypeAggregator {
     ) -> Result<ItemKind> {
         match kind {
             ItemKind::Type(ty) => Ok(ItemKind::Type(self.remap_type(types, ty, checker)?)),
-            ItemKind::Func(id) => Ok(ItemKind::Func(self.remap_func_type(types, id))),
+            ItemKind::Func(id) => Ok(ItemKind::Func(self.remap_func_type(types, id, checker)?)),
             ItemKind::Instance(id) => Ok(ItemKind::Instance(
                 self.remap_interface(types, id, checker)?,
             )),
@@ -552,7 +552,7 @@ impl TypeAggregator {
                 Ok(ItemKind::Component(self.remap_world(types, id, checker)?))
             }
             ItemKind::Module(id) => Ok(ItemKind::Module(self.remap_module_type(types, id))),
-            ItemKind::Value(ty) => Ok(ItemKind::Value(self.remap_value_type(types, ty))),
+            ItemKind::Value(ty) => Ok(ItemKind::Value(self.remap_value_type(types, ty, checker)?)),
         }
     }
 
@@ -563,19 +563,24 @@ impl TypeAggregator {
         checker: &mut SubtypeChecker,
     ) -> Result<Type> {
         match ty {
-            Type::Resource(id) => Ok(Type::Resource(self.remap_resource(types, id))),
-            Type::Func(id) => Ok(Type::Func(self.remap_func_type(types, id))),
-            Type::Value(ty) => Ok(Type::Value(self.remap_value_type(types, ty))),
+            Type::Resource(id) => Ok(Type::Resource(self.remap_resource(types, id, checker)?)),
+            Type::Func(id) => Ok(Type::Func(self.remap_func_type(types, id, checker)?)),
+            Type::Value(ty) => Ok(Type::Value(self.remap_value_type(types, ty, checker)?)),
             Type::Interface(id) => Ok(Type::Interface(self.remap_interface(types, id, checker)?)),
             Type::World(id) => Ok(Type::World(self.remap_world(types, id, checker)?)),
             Type::Module(id) => Ok(Type::Module(self.remap_module_type(types, id))),
         }
     }
 
-    fn remap_resource(&mut self, types: &Types, id: ResourceId) -> ResourceId {
+    fn remap_resource(
+        &mut self,
+        types: &Types,
+        id: ResourceId,
+        checker: &mut SubtypeChecker,
+    ) -> Result<ResourceId> {
         if let Some(kind) = self.remapped.get(&Type::Resource(id)) {
             return match kind {
-                Type::Resource(id) => *id,
+                Type::Resource(id) => Ok(*id),
                 _ => panic!("expected a resource"),
             };
         }
@@ -583,7 +588,18 @@ impl TypeAggregator {
         let resource = &types[id];
         let remapped = Resource {
             name: resource.name.clone(),
-            alias_of: resource.alias_of.map(|id| self.remap_resource(types, id)),
+            alias: resource
+                .alias
+                .map(|a| -> Result<_> {
+                    Ok(ResourceAlias {
+                        owner: a
+                            .owner
+                            .map(|id| self.remap_interface(types, id, checker))
+                            .transpose()?,
+                        source: self.remap_resource(types, a.source, checker)?,
+                    })
+                })
+                .transpose()?,
         };
         let remapped_id = self.types.add_resource(remapped);
 
@@ -591,13 +607,18 @@ impl TypeAggregator {
             .remapped
             .insert(Type::Resource(id), Type::Resource(remapped_id));
         assert!(prev.is_none());
-        remapped_id
+        Ok(remapped_id)
     }
 
-    fn remap_func_type(&mut self, types: &Types, id: FuncTypeId) -> FuncTypeId {
+    fn remap_func_type(
+        &mut self,
+        types: &Types,
+        id: FuncTypeId,
+        checker: &mut SubtypeChecker,
+    ) -> Result<FuncTypeId> {
         if let Some(kind) = self.remapped.get(&Type::Func(id)) {
             return match kind {
-                Type::Func(id) => *id,
+                Type::Func(id) => Ok(*id),
                 _ => panic!("expected a function type"),
             };
         }
@@ -607,16 +628,26 @@ impl TypeAggregator {
             params: ty
                 .params
                 .iter()
-                .map(|(n, ty)| (n.clone(), self.remap_value_type(types, *ty)))
-                .collect(),
-            results: ty.results.as_ref().map(|r| match r {
-                FuncResult::Scalar(ty) => FuncResult::Scalar(self.remap_value_type(types, *ty)),
-                FuncResult::List(tys) => FuncResult::List(
-                    tys.iter()
-                        .map(|(n, ty)| (n.clone(), self.remap_value_type(types, *ty)))
-                        .collect(),
-                ),
-            }),
+                .map(|(n, ty)| Ok((n.clone(), self.remap_value_type(types, *ty, checker)?)))
+                .collect::<Result<_>>()?,
+            results: ty
+                .results
+                .as_ref()
+                .map(|r| -> Result<_> {
+                    match r {
+                        FuncResult::Scalar(ty) => Ok(FuncResult::Scalar(
+                            self.remap_value_type(types, *ty, checker)?,
+                        )),
+                        FuncResult::List(tys) => Ok(FuncResult::List(
+                            tys.iter()
+                                .map(|(n, ty)| {
+                                    Ok((n.clone(), self.remap_value_type(types, *ty, checker)?))
+                                })
+                                .collect::<Result<_>>()?,
+                        )),
+                    }
+                })
+                .transpose()?,
         };
 
         let remapped_id = self.types.add_func_type(remapped);
@@ -624,15 +655,24 @@ impl TypeAggregator {
             .remapped
             .insert(Type::Func(id), Type::Func(remapped_id));
         assert!(prev.is_none());
-        remapped_id
+        Ok(remapped_id)
     }
 
-    fn remap_value_type(&mut self, types: &Types, ty: ValueType) -> ValueType {
+    fn remap_value_type(
+        &mut self,
+        types: &Types,
+        ty: ValueType,
+        checker: &mut SubtypeChecker,
+    ) -> Result<ValueType> {
         match ty {
-            ValueType::Primitive(ty) => ValueType::Primitive(ty),
-            ValueType::Borrow(id) => ValueType::Borrow(self.remap_resource(types, id)),
-            ValueType::Own(id) => ValueType::Own(self.remap_resource(types, id)),
-            ValueType::Defined(id) => ValueType::Defined(self.remap_defined_type(types, id)),
+            ValueType::Primitive(ty) => Ok(ValueType::Primitive(ty)),
+            ValueType::Borrow(id) => {
+                Ok(ValueType::Borrow(self.remap_resource(types, id, checker)?))
+            }
+            ValueType::Own(id) => Ok(ValueType::Own(self.remap_resource(types, id, checker)?)),
+            ValueType::Defined(id) => Ok(ValueType::Defined(
+                self.remap_defined_type(types, id, checker)?,
+            )),
         }
     }
 
@@ -769,10 +809,15 @@ impl TypeAggregator {
         remapped
     }
 
-    fn remap_defined_type(&mut self, types: &Types, id: DefinedTypeId) -> DefinedTypeId {
+    fn remap_defined_type(
+        &mut self,
+        types: &Types,
+        id: DefinedTypeId,
+        checker: &mut SubtypeChecker,
+    ) -> Result<DefinedTypeId> {
         if let Some(kind) = self.remapped.get(&Type::Value(ValueType::Defined(id))) {
             return match kind {
-                Type::Value(ValueType::Defined(id)) => *id,
+                Type::Value(ValueType::Defined(id)) => Ok(*id),
                 _ => panic!("expected a defined type got {kind:?}"),
             };
         }
@@ -780,37 +825,49 @@ impl TypeAggregator {
         let defined = match &types[id] {
             DefinedType::Tuple(tys) => DefinedType::Tuple(
                 tys.iter()
-                    .map(|ty| self.remap_value_type(types, *ty))
-                    .collect(),
+                    .map(|ty| self.remap_value_type(types, *ty, checker))
+                    .collect::<Result<_>>()?,
             ),
-            DefinedType::List(ty) => DefinedType::List(self.remap_value_type(types, *ty)),
-            DefinedType::Option(ty) => DefinedType::Option(self.remap_value_type(types, *ty)),
+            DefinedType::List(ty) => DefinedType::List(self.remap_value_type(types, *ty, checker)?),
+            DefinedType::Option(ty) => {
+                DefinedType::Option(self.remap_value_type(types, *ty, checker)?)
+            }
             DefinedType::Result { ok, err } => DefinedType::Result {
-                ok: ok.as_ref().map(|ty| self.remap_value_type(types, *ty)),
-                err: err.as_ref().map(|ty| self.remap_value_type(types, *ty)),
+                ok: ok
+                    .as_ref()
+                    .map(|ty| self.remap_value_type(types, *ty, checker))
+                    .transpose()?,
+                err: err
+                    .as_ref()
+                    .map(|ty| self.remap_value_type(types, *ty, checker))
+                    .transpose()?,
             },
             DefinedType::Variant(v) => DefinedType::Variant(Variant {
                 cases: v
                     .cases
                     .iter()
                     .map(|(n, ty)| {
-                        (
+                        Ok((
                             n.clone(),
-                            ty.as_ref().map(|ty| self.remap_value_type(types, *ty)),
-                        )
+                            ty.as_ref()
+                                .map(|ty| self.remap_value_type(types, *ty, checker))
+                                .transpose()?,
+                        ))
                     })
-                    .collect(),
+                    .collect::<Result<_>>()?,
             }),
             DefinedType::Record(r) => DefinedType::Record(Record {
                 fields: r
                     .fields
                     .iter()
-                    .map(|(n, ty)| (n.clone(), self.remap_value_type(types, *ty)))
-                    .collect(),
+                    .map(|(n, ty)| Ok((n.clone(), self.remap_value_type(types, *ty, checker)?)))
+                    .collect::<Result<_>>()?,
             }),
             DefinedType::Flags(f) => DefinedType::Flags(f.clone()),
             DefinedType::Enum(e) => DefinedType::Enum(e.clone()),
-            DefinedType::Alias(ty) => DefinedType::Alias(self.remap_value_type(types, *ty)),
+            DefinedType::Alias(ty) => {
+                DefinedType::Alias(self.remap_value_type(types, *ty, checker)?)
+            }
         };
 
         let remapped = self.types.add_defined_type(defined);
@@ -819,6 +876,6 @@ impl TypeAggregator {
             Type::Value(ValueType::Defined(remapped)),
         );
         assert!(prev.is_none());
-        remapped
+        Ok(remapped)
     }
 }

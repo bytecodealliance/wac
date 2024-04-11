@@ -14,6 +14,7 @@ use wasm_encoder::{
 
 /// A type used to abstract the API differences between a component builder,
 /// component type, and instance type from `wasm-encoder`.
+#[derive(Debug)]
 enum Encodable {
     Builder(ComponentBuilder),
     Instance(InstanceType),
@@ -94,7 +95,7 @@ impl Default for Encodable {
     }
 }
 
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct Scope {
     /// The map from types to encoded type index.
     pub type_indexes: IndexMap<Type, u32>,
@@ -108,7 +109,7 @@ pub struct Scope {
     encodable: Encodable,
 }
 
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct State {
     /// The stack of encoding scopes.
     scopes: Vec<Scope>,
@@ -630,7 +631,8 @@ impl<'a> TypeEncoder<'a> {
 
     fn import(&self, state: &mut State, name: &str, kind: ItemKind) {
         if let ItemKind::Type(Type::Resource(id)) = kind {
-            return self.import_resource(state, name, id);
+            self.import_resource(state, name, id);
+            return;
         }
 
         log::debug!("encoding {kind} import `{name}`", kind = kind.desc(self.0));
@@ -669,9 +671,9 @@ impl<'a> TypeEncoder<'a> {
         }
     }
 
-    fn import_resource(&self, state: &mut State, name: &str, id: ResourceId) {
-        if state.current.resources.contains_key(name) {
-            return;
+    pub fn import_resource(&self, state: &mut State, name: &str, id: ResourceId) -> u32 {
+        if let Some(index) = state.current.resources.get(name) {
+            return *index;
         }
 
         log::debug!("encoding import of resource `{name}`");
@@ -687,17 +689,43 @@ impl<'a> TypeEncoder<'a> {
 
             log::debug!("encoded outer alias for resource `{name}` to type index {index}");
             index
-        } else if let Some(alias_of) = resource.alias_of {
-            // This is an alias to another resource at the same scope
-            let orig =
-                state.current.resources[self.0[self.0.resolve_resource(alias_of)].name.as_str()];
+        } else if let Some(alias) = resource.alias {
+            let source = self.0.resolve_resource(alias.source);
+            let source_index = if let Some(index) =
+                state.current.resources.get(self.0[source].name.as_str())
+            {
+                // The source resource was previously imported
+                *index
+            } else if let Some(index) = state.current.type_indexes.get(&Type::Resource(source)) {
+                // The source resource isn't directly imported, but was previously aliased
+                *index
+            } else {
+                // Otherwise, we need to alias the source resource
+                // This should only occur for resources owned by interfaces
+                let source_index = state.current.encodable.type_count();
+                let iid = self.0[alias.owner.expect("should have owner")]
+                    .id
+                    .as_deref()
+                    .expect("expected an interface with an id");
+                state.current.encodable.alias(Alias::InstanceExport {
+                    instance: state.current.instances[iid],
+                    kind: ComponentExportKind::Type,
+                    name: self.0[source].name.as_str(),
+                });
+                state
+                    .current
+                    .type_indexes
+                    .insert(Type::Resource(source), source_index);
+                source_index
+            };
+
             let index = state.current.encodable.type_count();
             state
                 .current
                 .encodable
-                .import_type(name, ComponentTypeRef::Type(TypeBounds::Eq(orig)));
+                .import_type(name, ComponentTypeRef::Type(TypeBounds::Eq(source_index)));
 
-            log::debug!("encoded import for resource `{name}` as type index {index} (alias of type index {orig})");
+            log::debug!("encoded import for resource `{name}` as type index {index} (alias of type index {source_index})");
             index
         } else {
             // Otherwise, this is a new resource type, import with a subtype bounds
@@ -712,6 +740,7 @@ impl<'a> TypeEncoder<'a> {
         };
 
         state.current.resources.insert(resource.name.clone(), index);
+        index
     }
 
     fn export(&self, state: &mut State, name: &str, kind: ItemKind) -> u32 {
@@ -759,10 +788,10 @@ impl<'a> TypeEncoder<'a> {
                 Self::export_type(state, name, ComponentTypeRef::Type(TypeBounds::Eq(outer)));
             log::debug!("encoded outer alias for resource `{name}` as type index {index}");
             index
-        } else if let Some(alias_of) = resource.alias_of {
+        } else if let Some(alias) = resource.alias {
             // This is an alias to another resource at the same scope
-            let index =
-                state.current.resources[self.0[self.0.resolve_resource(alias_of)].name.as_str()];
+            let index = state.current.resources
+                [self.0[self.0.resolve_resource(alias.source)].name.as_str()];
             let index =
                 Self::export_type(state, name, ComponentTypeRef::Type(TypeBounds::Eq(index)));
             log::debug!("encoded alias for resource `{name}` as type index {index}");

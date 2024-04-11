@@ -1458,13 +1458,19 @@ impl<'a> CompositionGraphEncoder<'a> {
             }
         }
 
+        let encoder = TypeEncoder::new(types);
+
+        // Defer to special handling if the item being imported is a resource
+        if let ItemKind::Type(Type::Resource(id)) = kind {
+            return encoder.import_resource(state, name, id);
+        }
+
         log::debug!(
             "encoding import of {kind} `{name}`",
             kind = kind.desc(types)
         );
 
         // Encode the type and import
-        let encoder = TypeEncoder::new(types);
         let ty = encoder.ty(state, kind.ty(), None);
         let index = state.builder().import(
             name,
@@ -1712,7 +1718,7 @@ mod test {
         let mut graph = CompositionGraph::new();
         let id = graph.types_mut().add_resource(Resource {
             name: "a".to_string(),
-            alias_of: None,
+            alias: None,
         });
         assert!(matches!(
             graph.define_type("foo", Type::Resource(id)).unwrap_err(),

@@ -245,8 +245,8 @@ impl Types {
 
     /// Resolves any aliased resource id to the underlying defined resource id.
     pub fn resolve_resource(&self, mut id: ResourceId) -> ResourceId {
-        while let Some(alias_of) = &self[id].alias_of {
-            id = *alias_of;
+        while let Some(alias) = &self[id].alias {
+            id = alias.source;
         }
 
         id
@@ -679,6 +679,20 @@ impl fmt::Display for FuncKind {
     }
 }
 
+/// Represents information about an aliased resource.
+#[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
+#[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
+pub struct ResourceAlias {
+    /// The owning interface for the resource.
+    ///
+    /// This may be `None` if the resource is owned by a world.
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
+    pub owner: Option<InterfaceId>,
+    /// The id of the resource that was aliased.
+    pub source: ResourceId,
+}
+
 /// Represents a resource type.
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize))]
@@ -686,10 +700,9 @@ impl fmt::Display for FuncKind {
 pub struct Resource {
     /// The name of the resource.
     pub name: String,
-
-    /// The id of the resource that was aliased.
+    /// Information if the resource has been aliased.
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub alias_of: Option<ResourceId>,
+    pub alias: Option<ResourceAlias>,
 }
 
 /// Represents a variant.
