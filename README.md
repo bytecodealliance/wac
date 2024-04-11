@@ -8,10 +8,10 @@
   </p>
 
   <p>
-    <a href="https://github.com/bytecodealliance/wasm-tools/actions?query=workflow%3ACI"><img src="https://github.com/bytecodealliance/wasm-tools/workflows/CI/badge.svg" alt="build status" /></a>
-    <a href="https://crates.io/crates/wasm-tools"><img src="https://img.shields.io/crates/v/wac-cli.svg?style=flat-square" alt="Crates.io version" /></a>
+    <a href="https://github.com/bytecodealliance/wac/actions?query=workflow%3ACI"><img src="https://github.com/bytecodealliance/wac/workflows/CI/badge.svg" alt="build status" /></a>
+    <a href="https://crates.io/crates/wac-parser"><img src="https://img.shields.io/crates/v/wac-cli.svg?style=flat-square" alt="Crates.io version" /></a>
     <a href="https://crates.io/crates/wac-cli"><img src="https://img.shields.io/crates/d/wac-cli.svg?style=flat-square" alt="Download" /></a>
-    <a href="https://docs.rs/wac-cli/"><img src="https://img.shields.io/badge/docs-latest-blue.svg?style=flat-square" alt="docs.rs docs" /></a>
+    <a href="https://docs.rs/wac-parser/"><img src="https://img.shields.io/badge/docs-latest-blue.svg?style=flat-square" alt="docs.rs docs" /></a>
   </p>
 </div>
 
