@@ -14,16 +14,16 @@
       (export (;0;) "foo" (func (type 0)))
     )
   )
-  (import "i" (instance (;1;) (type 2)))
+  (import "i" (instance $i (;1;) (type 2)))
   (type (;3;)
     (instance
       (type (;0;) (func))
       (export (;0;) "baz" (func (type 0)))
     )
   )
-  (import "i2" (instance (;2;) (type 3)))
+  (import "i2" (instance $i2 (;2;) (type 3)))
   (type (;4;) (func))
-  (import "f" (func (;1;) (type 4)))
+  (import "f" (func $f (;1;) (type 4)))
   (type (;5;)
     (component
       (type (;0;) (func))
@@ -32,20 +32,20 @@
     )
   )
   (import "unlocked-dep=<foo:bar>" (component (;0;) (type 5)))
-  (instance (;3;) (instantiate 0
+  (instance $x1 (;3;) (instantiate 0
       (with "baz" (func 0))
     )
   )
-  (instance (;4;) (instantiate 0
-      (with "baz" (func 1))
+  (instance $x2 (;4;) (instantiate 0
+      (with "baz" (func $f))
     )
   )
-  (instance (;5;) (instantiate 0
-      (with "baz" (func 1))
+  (instance $x3 (;5;) (instantiate 0
+      (with "baz" (func $f))
     )
   )
-  (alias export 2 "baz" (func (;2;)))
-  (instance (;6;) (instantiate 0
+  (alias export $i2 "baz" (func (;2;)))
+  (instance $x4 (;6;) (instantiate 0
       (with "baz" (func 2))
     )
   )
@@ -61,27 +61,27 @@
     )
   )
   (import "unlocked-dep=<bar:baz>" (component (;1;) (type 6)))
-  (instance (;7;) (instantiate 1
+  (instance $y1 (;7;) (instantiate 1
       (with "foo" (instance 0))
     )
   )
-  (instance (;8;) (instantiate 1
-      (with "foo" (instance 1))
+  (instance $y2 (;8;) (instantiate 1
+      (with "foo" (instance $i))
     )
   )
-  (instance (;9;) (instantiate 1
-      (with "foo" (instance 3))
+  (instance $y3 (;9;) (instantiate 1
+      (with "foo" (instance $x1))
     )
   )
-  (instance (;10;) (instantiate 1
-      (with "foo" (instance 4))
+  (instance $y4 (;10;) (instantiate 1
+      (with "foo" (instance $x2))
     )
   )
-  (instance (;11;) (instantiate 1
-      (with "foo" (instance 5))
+  (instance $y5 (;11;) (instantiate 1
+      (with "foo" (instance $x3))
     )
   )
-  (alias export 6 "foo" (func (;3;)))
+  (alias export $x4 "foo" (func (;3;)))
   (export (;4;) "foo" (func 3))
   (@producers
     (processed-by "wac-parser" "0.1.0")

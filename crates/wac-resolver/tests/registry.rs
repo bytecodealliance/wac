@@ -79,14 +79,14 @@ export i2.foo as "bar";
       (export (;0;) "bar" (func (type 0)))
     )
   )
-  (import "test:wit/foo" (instance (;0;) (type 0)))
+  (import "test:wit/foo" (instance $x (;0;) (type 0)))
   (type (;1;)
     (instance
       (type (;0;) (func))
       (export (;0;) "bar" (func (type 0)))
     )
   )
-  (import "y" (instance (;1;) (type 1)))
+  (import "y" (instance $y (;1;) (type 1)))
   (type (;2;)
     (component
       (type (;0;)
@@ -100,16 +100,16 @@ export i2.foo as "bar";
     )
   )
   (import "unlocked-dep=<test:comp>" (component (;0;) (type 2)))
-  (instance (;2;) (instantiate 0
-      (with "test:wit/foo" (instance 0))
+  (instance $i1 (;2;) (instantiate 0
+      (with "test:wit/foo" (instance $x))
     )
   )
-  (instance (;3;) (instantiate 0
-      (with "test:wit/foo" (instance 1))
+  (instance $i2 (;3;) (instantiate 0
+      (with "test:wit/foo" (instance $y))
     )
   )
-  (alias export 2 "test:wit/foo" (instance (;4;)))
-  (alias export 3 "test:wit/foo" (instance (;5;)))
+  (alias export $i1 "test:wit/foo" (instance (;4;)))
+  (alias export $i2 "test:wit/foo" (instance (;5;)))
   (export (;6;) "test:wit/foo" (instance 4))
   (export (;7;) "bar" (instance 5))
   (@producers

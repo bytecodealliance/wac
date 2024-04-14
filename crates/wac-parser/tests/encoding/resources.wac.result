@@ -20,7 +20,7 @@
       (export (;4;) "baz" (func (type 11)))
     )
   )
-  (import "foo" (instance (;0;) (type 0)))
+  (import "foo" (instance $foo (;0;) (type 0)))
   (type (;1;)
     (component
       (type (;0;)
@@ -43,11 +43,11 @@
     )
   )
   (import "unlocked-dep=<foo:bar>" (component (;0;) (type 1)))
-  (instance (;1;) (instantiate 0
-      (with "foo" (instance 0))
+  (instance $x (;1;) (instantiate 0
+      (with "foo" (instance $foo))
     )
   )
-  (alias export 1 "foo" (instance (;2;)))
+  (alias export $x "foo" (instance (;2;)))
   (export (;3;) "foo" (instance 2))
   (@producers
     (processed-by "wac-parser" "0.1.0")

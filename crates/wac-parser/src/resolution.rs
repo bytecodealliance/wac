@@ -785,6 +785,14 @@ impl State {
             });
         }
 
+        if let Item::Node(node) = item {
+            // Use only the first name encountered for the node, ignoring
+            // aliasing in the form of `let x = y;`
+            if self.graph[node].name.is_none() {
+                self.graph.set_node_name(node, id.string.to_owned());
+            }
+        }
+
         Ok(())
     }
 

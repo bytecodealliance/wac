@@ -24,7 +24,7 @@
     )
   )
   (import "unlocked-dep=<foo:bar>" (component (;0;) (type 1)))
-  (instance (;1;) (instantiate 0
+  (instance $a (;1;) (instantiate 0
       (with "foo:bar/baz" (instance 0))
     )
   )
@@ -42,7 +42,7 @@
     )
   )
   (import "unlocked-dep=<foo:baz>" (component (;1;) (type 2)))
-  (instance (;2;) (instantiate 1
+  (instance $b (;2;) (instantiate 1
       (with "foo:bar/baz" (instance 0))
     )
   )
