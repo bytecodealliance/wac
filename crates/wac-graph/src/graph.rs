@@ -187,7 +187,7 @@ pub enum InstantiationArgumentError {
 #[derive(Debug, Error)]
 pub enum EncodeError {
     /// The encoding of the graph failed validation.
-    #[error("the encoding of the graph failed validation")]
+    #[error("encoding produced a component that failed validation")]
     ValidationFailure {
         /// The source of the validation error.
         #[source]
