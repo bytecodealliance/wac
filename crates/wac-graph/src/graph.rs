@@ -425,7 +425,7 @@ pub struct NodeInfo<'a> {
 pub struct CompositionGraph {
     /// The underlying graph data structure.
     graph: StableDiGraph<Node, Edge>,
-    /// The map of import names to node ids.
+    /// The map of import names to node indices.
     imports: HashMap<String, NodeIndex>,
     /// The map of export names to node ids.
     exports: IndexMap<String, NodeIndex>,
