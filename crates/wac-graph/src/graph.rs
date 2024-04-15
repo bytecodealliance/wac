@@ -117,7 +117,7 @@ pub enum AliasError {
 #[derive(Debug, Error)]
 pub enum ExportError {
     /// An export name already exists in the graph.
-    #[error("export name `{name}` already exists in the graph")]
+    #[error("an export with the name `{name}` already exists")]
     ExportAlreadyExists {
         /// The name of the existing export.
         name: String,
