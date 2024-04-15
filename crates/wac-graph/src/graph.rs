@@ -68,7 +68,7 @@ pub enum ImportError {
         node: NodeId,
     },
     /// An invalid import name was given.
-    #[error("import name `{name}` is not a valid extern name")]
+    #[error("import name `{name}` is not valid")]
     InvalidImportName {
         /// The invalid name.
         name: String,
