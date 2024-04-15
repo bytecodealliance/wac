@@ -1,5 +1,6 @@
-use crate::{NodeId, PackageId};
+use crate::PackageId;
 use indexmap::IndexMap;
+use petgraph::graph::NodeIndex;
 use std::collections::HashMap;
 use wac_types::{
     CoreExtern, DefinedType, DefinedTypeId, Enum, Flags, FuncResult, FuncTypeId, InterfaceId,
@@ -116,11 +117,11 @@ pub struct State {
     /// The current encoding scope.
     pub current: Scope,
     /// A map of nodes in the graph to their encoded indexes.
-    pub node_indexes: HashMap<NodeId, u32>,
+    pub node_indexes: HashMap<NodeIndex, u32>,
     /// The map of package identifiers to encoded components (either imported or defined).
     pub packages: HashMap<PackageId, u32>,
     /// A map of instantiation nodes to a list of their encoded implicitly imported arguments.
-    pub implicit_args: HashMap<NodeId, Vec<(String, ComponentExportKind, u32)>>,
+    pub implicit_args: HashMap<NodeIndex, Vec<(String, ComponentExportKind, u32)>>,
 }
 
 impl State {

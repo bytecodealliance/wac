@@ -1,12 +1,12 @@
 failed to resolve document
 
-  × `x` is already defined
+  × type declaration `x` conflicts with a previous export of the same name
    ╭─[tests/resolution/fail/redefined-name.wac:4:6]
  2 │ 
  3 │ type x = u32;
    ·      ┬
-   ·      ╰── `x` previously defined here
+   ·      ╰── previous export is here
  4 │ type x = string;
    ·      ┬
-   ·      ╰── `x` redefined here
+   ·      ╰── conflicting type declaration `x`
    ╰────

@@ -1,6 +1,6 @@
 use miette::SourceSpan;
 use semver::Version;
-use wac_parser::ast::{
+use wac_parser::{
     Document, Expr, ExternType, ImportStatement, ImportType, InstantiationArgument, InterfaceItem,
     PrimaryExpr, Statement, TypeStatement, UsePath, WorldItem, WorldItemPath, WorldRef,
 };

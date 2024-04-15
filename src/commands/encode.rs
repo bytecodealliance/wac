@@ -6,8 +6,8 @@ use std::{
     io::{IsTerminal, Write},
     path::PathBuf,
 };
-use wac_parser::{ast::Document, Composition, EncodingOptions};
-use wasmparser::{Validator, WasmFeatures};
+use wac_graph::EncodeOptions;
+use wac_parser::Document;
 use wasmprinter::print_bytes;
 
 fn parse<T, U>(s: &str) -> Result<(T, U)>
@@ -25,7 +25,7 @@ where
     ))
 }
 
-/// Encodes a composition into a WebAssembly component.
+/// Encodes a WAC source file into a WebAssembly component.
 #[derive(Args)]
 #[clap(disable_version_flag = true)]
 pub struct EncodeCommand {
@@ -64,7 +64,7 @@ pub struct EncodeCommand {
     #[clap(long, value_name = "URL")]
     pub registry: Option<String>,
 
-    /// The path to the composition file.
+    /// The path to the source WAC file.
     #[clap(value_name = "PATH")]
     pub path: PathBuf,
 }
@@ -91,25 +91,19 @@ impl EncodeCommand {
             .await
             .map_err(|e| fmt_err(e, &self.path, &contents))?;
 
-        let resolved = Composition::from_ast(&document, packages)
+        let resolution = document
+            .resolve(packages)
             .map_err(|e| fmt_err(e, &self.path, &contents))?;
 
         if !self.wat && self.output.is_none() && std::io::stdout().is_terminal() {
             bail!("cannot print binary wasm output to a terminal; pass the `-t` flag to print the text format instead");
         }
 
-        let mut bytes = resolved.encode(EncodingOptions {
-            define_packages: !self.import_dependencies,
+        let mut bytes = resolution.encode(EncodeOptions {
+            define_components: !self.import_dependencies,
+            validate: !self.no_validate,
+            ..Default::default()
         })?;
-        if !self.no_validate {
-            Validator::new_with_features(WasmFeatures {
-                component_model: true,
-                ..Default::default()
-            })
-            .validate_all(&bytes)
-            .context("failed to validate the encoded composition")?;
-        }
-
         if self.wat {
             bytes = print_bytes(&bytes)
                 .context("failed to convert binary wasm output to text")?

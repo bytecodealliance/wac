@@ -20,7 +20,7 @@ pub enum SubtypeCheck {
 ///
 /// Subtype checking is used to type check instantiation arguments.
 pub struct SubtypeChecker<'a> {
-    pub(crate) kinds: Vec<SubtypeCheck>,
+    kinds: Vec<SubtypeCheck>,
     cache: &'a mut HashSet<(ItemKind, ItemKind)>,
 }
 
@@ -33,28 +33,42 @@ impl<'a> SubtypeChecker<'a> {
         }
     }
 
+    fn kind(&self) -> SubtypeCheck {
+        self.kinds
+            .last()
+            .copied()
+            .unwrap_or(SubtypeCheck::Covariant)
+    }
+
     /// Checks if `a` is a subtype of `b`.
-    pub fn is_subtype(
-        &mut self,
-        a: ItemKind,
-        at: &Types,
-        b: ItemKind,
-        bt: &Types,
-        kind: SubtypeCheck,
-    ) -> Result<()> {
+    pub fn is_subtype(&mut self, a: ItemKind, at: &Types, b: ItemKind, bt: &Types) -> Result<()> {
         if self.cache.contains(&(a, b)) {
             return Ok(());
         }
 
-        self.kinds.push(kind);
         let result = self.is_subtype_(a, at, b, bt);
-        self.kinds.pop();
-
         if result.is_ok() {
             self.cache.insert((a, b));
         }
 
         result
+    }
+
+    /// Inverts the current subtype check being performed.
+    ///
+    /// Returns the previous subtype check.
+    pub fn invert(&mut self) -> SubtypeCheck {
+        let prev = self.kind();
+        self.kinds.push(match prev {
+            SubtypeCheck::Covariant => SubtypeCheck::Contravariant,
+            SubtypeCheck::Contravariant => SubtypeCheck::Covariant,
+        });
+        prev
+    }
+
+    /// Reverts to the previous check kind.
+    pub fn revert(&mut self) {
+        self.kinds.pop().expect("mismatched stack");
     }
 
     fn is_subtype_(&mut self, a: ItemKind, at: &Types, b: ItemKind, bt: &Types) -> Result<()> {
@@ -90,11 +104,6 @@ impl<'a> SubtypeChecker<'a> {
             // For contravariant checks, the subtype is the expected type
             SubtypeCheck::Contravariant => (a, at, b, bt),
         }
-    }
-
-    /// Gets the current check kind.
-    fn kind(&self) -> SubtypeCheck {
-        self.kinds.last().copied().unwrap()
     }
 
     fn resource(&self, a: ResourceId, at: &Types, b: ResourceId, bt: &Types) -> Result<()> {
@@ -230,7 +239,7 @@ impl<'a> SubtypeChecker<'a> {
         for (k, b) in b.iter() {
             match a.get(k) {
                 Some(a) => {
-                    self.is_subtype(*a, at, *b, bt, SubtypeCheck::Covariant)
+                    self.is_subtype(*a, at, *b, bt)
                         .with_context(|| format!("mismatched type for export `{k}`"))?;
                 }
                 None => match self.kind() {
@@ -272,13 +281,14 @@ impl<'a> SubtypeChecker<'a> {
         // can export *more* than what this component type needs).
         // However, for imports, the check is reversed (i.e. it is okay
         // to import *less* than what this component type needs).
+        let prev = self.invert();
         for (k, a) in a.imports.iter() {
             match b.imports.get(k) {
                 Some(b) => {
-                    self.is_subtype(*b, bt, *a, at, SubtypeCheck::Contravariant)
+                    self.is_subtype(*b, bt, *a, at)
                         .with_context(|| format!("mismatched type for import `{k}`"))?;
                 }
-                None => match self.kind() {
+                None => match prev {
                     SubtypeCheck::Covariant => {
                         bail!(
                             "component is missing expected {kind} import `{k}`",
@@ -295,10 +305,12 @@ impl<'a> SubtypeChecker<'a> {
             }
         }
 
+        self.revert();
+
         for (k, b) in b.exports.iter() {
             match a.exports.get(k) {
                 Some(a) => {
-                    self.is_subtype(*a, at, *b, bt, SubtypeCheck::Covariant)
+                    self.is_subtype(*a, at, *b, bt)
                         .with_context(|| format!("mismatched type for export `{k}`"))?;
                 }
                 None => match self.kind() {
@@ -334,17 +346,15 @@ impl<'a> SubtypeChecker<'a> {
         // can export *more* than what is expected module type needs).
         // However, for imports, the check is reversed (i.e. it is okay
         // to import *less* than what this module type needs).
+        let prev = self.invert();
         for (k, a) in a.imports.iter() {
             match b.imports.get(k) {
                 Some(b) => {
-                    self.kinds.push(SubtypeCheck::Contravariant);
-                    let r = self.core_extern(b, bt, a, at).with_context(|| {
+                    self.core_extern(b, bt, a, at).with_context(|| {
                         format!("mismatched type for import `{m}::{n}`", m = k.0, n = k.1)
-                    });
-                    self.kinds.pop();
-                    r?;
+                    })?;
                 }
-                None => match self.kind() {
+                None => match prev {
                     SubtypeCheck::Covariant => bail!(
                         "module is missing expected {a} import `{m}::{n}`",
                         m = k.0,
@@ -360,6 +370,8 @@ impl<'a> SubtypeChecker<'a> {
                 },
             }
         }
+
+        self.revert();
 
         for (k, b) in b.exports.iter() {
             match a.exports.get(k) {

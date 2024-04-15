@@ -1,36 +1,3 @@
-{
-  "package": "test:comp",
-  "version": null,
-  "definitions": {
-    "types": [],
-    "resources": [],
-    "funcs": [],
-    "interfaces": [],
-    "worlds": [
-      {
-        "id": "test:comp/foo",
-        "uses": {},
-        "imports": {},
-        "exports": {}
-      }
-    ],
-    "modules": []
-  },
-  "packages": [],
-  "items": [
-    {
-      "definition": {
-        "name": "foo",
-        "kind": {
-          "type": {
-            "world": 0
-          }
-        }
-      }
-    }
-  ],
-  "imports": {},
-  "exports": {
-    "foo": 0
-  }
+digraph {
+    0 [ label = "type definition \"foo\""; kind = "world"; export = "foo"]
 }

@@ -1,0 +1,89 @@
+(component
+  (type (;0;) (func))
+  (import "baz" (func (;0;) (type 0)))
+  (type (;1;)
+    (instance
+      (type (;0;) (func))
+      (export (;0;) "foo" (func (type 0)))
+    )
+  )
+  (import "foo" (instance (;0;) (type 1)))
+  (type (;2;)
+    (instance
+      (type (;0;) (func))
+      (export (;0;) "foo" (func (type 0)))
+    )
+  )
+  (import "i" (instance $i (;1;) (type 2)))
+  (type (;3;)
+    (instance
+      (type (;0;) (func))
+      (export (;0;) "baz" (func (type 0)))
+    )
+  )
+  (import "i2" (instance $i2 (;2;) (type 3)))
+  (type (;4;) (func))
+  (import "f" (func $f (;1;) (type 4)))
+  (type (;5;)
+    (component
+      (type (;0;) (func))
+      (import "baz" (func (;0;) (type 0)))
+      (export (;1;) "foo" (func (type 0)))
+    )
+  )
+  (import "unlocked-dep=<foo:bar>" (component (;0;) (type 5)))
+  (instance $x1 (;3;) (instantiate 0
+      (with "baz" (func 0))
+    )
+  )
+  (instance $x2 (;4;) (instantiate 0
+      (with "baz" (func $f))
+    )
+  )
+  (instance $x3 (;5;) (instantiate 0
+      (with "baz" (func $f))
+    )
+  )
+  (alias export $i2 "baz" (func (;2;)))
+  (instance $x4 (;6;) (instantiate 0
+      (with "baz" (func 2))
+    )
+  )
+  (type (;6;)
+    (component
+      (type (;0;)
+        (instance
+          (type (;0;) (func))
+          (export (;0;) "foo" (func (type 0)))
+        )
+      )
+      (import "foo" (instance (;0;) (type 0)))
+    )
+  )
+  (import "unlocked-dep=<bar:baz>" (component (;1;) (type 6)))
+  (instance $y1 (;7;) (instantiate 1
+      (with "foo" (instance 0))
+    )
+  )
+  (instance $y2 (;8;) (instantiate 1
+      (with "foo" (instance $i))
+    )
+  )
+  (instance $y3 (;9;) (instantiate 1
+      (with "foo" (instance $x1))
+    )
+  )
+  (instance $y4 (;10;) (instantiate 1
+      (with "foo" (instance $x2))
+    )
+  )
+  (instance $y5 (;11;) (instantiate 1
+      (with "foo" (instance $x3))
+    )
+  )
+  (alias export $x4 "foo" (func (;3;)))
+  (export (;4;) "foo" (func 3))
+  (@producers
+    (processed-by "wac-parser" "0.1.0")
+  )
+)

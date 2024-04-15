@@ -1,17 +1,23 @@
 use crate::encoding::{State, TypeEncoder};
-use indexmap::{IndexMap, IndexSet};
-use petgraph::{algo::toposort, graphmap::DiGraphMap, Direction};
+use indexmap::IndexMap;
+use petgraph::{
+    dot::{Config, Dot},
+    graph::NodeIndex,
+    stable_graph::StableDiGraph,
+    visit::{Dfs, EdgeRef, IntoNodeIdentifiers, Reversed, VisitMap, Visitable},
+    Direction,
+};
 use semver::Version;
 use std::{
     borrow::Cow,
     collections::{HashMap, HashSet},
-    fmt::Write,
-    str::FromStr,
+    fmt::{self, Write},
+    ops::Index,
 };
 use thiserror::Error;
 use wac_types::{
-    BorrowedKey, BorrowedPackageKey, ExternKind, ItemKind, Package, PackageKey, SubtypeCheck,
-    SubtypeChecker, Type, TypeAggregator, Types,
+    BorrowedKey, BorrowedPackageKey, DefinedType, ItemKind, Package, PackageKey, SubtypeChecker,
+    Type, TypeAggregator, Types, ValueType,
 };
 use wasm_encoder::{
     Alias, ComponentBuilder, ComponentExportKind, ComponentNameSection, ComponentTypeRef,
@@ -22,110 +28,72 @@ use wasmparser::{
     BinaryReaderError, Validator, WasmFeatures,
 };
 
-struct PackagePath<'a> {
-    package: &'a str,
-    version: Option<Version>,
-    segments: &'a str,
-}
-
-impl<'a> PackagePath<'a> {
-    fn new(path: &'a str) -> GraphResult<Self> {
-        let (package, segments) =
-            path.split_once('/')
-                .ok_or_else(|| Error::UnqualifiedPackagePath {
-                    path: path.to_string(),
-                })?;
-
-        let (package, version) = package
-            .split_once('@')
-            .map(|(n, v)| (n, Version::from_str(v).map(Some).map_err(|e| (v, e))))
-            .unwrap_or((package, Ok(None)));
-
-        let version = version.map_err(|(version, error)| Error::InvalidPackageVersion {
-            version: version.to_string(),
-            error,
-        })?;
-
-        Ok(Self {
-            package,
-            version,
-            segments,
-        })
-    }
-}
-
-/// Represents an error that can occur when working with a composition graph.
+/// Represents an error that can occur when defining a type in
+/// a composition graph.
 #[derive(Debug, Error)]
-pub enum Error {
-    /// The specified type was not defined in the graph.
-    #[error("the specified type was not defined in the graph.")]
-    TypeNotDefined {
-        /// The type that was not defined in the graph.
-        ty: Type,
-    },
+pub enum DefineTypeError {
+    /// The provided type has already been defined in the graph.
+    #[error("the provided type has already been defined in the graph")]
+    TypeAlreadyDefined,
     /// A resource type cannot be defined in the graph.
     #[error("a resource type cannot be defined in the graph")]
     CannotDefineResource,
-    /// The specified package path is not fully-qualified.
-    #[error("package path `{path}` is not a fully-qualified package path")]
-    UnqualifiedPackagePath {
-        /// The path that was invalid.
-        path: String,
+    /// The specified type name conflicts with an existing export.
+    #[error("type name `{name}` conflicts with an existing export of the same name")]
+    ExportConflict {
+        /// The name of the existing export.
+        name: String,
     },
-    /// The specified package version is invalid.
-    #[error("package version `{version}` is not a valid semantic version")]
-    InvalidPackageVersion {
-        /// The version that was invalid.
-        version: String,
-        /// The error that occurred while parsing the package version.
+    /// The specified type name is not a valid extern name.
+    #[error("type name `{name}` is not valid")]
+    InvalidExternName {
+        /// The name of the type.
+        name: String,
+        /// The underlying validation error.
         #[source]
-        error: semver::Error,
+        source: anyhow::Error,
     },
-    /// The specified package has not been registered.
-    #[error("package `{package}` has not been registered with the graph (use the `CompositionGraph::register_package` method)")]
-    PackageNotRegistered {
-        /// The unknown package.
-        package: PackageKey,
+}
+
+/// Represents an error that can occur when importing an item in
+/// a composition graph.
+#[derive(Debug, Error)]
+pub enum ImportError {
+    /// An import name already exists in the graph.
+    #[error("import name `{name}` already exists in the graph")]
+    ImportAlreadyExists {
+        /// The name of the existing extern.
+        name: String,
+        /// The node that is already imported by that name.
+        node: NodeId,
     },
-    /// The package does not export an item for the specified path.
-    #[error("package `{package}` does not export an item for path `{path}`")]
-    PackageMissingExport {
-        /// The package with the missing export.
-        package: String,
-        /// The path that was missing.
-        path: String,
+    /// An invalid import name was given.
+    #[error("import name `{name}` is not valid")]
+    InvalidImportName {
+        /// The invalid name.
+        name: String,
+        /// The underlying validation error.
+        #[source]
+        source: anyhow::Error,
     },
-    /// The specified package identifier is invalid.
-    #[error("the specified package identifier is invalid")]
-    InvalidPackageId,
-    /// The specified node identifier is invalid.
-    #[error("the specified node identifier is invalid")]
-    InvalidNodeId,
+}
+
+/// Represents an error that can occur when registering a
+/// package with a composition graph.
+#[derive(Debug, Error)]
+pub enum RegisterPackageError {
     /// The package is already registered in the graph.
     #[error("package `{key}` has already been registered in the graph")]
     PackageAlreadyRegistered {
         /// The key representing the already registered package
         key: PackageKey,
     },
-    /// An extern name already exists in the graph.
-    #[error("{kind} name `{name}` already exists in the graph")]
-    ExternAlreadyExists {
-        /// The kind of extern.
-        kind: ExternKind,
-        /// The name of the existing extern.
-        name: String,
-    },
-    /// An invalid extern name was given.
-    #[error("{kind} name `{name}` is not a valid extern name")]
-    InvalidExternName {
-        /// The name of the export.
-        name: String,
-        /// The kind of extern.
-        kind: ExternKind,
-        /// The underlying validation error.
-        #[source]
-        source: anyhow::Error,
-    },
+}
+
+/// Represents an error that can occur when aliasing an instance
+/// export in a composition graph.
+#[derive(Debug, Error)]
+pub enum AliasError {
     /// The provided source node is not an instance.
     #[error("expected source node to be an instance, but the node is a {kind}")]
     NodeIsNotAnInstance {
@@ -134,12 +102,6 @@ pub enum Error {
         /// The kind of the node.
         kind: String,
     },
-    /// The node is not an instantiation.
-    #[error("the specified node is not an instantiation")]
-    NodeIsNotAnInstantiation {
-        /// The node that is not an instantiation.
-        node: NodeId,
-    },
     /// The instance does not export an item with the given name.
     #[error("instance does not have an export named `{export}`")]
     InstanceMissingExport {
@@ -147,6 +109,50 @@ pub enum Error {
         node: NodeId,
         /// The export that was missing.
         export: String,
+    },
+}
+
+/// Represents an error that can occur when exporting a node from
+/// a composition graph.
+#[derive(Debug, Error)]
+pub enum ExportError {
+    /// An export name already exists in the graph.
+    #[error("an export with the name `{name}` already exists")]
+    ExportAlreadyExists {
+        /// The name of the existing export.
+        name: String,
+        /// The node that is already exported with that name.
+        node: NodeId,
+    },
+    /// An invalid export name was given.
+    #[error("export name `{name}` is not valid")]
+    InvalidExportName {
+        /// The invalid name.
+        name: String,
+        /// The underlying validation error.
+        #[source]
+        source: anyhow::Error,
+    },
+}
+
+/// Represents an error that can occur when unexporting a node in
+/// a composition graph.
+#[derive(Debug, Error)]
+pub enum UnexportError {
+    /// The node cannot be unexported as it is a type definition.
+    #[error("cannot unexport a type definition")]
+    MustExportDefinition,
+}
+
+/// Represents an error that can occur when setting an instantiation
+/// argument in a composition graph.
+#[derive(Debug, Error)]
+pub enum InstantiationArgumentError {
+    /// The node is not an instantiation.
+    #[error("the specified node is not an instantiation")]
+    NodeIsNotAnInstantiation {
+        /// The node that is not an instantiation.
+        node: NodeId,
     },
     /// The provided argument name is invalid.
     #[error("argument name `{name}` is not an import of package `{package}`")]
@@ -175,24 +181,26 @@ pub enum Error {
         /// The name of the argument.
         name: String,
     },
+}
+
+/// Represents an error that can occur when encoding a composition graph.
+#[derive(Debug, Error)]
+pub enum EncodeError {
+    /// The encoding of the graph failed validation.
+    #[error("encoding produced a component that failed validation")]
+    ValidationFailure {
+        /// The source of the validation error.
+        #[source]
+        source: BinaryReaderError,
+    },
     /// The graph contains a cycle.
     #[error("the graph contains a cycle and cannot be encoded")]
     GraphContainsCycle {
         /// The node where the cycle was detected.
         node: NodeId,
     },
-    /// The encoding of the graph failed validation.
-    #[error("the encoding of the graph failed validation")]
-    EncodingValidationFailure {
-        /// The source of the validation error.
-        #[source]
-        source: BinaryReaderError,
-    },
-    /// The node cannot be unmarked from export as it is a type definition.
-    #[error("the node cannot be unmarked from export as it is a type definition")]
-    MustExportDefinition,
     /// An implicit import on an instantiation conflicts with an explicit import node.
-    #[error("an instantiation of package `{package}` implicitly imports an item named `{name}`, but it conflicts with an explicit import node of the same name")]
+    #[error("an instantiation of package `{package}` implicitly imports an item named `{name}`, but it conflicts with an explicit import of the same name")]
     ImplicitImportConflict {
         /// The existing import node.
         import: NodeId,
@@ -203,19 +211,24 @@ pub enum Error {
         /// The name of the conflicting import.
         name: String,
     },
-    /// An error occurred while merging an import type.
-    #[error("failed to merge the type definition for import `{import}` due to conflicting types")]
+    /// An error occurred while merging an implicit import type.
+    #[error("failed to merge the type definition for implicit import `{import}` due to conflicting types")]
     ImportTypeMergeConflict {
         /// The name of the import.
         import: String,
+        /// The first conflicting instantiation node that introduced the implicit import.
+        first: NodeId,
+        /// The second conflicting instantiation node.
+        second: NodeId,
         /// The type merge error.
         #[source]
         source: anyhow::Error,
     },
 }
 
-/// An alias for the result type used by the composition graph.
-pub type GraphResult<T> = std::result::Result<T, Error>;
+/// Represents an error that can occur when decoding a composition graph.
+#[derive(Debug, Error)]
+pub enum DecodeError {}
 
 /// An identifier for a package in a composition graph.
 #[derive(Debug, Copy, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
@@ -230,17 +243,17 @@ pub struct PackageId {
 
 /// An identifier for a node in a composition graph.
 #[derive(Debug, Copy, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
-pub struct NodeId {
-    /// The index into the graph's node list.
-    index: usize,
-    /// The generation of the node.
-    ///
-    /// This is used to invalidate identifiers on node removal.
-    generation: usize,
+pub struct NodeId(NodeIndex);
+
+impl fmt::Display for NodeId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.0.index().fmt(f)
+    }
 }
 
+/// Represents the kind of a node in a composition graph.
 #[derive(Debug, Clone)]
-enum NodeKind {
+pub enum NodeKind {
     /// The node is a type definition.
     Definition,
     /// The node is an import of an item.
@@ -260,8 +273,6 @@ enum NodeKind {
 struct RegisteredPackage {
     /// The underlying package.
     package: Option<Package>,
-    /// The nodes associated with the package.
-    nodes: HashSet<NodeId>,
     /// The generation of the package.
     ///
     /// The generation is incremented each time a package is removed from the graph.
@@ -274,14 +285,14 @@ impl RegisteredPackage {
     fn new(generation: usize) -> Self {
         Self {
             package: None,
-            nodes: Default::default(),
             generation,
         }
     }
 }
 
+/// Represents a node in a composition graph.
 #[derive(Debug, Clone)]
-struct NodeData {
+pub struct Node {
     /// The node kind.
     kind: NodeKind,
     /// The package associated with the node, if any.
@@ -294,11 +305,9 @@ struct NodeData {
     name: Option<String>,
     /// The name to use for exporting the node.
     export: Option<String>,
-    /// The aliased nodes from this node.
-    aliases: HashMap<String, NodeId>,
 }
 
-impl NodeData {
+impl Node {
     fn new(kind: NodeKind, item_kind: ItemKind, package: Option<PackageId>) -> Self {
         Self {
             kind,
@@ -306,15 +315,50 @@ impl NodeData {
             package,
             name: None,
             export: None,
-            aliases: Default::default(),
         }
     }
 
-    fn import_name(&self) -> Option<&str> {
+    /// Gets the kind of the node.
+    pub fn kind(&self) -> &NodeKind {
+        &self.kind
+    }
+
+    /// Gets the package id associated with the node.
+    ///
+    /// Returns `None` if the node is not directly associated with a package.
+    pub fn package(&self) -> Option<PackageId> {
+        self.package
+    }
+
+    /// Gets the item kind of the node.
+    pub fn item_kind(&self) -> ItemKind {
+        self.item_kind
+    }
+
+    /// Gets the name of the node.
+    ///
+    /// Node names are encoded in a `names` custom section.
+    ///
+    /// Returns `None` if the node is unnamed.
+    pub fn name(&self) -> Option<&str> {
+        self.name.as_deref()
+    }
+
+    /// Gets the import name of the node.
+    ///
+    /// Returns `Some` if the node is an import or `None` if the node is not an import.
+    pub fn import_name(&self) -> Option<&str> {
         match &self.kind {
             NodeKind::Import(name) => Some(name),
             _ => None,
         }
+    }
+
+    /// Gets the export name of the node.
+    ///
+    /// Returns `None` if the node is not exported.
+    pub fn export_name(&self) -> Option<&str> {
+        self.export.as_deref()
     }
 
     fn add_satisfied_arg(&mut self, index: usize) {
@@ -345,30 +389,8 @@ impl NodeData {
     }
 }
 
-/// Represents a node in a composition graph.
-#[derive(Debug, Clone)]
-struct Node {
-    /// The data associated with the node.
-    data: Option<NodeData>,
-    /// The generation of the node.
-    ///
-    /// The generation is incremented each time the node is removed from the graph.
-    ///
-    /// This ensures referring node identifiers are invalidated when a node is removed.
-    generation: usize,
-}
-
-impl Node {
-    fn new(generation: usize) -> Self {
-        Self {
-            data: None,
-            generation,
-        }
-    }
-}
-
 /// Represents an edge in a composition graph.
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 enum Edge {
     /// The edge is from an instance to an aliased exported item.
     ///
@@ -376,25 +398,37 @@ enum Edge {
     Alias(usize),
     /// The edge is from any node to an instantiation node.
     ///
-    /// The set contains import indexes on the target node that are
-    /// satisfied by the source node.
-    Argument(IndexSet<usize>),
+    /// The data is the import index on the instantiation node being
+    /// satisfied by the argument.
+    Argument(usize),
+    /// A dependency from one type to another.
+    Dependency,
+}
+
+impl fmt::Debug for Edge {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Edge::Alias(_) => write!(f, "aliased export"),
+            Edge::Argument(_) => write!(f, "argument to"),
+            Edge::Dependency => write!(f, "dependency of"),
+        }
+    }
 }
 
 /// Represents information about a node in a composition graph.
 pub struct NodeInfo<'a> {
-    /// The types collection for the node's item kind.
-    pub types: &'a Types,
     /// The item kind of the node.
     pub kind: ItemKind,
     /// The optional name of the node.
     pub name: Option<&'a str>,
-    /// The aliases from this node.
-    pub aliases: &'a HashMap<String, NodeId>,
+    /// The package associated with the node.
+    pub package: Option<PackageId>,
     /// The export name of the node.
     ///
     /// If the node is not exported, this field will be `None`.
     pub export: Option<&'a str>,
+    /// Whether or not the node is from a type definition.
+    pub definition: bool,
 }
 
 /// Represents a composition graph.
@@ -411,8 +445,10 @@ pub struct NodeInfo<'a> {
 /// * an *instantiation node* representing an instantiation of a package.
 /// * an *alias node* representing an alias of an exported item from an instance.
 ///
-/// There are two supported edge types:
+/// There are three supported edge types:
 ///
+/// * a *type dependency* edge from a type definition node to any dependent defined types;
+///   type dependency edges are implicitly added to the graph when a type is defined.
 /// * an *alias edge* from an any node that is an instance to an alias node; alias edges are
 ///   implicitly added to the graph when an alias node is added.
 /// * an *instantiation argument edge* from any node to an instantiation node; instantiation
@@ -424,21 +460,19 @@ pub struct NodeInfo<'a> {
 #[derive(Default, Clone)]
 pub struct CompositionGraph {
     /// The underlying graph data structure.
-    graph: DiGraphMap<NodeId, Edge>,
-    /// The import nodes of the graph.
-    imports: HashMap<String, NodeId>,
-    /// The set of used export names.
-    exports: IndexMap<String, NodeId>,
+    graph: StableDiGraph<Node, Edge>,
+    /// The map of import names to node indices.
+    imports: HashMap<String, NodeIndex>,
+    /// The map of export names to node ids.
+    exports: IndexMap<String, NodeIndex>,
+    /// The map of defined types to node ids.
+    defined: HashMap<Type, NodeIndex>,
     /// The map of package keys to package ids.
     package_map: HashMap<PackageKey, PackageId>,
     /// The registered packages.
     packages: Vec<RegisteredPackage>,
     /// The list of free entries in the packages list.
     free_packages: Vec<usize>,
-    /// The nodes in the graph.
-    nodes: Vec<Node>,
-    /// The list of free entries in the nodes list.
-    free_nodes: Vec<usize>,
     /// The types that are directly defined by the graph.
     types: Types,
     /// The cache used for subtype checks.
@@ -463,27 +497,45 @@ impl CompositionGraph {
         &mut self.types
     }
 
+    /// Gets the nodes in the graph.
+    pub fn nodes(&self) -> impl Iterator<Item = &Node> + '_ {
+        self.graph.node_weights()
+    }
+
     /// Gets the identifiers for every node in the graph.
-    pub fn nodes(&self) -> impl Iterator<Item = NodeId> + '_ {
-        self.nodes.iter().enumerate().filter_map(|(i, n)| {
-            n.data.as_ref()?;
-            Some(NodeId {
-                index: i,
-                generation: n.generation,
-            })
-        })
+    pub fn node_ids(&self) -> impl Iterator<Item = NodeId> + '_ {
+        self.graph.node_indices().map(NodeId)
+    }
+
+    /// Gets the packages currently registered with the graph.
+    pub fn packages(&self) -> impl Iterator<Item = &Package> + '_ {
+        self.packages.iter().filter_map(|p| p.package.as_ref())
     }
 
     /// Registers a package with the graph.
     ///
     /// Packages are used to create instantiations, but are not directly
     /// a part of the graph.
-    pub fn register_package(&mut self, package: wac_types::Package) -> GraphResult<PackageId> {
+    ///
+    /// # Panics
+    ///
+    /// Panics if the given package's type is not contained within the
+    /// graph's types collection.
+    pub fn register_package(
+        &mut self,
+        package: wac_types::Package,
+    ) -> Result<PackageId, RegisterPackageError> {
         let key = PackageKey::new(&package);
         if self.package_map.contains_key(&key) {
-            return Err(Error::PackageAlreadyRegistered { key });
+            return Err(RegisterPackageError::PackageAlreadyRegistered { key });
         }
 
+        assert!(
+            self.types.contains(Type::World(package.ty())),
+            "the package type is not present in the types collection"
+        );
+
+        log::debug!("registering package `{key}` with the graph");
         let id = self.alloc_package(package);
         let prev = self.package_map.insert(key, id);
         assert!(prev.is_none());
@@ -493,27 +545,43 @@ impl CompositionGraph {
     /// Unregisters a package from the graph.
     ///
     /// Any edges and nodes associated with the package are also removed.
-    pub fn unregister_package(&mut self, package: PackageId) -> GraphResult<()> {
-        if self.get_package(package).is_none() {
-            return Err(Error::InvalidPackageId);
-        }
+    ///
+    /// # Panics
+    ///
+    /// Panics if the given package identifier is invalid.
+    pub fn unregister_package(&mut self, package: PackageId) {
+        assert_eq!(
+            self.packages
+                .get(package.index)
+                .expect("invalid package id")
+                .generation,
+            package.generation,
+            "invalid package id"
+        );
 
-        self.free_package(package);
-        Ok(())
-    }
+        // Remove all nodes associated with the package
+        self.graph
+            .retain_nodes(|g, i| g[i].package != Some(package));
 
-    /// Gets a package that was registered with the graph.
-    pub fn get_package(&self, package: PackageId) -> Option<&Package> {
-        let PackageId { index, generation } = package;
-        let entry = &self.packages[index];
-        if entry.generation != generation {
-            return None;
-        }
+        // Remove the package from the package map
+        let entry = &mut self.packages[package.index];
+        let key = entry.package.as_ref().unwrap().key();
+        log::debug!("unregistering package `{key}` with the graph");
+        let prev = self.package_map.remove(&key as &dyn BorrowedKey);
+        assert!(
+            prev.is_some(),
+            "package should exist in the package map (this is a bug)"
+        );
 
-        entry.package.as_ref()
+        // Finally free the package
+        *entry = RegisteredPackage::new(entry.generation.wrapping_add(1));
+        self.free_packages.push(package.index);
     }
 
     /// Gets the registered package of the given package name and version.
+    ///
+    /// Returns `None` if a package with the specified name and version has
+    /// not been registered with the graph.
     pub fn get_package_by_name(
         &self,
         name: &str,
@@ -528,30 +596,45 @@ impl CompositionGraph {
     ///
     /// The graph must not already have a node exported with the same name.
     ///
-    /// The specified type must have been added to the graph's type collection.
-    pub fn define_type(&mut self, name: impl Into<String>, ty: Type) -> GraphResult<NodeId> {
-        if !self.types.contains(ty) {
-            return Err(Error::TypeNotDefined { ty });
+    /// This method will implicitly add dependency edges to other defined
+    /// types.
+    ///
+    /// If the provided type has already been defined, the previous node
+    /// will be returned and an additional export name will be associated
+    /// with the node.
+    ///
+    /// # Panics
+    ///
+    /// This method panics if the provided type is not contained within the
+    /// graph's types collection.
+    pub fn define_type(
+        &mut self,
+        name: impl Into<String>,
+        ty: Type,
+    ) -> Result<NodeId, DefineTypeError> {
+        assert!(
+            self.types.contains(ty),
+            "type not contained in types collection"
+        );
+
+        if self.defined.contains_key(&ty) {
+            return Err(DefineTypeError::TypeAlreadyDefined);
         }
 
         if let Type::Resource(_) = ty {
-            return Err(Error::CannotDefineResource);
+            return Err(DefineTypeError::CannotDefineResource);
         }
 
         let name = name.into();
         if self.exports.contains_key(&name) {
-            return Err(Error::ExternAlreadyExists {
-                kind: ExternKind::Export,
-                name,
-            });
+            return Err(DefineTypeError::ExportConflict { name });
         }
 
         // Ensure that the given name is a valid extern name
         ComponentName::new(&name, 0).map_err(|e| {
             let msg = e.to_string();
-            Error::InvalidExternName {
+            DefineTypeError::InvalidExternName {
                 name: name.to_string(),
-                kind: ExternKind::Export,
                 source: anyhow::anyhow!(
                     "{msg}",
                     msg = msg.strip_suffix(" (at offset 0x0)").unwrap_or(&msg)
@@ -559,68 +642,126 @@ impl CompositionGraph {
             }
         })?;
 
-        let mut data = NodeData::new(NodeKind::Definition, ItemKind::Type(ty), None);
-        data.export = Some(name.clone());
+        let mut node = Node::new(NodeKind::Definition, ItemKind::Type(ty), None);
+        node.export = Some(name.clone());
+        let index = self.graph.add_node(node);
+        log::debug!(
+            "adding type definition `{name}` to the graph as node index {index}",
+            index = index.index()
+        );
 
-        let id = self.alloc_node(data);
-        self.graph.add_node(id);
+        // Add dependency edges between the given type and any referenced defined types
+        ty.visit_defined_types(&self.types, &mut |_, id| {
+            let dep_ty = Type::Value(ValueType::Defined(id));
+            if dep_ty != ty {
+                if let Some(dep) = self.defined.get(&dep_ty) {
+                    if !self
+                        .graph
+                        .edges_connecting(*dep, index)
+                        .any(|e| matches!(e.weight(), Edge::Dependency))
+                    {
+                        log::debug!(
+                            "adding dependency edge from type `{from}` (dependency) to type `{name}` (dependent)",
+                            from = self.graph[*dep].export.as_ref().unwrap()
+                        );
+                        self.graph.add_edge(*dep, index, Edge::Dependency);
+                    }
+                }
+            }
 
-        let prev = self.exports.insert(name, id);
+            Ok(())
+        })?;
+
+        // Add dependency edges to any existing defined types that reference this one
+        for (other_ty, other) in &self.defined {
+            other_ty.visit_defined_types(&self.types, &mut |_, id| {
+                let dep_ty = Type::Value(ValueType::Defined(id));
+                if dep_ty == ty
+                    && !self
+                        .graph
+                        .edges_connecting(index, *other)
+                        .any(|e| matches!(e.weight(), Edge::Dependency))
+                {
+                    log::debug!(
+                        "adding dependency edge from type `{name}` (dependency) to type `{to}` (dependent)",
+                        to = self.graph[index].export.as_ref().unwrap(),
+                    );
+                    self.graph.add_edge(index, *other, Edge::Dependency);
+                }
+
+                Ok(())
+            })?;
+        }
+
+        self.defined.insert(ty, index);
+        let prev = self.exports.insert(name, index);
         assert!(prev.is_none());
-        Ok(id)
+        Ok(NodeId(index))
     }
 
     /// Adds an *import node* to the graph.
     ///
-    /// If an import with the same name already exists, an error is returned.
+    /// If the provided import name is invalid or if an import already exists
+    /// with the same name, an error is returned.
     ///
-    /// The specified item kind must already have been defined in the graph.
-    pub fn import(&mut self, name: impl Into<String>, kind: ItemKind) -> GraphResult<NodeId> {
-        let ty = kind.ty();
-        if !self.types.contains(ty) {
-            return Err(Error::TypeNotDefined { ty });
+    /// # Panics
+    ///
+    /// This method panics if the provided kind is not contained within the
+    /// graph's types collection.
+    pub fn import(
+        &mut self,
+        name: impl Into<String>,
+        kind: ItemKind,
+    ) -> Result<NodeId, ImportError> {
+        assert!(
+            self.types.contains(kind.ty()),
+            "provided type is not in the types collection"
+        );
+
+        let name = name.into();
+        if let Some(existing) = self.imports.get(&name) {
+            return Err(ImportError::ImportAlreadyExists {
+                name,
+                node: NodeId(*existing),
+            });
         }
 
-        self.add_import(name, None, kind)
+        // Ensure that the given import name is a valid extern name
+        ComponentName::new(&name, 0).map_err(|e| {
+            let msg = e.to_string();
+            ImportError::InvalidImportName {
+                name: name.to_string(),
+                source: anyhow::anyhow!(
+                    "{msg}",
+                    msg = msg.strip_suffix(" (at offset 0x0)").unwrap_or(&msg)
+                ),
+            }
+        })?;
+
+        let node = Node::new(NodeKind::Import(name.clone()), kind, None);
+        let index = self.graph.add_node(node);
+        log::debug!(
+            "adding import `{name}` to the graph as node index {index}",
+            index = index.index()
+        );
+        let prev = self.imports.insert(name, index);
+        assert!(prev.is_none());
+        Ok(NodeId(index))
     }
 
-    /// Adds an *import node* to the graph with the item kind specified by package path.
+    /// Gets the name used by an import node.
     ///
-    /// An error is returned if an import with the same name already exists or if the
-    /// specified package path is invalid.
-    pub fn import_by_path(&mut self, name: impl Into<String>, path: &str) -> GraphResult<NodeId> {
-        let path = PackagePath::new(path)?;
-        let (package_id, package) = self
-            .get_package_by_name(path.package, path.version.as_ref())
-            .ok_or_else(|| {
-                let package =
-                    BorrowedPackageKey::from_name_and_version(path.package, path.version.as_ref());
-                Error::PackageNotRegistered {
-                    package: package.into_owned(),
-                }
-            })?;
-
-        let mut item_kind = None;
-        for segment in path.segments.split('/') {
-            item_kind = match item_kind {
-                Some(ItemKind::Instance(id)) => package.types()[id].exports.get(segment).copied(),
-                None => package.export(segment),
-                _ => None,
-            };
-
-            if item_kind.is_none() {
-                break;
-            }
+    /// Returns `None` if the specified node is not an import node.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the specified node id is invalid.
+    pub fn get_import_name(&self, node: NodeId) -> Option<&str> {
+        let node = self.graph.node_weight(node.0).expect("invalid node id");
+        match &node.kind {
+            NodeKind::Import(name) => Some(name),
+            _ => None,
         }
-
-        let item_kind = item_kind
-            .ok_or_else(|| Error::PackageMissingExport {
-                package: path.package.to_string(),
-                path: path.segments.to_string(),
-            })?
-            .promote();
-
-        self.add_import(name, Some(package_id), item_kind)
     }
 
     /// Adds an *instantiation node* to the graph.
@@ -628,14 +769,24 @@ impl CompositionGraph {
     /// Initially the instantiation will have no satisfied arguments.
     ///
     /// Use `set_instantiation_argument` to set an argument on an instantiation node.
-    pub fn instantiate(&mut self, package: PackageId) -> GraphResult<NodeId> {
-        let pkg = self.get_package(package).ok_or(Error::InvalidPackageId)?;
-        let node = self.alloc_node(NodeData::new(
+    ///
+    /// # Panics
+    ///
+    /// This method panics if the provided package id is invalid.
+    pub fn instantiate(&mut self, package: PackageId) -> NodeId {
+        let pkg = &self[package];
+        let node = Node::new(
             NodeKind::Instantiation(Default::default()),
             ItemKind::Instance(pkg.instance_type()),
             Some(package),
-        ));
-        Ok(self.graph.add_node(node))
+        );
+        let index = self.graph.add_node(node);
+        log::debug!(
+            "adding instantiation of package `{key}` to the graph as node index {index}",
+            key = self[package].key(),
+            index = index.index()
+        );
+        NodeId(index)
     }
 
     /// Adds an *alias node* to the graph.
@@ -646,26 +797,24 @@ impl CompositionGraph {
     /// If an alias already exists for the export, the existing alias node will be returned.
     ///
     /// An implicit *alias edge* will be added from the instance to the alias node.
-    pub fn alias_instance_export(&mut self, instance: NodeId, export: &str) -> GraphResult<NodeId> {
-        let instance_data = self
-            .get_node(instance)
-            .ok_or(Error::InvalidNodeId)?
-            .data
-            .as_ref()
-            .unwrap();
-
-        if let Some(id) = instance_data.aliases.get(export) {
-            return Ok(*id);
-        }
+    ///
+    /// # Panics
+    ///
+    /// Panics if the provided node id is invalid.
+    pub fn alias_instance_export(
+        &mut self,
+        instance: NodeId,
+        export: &str,
+    ) -> Result<NodeId, AliasError> {
+        let instance_node = self.graph.node_weight(instance.0).expect("invalid node id");
 
         // Ensure the source is an instance
-        let types = self.node_types(instance_data);
-        let exports = match instance_data.item_kind {
-            ItemKind::Instance(id) => &types[id].exports,
+        let exports = match instance_node.item_kind {
+            ItemKind::Instance(id) => &self.types[id].exports,
             _ => {
-                return Err(Error::NodeIsNotAnInstance {
+                return Err(AliasError::NodeIsNotAnInstance {
                     node: instance,
-                    kind: instance_data.item_kind.desc(types).to_string(),
+                    kind: instance_node.item_kind.desc(&self.types).to_string(),
                 });
             }
         };
@@ -674,42 +823,45 @@ impl CompositionGraph {
         let (index, _, kind) =
             exports
                 .get_full(export)
-                .ok_or_else(|| Error::InstanceMissingExport {
+                .ok_or_else(|| AliasError::InstanceMissingExport {
                     node: instance,
                     export: export.to_string(),
                 })?;
 
+        // Check to see if there already is an edge for this alias
+        for e in self.graph.edges_directed(instance.0, Direction::Outgoing) {
+            assert_eq!(e.source(), instance.0);
+            if let Edge::Alias(i) = e.weight() {
+                if *i == index {
+                    return Ok(NodeId(e.target()));
+                }
+            }
+        }
+
         // Allocate the alias node
-        let aliased = self.alloc_node(NodeData::new(NodeKind::Alias, *kind, instance_data.package));
-
-        let prev = self.nodes[instance.index]
-            .data
-            .as_mut()
-            .unwrap()
-            .aliases
-            .insert(export.to_string(), aliased);
-        assert!(prev.is_none());
-
-        self.graph.add_node(aliased);
-        let prev = self.graph.add_edge(instance, aliased, Edge::Alias(index));
-        assert!(prev.is_none());
-        Ok(aliased)
+        let node = Node::new(NodeKind::Alias, *kind, instance_node.package);
+        let node_index = self.graph.add_node(node);
+        log::debug!(
+            "adding alias for export `{export}` to the graph as node index {index}",
+            index = node_index.index()
+        );
+        self.graph
+            .add_edge(instance.0, node_index, Edge::Alias(index));
+        Ok(NodeId(node_index))
     }
 
     /// Gets the source node and export name of an alias node.
     ///
-    /// Returns `None` if the given id is invalid or if the node is not an alias.
+    /// Returns `None` if the node is not an alias.
     pub fn get_alias_source(&self, alias: NodeId) -> Option<(NodeId, &str)> {
-        for (s, t, edge) in self.graph.edges_directed(alias, Direction::Incoming) {
-            assert_eq!(t, alias);
+        for e in self.graph.edges_directed(alias.0, Direction::Incoming) {
+            assert_eq!(e.target(), alias.0);
 
-            if let Edge::Alias(index) = edge {
-                let data = self.node_data(s);
-                match data.item_kind {
+            if let Edge::Alias(index) = e.weight() {
+                match self.graph[e.source()].item_kind {
                     ItemKind::Instance(id) => {
-                        let types = self.node_types(data);
-                        let export = types[id].exports.get_index(*index).unwrap().0;
-                        return Some((s, export));
+                        let export = self.types[id].exports.get_index(*index).unwrap().0;
+                        return Some((NodeId(e.source()), export));
                     }
                     _ => panic!("alias source should be an instance"),
                 }
@@ -730,71 +882,59 @@ impl CompositionGraph {
         instantiation: NodeId,
     ) -> impl Iterator<Item = (&str, NodeId)> {
         self.graph
-            .edges_directed(instantiation, Direction::Incoming)
-            .filter_map(|(s, t, e)| {
-                let target = self.node_data(t);
+            .edges_directed(instantiation.0, Direction::Incoming)
+            .filter_map(|e| {
+                let target = &self.graph[e.target()];
                 let imports = match target.kind {
                     NodeKind::Instantiation(_) => {
                         let package = &self.packages[target.package?.index].package.as_ref()?;
-                        &package.types()[package.ty()].imports
+                        &self.types[package.ty()].imports
                     }
                     _ => return None,
                 };
 
-                match e {
-                    Edge::Alias(_) => None,
-                    Edge::Argument(indexmap) => Some(
-                        indexmap
-                            .iter()
-                            .map(move |i| (imports.get_index(*i).unwrap().0.as_ref(), s)),
-                    ),
+                match e.weight() {
+                    Edge::Alias(_) | Edge::Dependency => None,
+                    Edge::Argument(i) => Some((
+                        imports.get_index(*i).unwrap().0.as_ref(),
+                        NodeId(e.source()),
+                    )),
                 }
             })
-            .flatten()
-    }
-
-    /// Gets information about a node in the graph.
-    ///
-    /// Returns `None` if the specified node identifier is invalid.
-    pub fn get_node_info(&self, node: NodeId) -> Option<NodeInfo> {
-        self.get_node(node)?;
-        let data = self.node_data(node);
-
-        Some(NodeInfo {
-            types: self.node_types(data),
-            kind: data.item_kind,
-            name: data.name.as_deref(),
-            aliases: &data.aliases,
-            export: data.export.as_deref(),
-        })
     }
 
     /// Sets the name of a node in the graph.
     ///
     /// Node names are recorded in a `names` custom section when the graph is encoded.
-    pub fn set_node_name(&mut self, node: NodeId, name: impl Into<String>) -> GraphResult<()> {
-        self.get_node(node).ok_or(Error::InvalidNodeId)?;
-        self.node_data_mut(node).name = Some(name.into());
-        Ok(())
+    ///
+    /// # Panics
+    ///
+    /// This method panics if the provided node id is invalid.
+    pub fn set_node_name(&mut self, node: NodeId, name: impl Into<String>) {
+        let node = &mut self.graph[node.0];
+        node.name = Some(name.into());
     }
 
     /// Marks the given node for export when the composition graph is encoded.
-    pub fn export(&mut self, node: NodeId, name: impl Into<String>) -> GraphResult<()> {
-        self.get_node(node).ok_or(Error::InvalidNodeId)?;
-
+    ///
+    /// Returns an error if the provided export name is invalid.
+    ///
+    /// # Panics
+    ///
+    /// This method panics if the provided node id is invalid.
+    pub fn export(&mut self, node: NodeId, name: impl Into<String>) -> Result<(), ExportError> {
         let name = name.into();
-        if self.exports.contains_key(&name) {
-            return Err(Error::ExternAlreadyExists {
-                kind: ExternKind::Export,
+        if let Some(existing) = self.exports.get(&name) {
+            return Err(ExportError::ExportAlreadyExists {
                 name,
+                node: NodeId(*existing),
             });
         }
 
         let map_reader_err = |e: BinaryReaderError| {
             let msg = e.to_string();
-            Error::InvalidExternName {
+            ExportError::InvalidExportName {
                 name: name.to_string(),
-                kind: ExternKind::Export,
                 source: anyhow::anyhow!(
                     "{msg}",
                     msg = msg.strip_suffix(" (at offset 0x0)").unwrap_or(&msg)
@@ -807,35 +947,44 @@ impl CompositionGraph {
             ComponentNameKind::Hash(_)
             | ComponentNameKind::Url(_)
             | ComponentNameKind::Dependency(_) => {
-                return Err(Error::InvalidExternName {
+                return Err(ExportError::InvalidExportName {
                     name: name.to_string(),
-                    kind: ExternKind::Export,
                     source: anyhow::anyhow!("export name cannot be a hash, url, or dependency"),
                 });
             }
             _ => {}
         };
 
-        self.node_data_mut(node).export = Some(name.clone());
-
-        let prev = self.exports.insert(name, node);
+        log::debug!("exporting node {index} as `{name}`", index = node.0.index());
+        self.graph[node.0].export = Some(name.clone());
+        let prev = self.exports.insert(name, node.0);
         assert!(prev.is_none());
         Ok(())
     }
 
+    /// Gets the node being exported by the given name.
+    ///
+    /// Returns `None` if there is no node exported by that name.
+    pub fn get_export(&self, name: &str) -> Option<NodeId> {
+        self.exports.get(name).map(|i| NodeId(*i))
+    }
+
     /// Unmarks the given node from being exported from an encoding of the graph.
     ///
-    /// The node cannot be a _type definition node_ as type definitions are
-    /// always exported.
-    pub fn unexport(&mut self, node: NodeId) -> GraphResult<()> {
-        self.get_node(node).ok_or(Error::InvalidNodeId)?;
-
-        let data = self.node_data_mut(node);
-        if let NodeKind::Definition = data.kind {
-            return Err(Error::MustExportDefinition);
+    /// Returns an error if the given node is a type definition, as type
+    /// definitions must be exported.
+    ///
+    /// # Panics
+    ///
+    /// This method panics if the provided node id is invalid.
+    pub fn unexport(&mut self, node: NodeId) -> Result<(), UnexportError> {
+        let node = &mut self.graph[node.0];
+        if let NodeKind::Definition = node.kind {
+            return Err(UnexportError::MustExportDefinition);
         }
 
-        if let Some(name) = data.export.take() {
+        if let Some(name) = node.export.take() {
+            log::debug!("unmarked node for export as `{name}`");
             let removed = self.exports.swap_remove(&name);
             assert!(removed.is_some());
         }
@@ -847,16 +996,60 @@ impl CompositionGraph {
     ///
     /// All incoming and outgoing edges of the node are also removed.
     ///
+    /// If the node has dependent defined types, the dependent define
+    /// types are also removed.
+    ///
     /// If the node has aliases, the aliased nodes are also removed.
     ///
-    /// Returns `true` if the node was removed, otherwise returns `false`.
-    pub fn remove_node(&mut self, node: NodeId) -> bool {
-        if !self.graph.remove_node(node) {
-            return false;
+    /// # Panics
+    ///
+    /// This method panics if the provided node id is invalid.
+    pub fn remove_node(&mut self, node: NodeId) {
+        // Recursively remove any dependent nodes
+        for node in self
+            .graph
+            .edges_directed(node.0, Direction::Outgoing)
+            .filter_map(|e| {
+                assert_eq!(e.source(), node.0);
+                match e.weight() {
+                    Edge::Alias(_) | Edge::Dependency => Some(NodeId(e.target())),
+                    Edge::Argument(_) => None,
+                }
+            })
+            .collect::<Vec<_>>()
+        {
+            self.remove_node(node);
         }
 
-        self.free_node(node, false);
-        true
+        // Remove the node from the graph
+        log::debug!(
+            "removing node {index} from the graph",
+            index = node.0.index()
+        );
+        let node = self.graph.remove_node(node.0).expect("invalid node id");
+
+        // Remove any import entry
+        if let Some(name) = node.import_name() {
+            log::debug!("removing import node `{name}`");
+            let removed = self.imports.remove(name);
+            assert!(removed.is_some());
+        }
+
+        // Remove any export entry
+        if let Some(name) = &node.export {
+            log::debug!("removing export of node as `{name}`");
+            let removed = self.exports.swap_remove(name);
+            assert!(removed.is_some());
+        }
+
+        if let NodeKind::Definition = node.kind {
+            log::debug!(
+                "removing type definition `{name}`",
+                name = node.name.as_ref().unwrap()
+            );
+            let removed = self.defined.remove(&node.item_kind.ty());
+            assert!(removed.is_some());
+        }
     }
 
     /// Sets an argument of an instantiation node to the provided argument
@@ -875,67 +1068,65 @@ impl CompositionGraph {
     ///
     /// If an edge already exists between the argument and the instantiation
     /// node, this method returns `Ok(_)`.
+    ///
+    /// # Panics
+    ///
+    /// This method will panic if the provided node ids are invalid.
     pub fn set_instantiation_argument(
         &mut self,
         instantiation: NodeId,
         argument_name: &str,
         argument: NodeId,
-    ) -> GraphResult<()> {
+    ) -> Result<(), InstantiationArgumentError> {
         fn add_edge(
             graph: &mut CompositionGraph,
             argument: NodeId,
             instantiation: NodeId,
             argument_name: &str,
             cache: &mut HashSet<(ItemKind, ItemKind)>,
-        ) -> GraphResult<()> {
+        ) -> Result<(), InstantiationArgumentError> {
             // Ensure the target is an instantiation node
-            let instantiation_data = graph
-                .get_node(instantiation)
-                .ok_or(Error::InvalidNodeId)?
-                .data
-                .as_ref()
-                .unwrap();
+            let instantiation_node = &graph.graph[instantiation.0];
 
-            if !matches!(instantiation_data.kind, NodeKind::Instantiation(_)) {
-                return Err(Error::NodeIsNotAnInstantiation {
+            if !matches!(instantiation_node.kind, NodeKind::Instantiation(_)) {
+                return Err(InstantiationArgumentError::NodeIsNotAnInstantiation {
                     node: instantiation,
                 });
             }
 
             // Ensure the argument is a valid import of the target package
-            let instantiation_types = graph.node_types(instantiation_data);
-            let package = graph.packages[instantiation_data.package.unwrap().index]
+            let package = graph.packages[instantiation_node.package.unwrap().index]
                 .package
                 .as_ref()
                 .unwrap();
-            let package_type = &package.types()[package.ty()];
+            let package_type = &graph.types[package.ty()];
 
             // Ensure the argument isn't already satisfied
             let (argument_index, _, expected_argument_kind) = package_type
                 .imports
                 .get_full(argument_name)
-                .ok_or(Error::InvalidArgumentName {
+                .ok_or(InstantiationArgumentError::InvalidArgumentName {
                     node: instantiation,
                     name: argument_name.to_string(),
                     package: package.name().to_string(),
                 })?;
 
-            for (s, t, edge) in graph
+            for e in graph
                 .graph
-                .edges_directed(instantiation, Direction::Incoming)
+                .edges_directed(instantiation.0, Direction::Incoming)
             {
-                assert_eq!(t, instantiation);
-                match edge {
-                    Edge::Alias(_) => {
-                        panic!("incoming alias edges should not exist for instantiation nodes")
+                assert_eq!(e.target(), instantiation.0);
+                match e.weight() {
+                    Edge::Alias(_) | Edge::Dependency => {
+                        panic!("unexpected edge for an instantiation")
                     }
-                    Edge::Argument(set) => {
-                        if set.contains(&argument_index) {
-                            if s == argument {
+                    Edge::Argument(i) => {
+                        if *i == argument_index {
+                            if e.source() == argument.0 {
                                 return Ok(());
                             }
 
-                            return Err(Error::ArgumentAlreadyPassed {
+                            return Err(InstantiationArgumentError::ArgumentAlreadyPassed {
                                 node: instantiation,
                                 name: argument_name.to_string(),
                             });
@@ -945,53 +1136,27 @@ impl CompositionGraph {
             }
 
             // Perform a subtype check on the source and target
-            let argument_data = graph
-                .get_node(argument)
-                .ok_or(Error::InvalidNodeId)?
-                .data
-                .as_ref()
-                .unwrap();
-            let argument_types = graph.node_types(argument_data);
+            let argument_node = &graph.graph[argument.0];
 
             let mut checker = SubtypeChecker::new(cache);
             checker
                 .is_subtype(
-                    argument_data.item_kind,
-                    argument_types,
+                    argument_node.item_kind,
+                    &graph.types,
                     *expected_argument_kind,
-                    instantiation_types,
-                    SubtypeCheck::Covariant,
+                    &graph.types,
                 )
-                .map_err(|e| Error::ArgumentTypeMismatch {
+                .map_err(|e| InstantiationArgumentError::ArgumentTypeMismatch {
                     name: argument_name.to_string(),
                     source: e,
                 })?;
 
             // Finally, insert the argument edge
-            if let Some(edge) = graph.graph.edge_weight_mut(argument, instantiation) {
-                match edge {
-                    Edge::Alias(_) => {
-                        panic!("alias edges should not exist for instantiation nodes")
-                    }
-                    Edge::Argument(set) => {
-                        let inserted = set.insert(argument_index);
-                        assert!(inserted);
-                    }
-                }
-            } else {
-                let mut set = IndexSet::new();
-                set.insert(argument_index);
-                graph
-                    .graph
-                    .add_edge(argument, instantiation, Edge::Argument(set));
-            }
+            graph
+                .graph
+                .add_edge(argument.0, instantiation.0, Edge::Argument(argument_index));
 
-            graph.nodes[instantiation.index]
-                .data
-                .as_mut()
-                .unwrap()
-                .add_satisfied_arg(argument_index);
-
+            graph.graph[instantiation.0].add_satisfied_arg(argument_index);
             Ok(())
         }
 
@@ -1012,64 +1177,58 @@ impl CompositionGraph {
     /// The provided instantiation node must be an instantiation.
     ///
     /// The argument name must be a valid import on the instantiation node.
+    ///
+    /// # Panics
+    ///
+    /// This method will panic if the provided node ids are invalid.
     pub fn unset_instantiation_argument(
         &mut self,
         instantiation: NodeId,
         argument_name: &str,
         argument: NodeId,
-    ) -> GraphResult<()> {
+    ) -> Result<(), InstantiationArgumentError> {
         // Ensure the target is an instantiation node
-        let instantiation_data = self
-            .get_node(instantiation)
-            .ok_or(Error::InvalidNodeId)?
-            .data
-            .as_ref()
-            .unwrap();
-        if !matches!(instantiation_data.kind, NodeKind::Instantiation(_)) {
-            return Err(Error::NodeIsNotAnInstantiation {
+        let instantiation_node = &self.graph[instantiation.0];
+        if !matches!(instantiation_node.kind, NodeKind::Instantiation(_)) {
+            return Err(InstantiationArgumentError::NodeIsNotAnInstantiation {
                 node: instantiation,
             });
         }
 
         // Ensure the argument is a valid import of the target package
-        let package = self.packages[instantiation_data.package.unwrap().index]
+        let package = self.packages[instantiation_node.package.unwrap().index]
             .package
             .as_ref()
             .unwrap();
-        let package_type = &package.types()[package.ty()];
+        let package_type = &self.types[package.ty()];
 
-        let argument_index =
-            package_type
-                .imports
-                .get_index_of(argument_name)
-                .ok_or(Error::InvalidArgumentName {
-                    node: instantiation,
-                    name: argument_name.to_string(),
-                    package: package.name().to_string(),
-                })?;
+        let argument_index = package_type.imports.get_index_of(argument_name).ok_or(
+            InstantiationArgumentError::InvalidArgumentName {
+                node: instantiation,
+                name: argument_name.to_string(),
+                package: package.name().to_string(),
+            },
+        )?;
 
         // Finally remove the argument edge if a connection exists
-        let remove_edge = if let Some(edge) = self.graph.edge_weight_mut(argument, instantiation) {
-            match edge {
-                Edge::Alias(_) => {
-                    panic!("alias edges should not exist for instantiation nodes")
+        let mut edge = None;
+        for e in self.graph.edges_connecting(argument.0, instantiation.0) {
+            match e.weight() {
+                Edge::Alias(_) | Edge::Dependency => {
+                    panic!("unexpected edge for an instantiation")
                 }
-                Edge::Argument(set) => {
-                    set.swap_remove(&argument_index);
-                    self.nodes[instantiation.index]
-                        .data
-                        .as_mut()
-                        .unwrap()
-                        .remove_satisfied_arg(argument_index);
-                    set.is_empty()
+                Edge::Argument(i) => {
+                    if *i == argument_index {
+                        edge = Some(e.id());
+                        break;
+                    }
                 }
             }
-        } else {
-            false
-        };
+        }
 
-        if remove_edge {
-            self.graph.remove_edge(argument, instantiation);
+        if let Some(edge) = edge {
+            self.graph[instantiation.0].remove_satisfied_arg(argument_index);
+            self.graph.remove_edge(edge);
         }
 
         Ok(())
@@ -1078,7 +1237,7 @@ impl CompositionGraph {
     /// Encodes the composition graph as a new WebAssembly component.
     ///
     /// An error will be returned if the graph contains a dependency cycle.
-    pub fn encode(&self, options: EncodeOptions) -> GraphResult<Vec<u8>> {
+    pub fn encode(&self, options: EncodeOptions) -> Result<Vec<u8>, EncodeError> {
         let bytes = CompositionGraphEncoder::new(self).encode(options)?;
 
         if options.validate {
@@ -1087,50 +1246,15 @@ impl CompositionGraph {
                 ..Default::default()
             })
             .validate_all(&bytes)
-            .map_err(|e| Error::EncodingValidationFailure { source: e })?;
+            .map_err(|e| EncodeError::ValidationFailure { source: e })?;
         }
 
         Ok(bytes)
     }
 
     /// Decodes a composition graph from the bytes of a WebAssembly component.
-    pub fn decode(_data: &[u8]) -> GraphResult<CompositionGraph> {
+    pub fn decode(_data: &[u8]) -> Result<CompositionGraph, DecodeError> {
         todo!("decoding of composition graphs is not yet implemented")
-    }
-
-    fn add_import(
-        &mut self,
-        name: impl Into<String>,
-        package: Option<PackageId>,
-        kind: ItemKind,
-    ) -> GraphResult<NodeId> {
-        let name = name.into();
-        if self.imports.contains_key(&name) {
-            return Err(Error::ExternAlreadyExists {
-                kind: ExternKind::Import,
-                name,
-            });
-        }
-
-        // Ensure that the given import name is a valid extern name
-        ComponentName::new(&name, 0).map_err(|e| {
-            let msg = e.to_string();
-            Error::InvalidExternName {
-                name: name.to_string(),
-                kind: ExternKind::Import,
-                source: anyhow::anyhow!(
-                    "{msg}",
-                    msg = msg.strip_suffix(" (at offset 0x0)").unwrap_or(&msg)
-                ),
-            }
-        })?;
-
-        let id = self.alloc_node(NodeData::new(NodeKind::Import(name.clone()), kind, package));
-        self.graph.add_node(id);
-
-        let prev = self.imports.insert(name, id);
-        assert!(prev.is_none());
-        Ok(id)
     }
 
     fn alloc_package(&mut self, package: wac_types::Package) -> PackageId {
@@ -1151,134 +1275,87 @@ impl CompositionGraph {
             generation: entry.generation,
         }
     }
+}
 
-    fn free_package(&mut self, id: PackageId) {
-        debug_assert_eq!(
-            self.packages[id.index].generation, id.generation,
-            "invalid package identifier"
-        );
+impl Index<NodeId> for CompositionGraph {
+    type Output = Node;
 
-        // Free all nodes associated with the package
-        let nodes = std::mem::take(&mut self.packages[id.index].nodes);
-        for node in nodes {
-            let removed = self.graph.remove_node(node);
-            assert!(removed);
-            self.free_node(node, true);
-        }
-
-        // Remove the package from the package map
-        let entry = &mut self.packages[id.index];
-        let prev = self
-            .package_map
-            .remove(&BorrowedPackageKey::new(entry.package.as_ref().unwrap()) as &dyn BorrowedKey);
-        assert!(prev.is_some());
-
-        // Finally free the package
-        *entry = RegisteredPackage::new(entry.generation.wrapping_add(1));
-        self.free_packages.push(id.index);
-    }
-
-    fn alloc_node(&mut self, data: NodeData) -> NodeId {
-        let (index, node) = if let Some(index) = self.free_nodes.pop() {
-            let node = &mut self.nodes[index];
-            assert!(node.data.is_none());
-            (index, node)
-        } else {
-            let index = self.nodes.len();
-            self.nodes.push(Node::new(0));
-            (index, &mut self.nodes[index])
-        };
-
-        let id = NodeId {
-            index,
-            generation: node.generation,
-        };
-
-        if let Some(package) = data.package {
-            debug_assert_eq!(
-                self.packages[package.index].generation, package.generation,
-                "invalid package identifier"
-            );
-
-            let added = self.packages[package.index].nodes.insert(id);
-            assert!(added);
-        }
-
-        node.data = Some(data);
-        id
-    }
-
-    fn get_node(&self, id: NodeId) -> Option<&Node> {
-        let NodeId { index, generation } = id;
-        let node = self.nodes.get(index)?;
-        if node.generation != generation {
-            return None;
-        }
-
-        assert!(node.data.is_some());
-        Some(node)
-    }
-
-    fn free_node(&mut self, id: NodeId, package_removed: bool) {
-        debug_assert_eq!(
-            self.nodes[id.index].generation, id.generation,
-            "invalid node identifier"
-        );
-
-        // Free the node
-        let next = self.nodes[id.index].generation.wrapping_add(1);
-        let node = std::mem::replace(&mut self.nodes[id.index], Node::new(next));
-        let data = node.data.unwrap();
-
-        // If we're not freeing the node as a result of removing a package,
-        // then remove it from the package and also recurse on any aliases.
-        if !package_removed {
-            // Remove the node from the package
-            if let Some(pkg) = data.package {
-                debug_assert_eq!(
-                    self.packages[pkg.index].generation, pkg.generation,
-                    "invalid package identifier"
-                );
-
-                let removed = self.packages[pkg.index].nodes.remove(&id);
-                assert!(removed);
-            }
-
-            // Recursively remove any alias nodes from the graph
-            for alias in data.aliases.values() {
-                self.remove_node(*alias);
-            }
-        }
-
-        // Remove any import entries
-        if let Some(name) = data.import_name() {
-            let removed = self.imports.remove(name);
-            assert!(removed.is_some());
-        }
-
-        // Finally, add the node to the free list
-        self.free_nodes.push(id.index);
-    }
-
-    fn node_data(&self, id: NodeId) -> &NodeData {
-        self.nodes[id.index].data.as_ref().unwrap()
-    }
-
-    fn node_data_mut(&mut self, id: NodeId) -> &mut NodeData {
-        self.nodes[id.index].data.as_mut().unwrap()
-    }
-
-    fn node_types(&self, data: &NodeData) -> &Types {
-        data.package
-            .and_then(|id| self.get_package(id))
-            .map(|p| p.types())
-            .unwrap_or(&self.types)
+    fn index(&self, index: NodeId) -> &Self::Output {
+        &self.graph[index.0]
     }
 }
 
+impl Index<PackageId> for CompositionGraph {
+    type Output = Package;
+
+    fn index(&self, index: PackageId) -> &Self::Output {
+        let PackageId { index, generation } = index;
+        let entry = self.packages.get(index).expect("invalid package id");
+        if entry.generation != generation {
+            panic!("invalid package id");
+        }
+
+        entry.package.as_ref().unwrap()
+    }
+}
+
+impl fmt::Debug for CompositionGraph {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let node_attr = |_, (i, node): (_, &Node)| {
+            let label = match &node.kind {
+                NodeKind::Definition => format!(
+                    r#"type definition \"{name}\""#,
+                    name = node.export.as_ref().unwrap()
+                ),
+                NodeKind::Import(name) => format!(r#"import \"{name}\""#),
+                NodeKind::Instantiation(_) => {
+                    let package = &self[node.package.unwrap()];
+                    format!(r#"instantiation of package \"{key}\""#, key = package.key())
+                }
+                NodeKind::Alias => {
+                    let (_, source) = self.get_alias_source(NodeId(i)).unwrap();
+                    format!(r#"alias of export \"{source}\""#)
+                }
+            };
+
+            let mut desc = String::new();
+            write!(
+                &mut desc,
+                r#"label = "{label}"; kind = "{kind}""#,
+                kind = node.item_kind.desc(&self.types)
+            )
+            .unwrap();
+
+            if let Some(export) = &node.export {
+                write!(&mut desc, r#"; export = "{export}""#).unwrap();
+            }
+
+            desc
+        };
+
+        let dot = Dot::with_attr_getters(
+            &self.graph,
+            &[Config::NodeNoLabel],
+            &|_, _| String::new(),
+            &node_attr,
+        );
+
+        write!(f, "{:?}", dot)
+    }
+}
+
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+/// Information about the tool that processed the graph.
+pub struct Processor<'a> {
+    /// The name of the tool that processed the graph.
+    pub name: &'a str,
+    /// The version of the tool that processed the graph.
+    pub version: &'a str,
+}
+
 /// The options for encoding a composition graph.
-#[derive(Debug, Clone, Copy, Eq, PartialEq)]
-pub struct EncodeOptions {
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub struct EncodeOptions<'a> {
     /// Whether or not to define instantiated components.
     ///
     /// If `false`, components will be imported instead.
@@ -1290,13 +1367,17 @@ pub struct EncodeOptions {
     ///
     /// Defaults to `true`.
     pub validate: bool,
+
+    /// Information about the processor of the composition graph.
+    pub processor: Option<Processor<'a>>,
 }
 
-impl Default for EncodeOptions {
+impl Default for EncodeOptions<'_> {
     fn default() -> Self {
         Self {
             define_components: true,
             validate: true,
+            processor: None,
         }
     }
 }
@@ -1309,48 +1390,117 @@ impl<'a> CompositionGraphEncoder<'a> {
         Self(graph)
     }
 
-    fn encode(self, options: EncodeOptions) -> GraphResult<Vec<u8>> {
+    fn encode(self, options: EncodeOptions) -> Result<Vec<u8>, EncodeError> {
         let mut state = State::new();
 
         // First populate the state with the implicit instantiation arguments
         self.populate_implicit_args(&mut state)?;
 
         // Encode each node in the graph in topographical order
-        for node in toposort(&self.0.graph, None)
-            .map_err(|e| Error::GraphContainsCycle { node: e.node_id() })?
+        for n in self
+            .toposort()
+            .map_err(|n| EncodeError::GraphContainsCycle { node: NodeId(n) })?
         {
-            let data = self.0.node_data(node);
-            let index = match &data.kind {
-                NodeKind::Definition => self.definition(&mut state, data),
+            let node = &self.0.graph[n];
+            let index = match &node.kind {
+                NodeKind::Definition => self.definition(&mut state, node),
                 NodeKind::Import(name) => {
-                    let types = self.0.node_types(data);
-                    self.import(&mut state, name, types, data.item_kind)
+                    self.import(&mut state, name, &self.0.types, node.item_kind)
                 }
-                NodeKind::Instantiation(_) => self.instantiation(&mut state, node, data, options),
-                NodeKind::Alias => self.alias(&mut state, node, data),
+                NodeKind::Instantiation(_) => self.instantiation(&mut state, n, node, options),
+                NodeKind::Alias => self.alias(&mut state, n),
             };
 
-            let prev = state.node_indexes.insert(node, index);
+            let prev = state.node_indexes.insert(n, index);
             assert!(prev.is_none());
         }
 
-        // Encode the exports
-        for (name, node) in &self.0.exports {
+        // Encode the exports, skipping any definitions as they've
+        // already been exported
+        for (name, node) in self
+            .0
+            .exports
+            .iter()
+            .filter(|(_, n)| !matches!(self.0.graph[**n].kind, NodeKind::Definition))
+        {
             let index = state.node_indexes[node];
-            let data = self.0.node_data(*node);
+            let node = &self.0.graph[*node];
             state
                 .builder()
-                .export(name, data.item_kind.into(), index, None);
+                .export(name, node.item_kind.into(), index, None);
         }
 
         let mut builder = std::mem::take(state.builder());
         self.encode_names(&state, &mut builder);
 
+        if let Some(processor) = &options.processor {
+            let mut section = wasm_metadata::Producers::empty();
+            section.add("processed-by", processor.name, processor.version);
+            builder.raw_custom_section(&section.raw_custom_section());
+        }
+
         Ok(builder.finish())
     }
 
-    fn populate_implicit_args(&self, state: &mut State) -> GraphResult<()> {
+    /// Performs a toposort of the composition graph.
+    ///
+    /// This differs from `toposort` in `petgraph` in that the
+    /// nodes are iterated in *reverse order*, resulting in the
+    /// returned topologically-sorted set to be in index order for
+    /// independent nodes.
+    fn toposort(&self) -> Result<Vec<NodeIndex>, NodeIndex> {
+        let graph = &self.0.graph;
+        let mut dfs = Dfs::empty(graph);
+        dfs.reset(graph);
+        let mut finished = graph.visit_map();
+
+        let mut finish_stack = Vec::new();
+        for i in graph.node_identifiers().rev() {
+            if dfs.discovered.is_visited(&i) {
+                continue;
+            }
+            dfs.stack.push(i);
+            while let Some(&nx) = dfs.stack.last() {
+                if dfs.discovered.visit(nx) {
+                    // First time visiting `nx`: Push neighbors, don't pop `nx`
+                    for succ in graph.neighbors(nx) {
+                        if succ == nx {
+                            // self cycle
+                            return Err(nx);
+                        }
+                        if !dfs.discovered.is_visited(&succ) {
+                            dfs.stack.push(succ);
+                        }
+                    }
+                } else {
+                    dfs.stack.pop();
+                    if finished.visit(nx) {
+                        // Second time: All reachable nodes must have been finished
+                        finish_stack.push(nx);
+                    }
+                }
+            }
+        }
+        finish_stack.reverse();
+
+        dfs.reset(graph);
+        for &i in &finish_stack {
+            dfs.move_to(i);
+            let mut cycle = false;
+            while let Some(j) = dfs.next(Reversed(graph)) {
+                if cycle {
+                    return Err(j);
+                }
+                cycle = true;
+            }
+        }
+
+        Ok(finish_stack)
+    }
+
+    fn populate_implicit_args(&self, state: &mut State) -> Result<(), EncodeError> {
         let mut aggregator = TypeAggregator::default();
+        let mut instantiations = HashMap::new();
         let mut arguments = Vec::new();
         let mut encoded = HashMap::new();
         let mut cache = Default::default();
@@ -1359,38 +1509,42 @@ impl<'a> CompositionGraphEncoder<'a> {
         log::debug!("populating implicit imports");
 
         // Enumerate the instantiation nodes and populate the import types
-        for node in self.0.nodes() {
-            let data = self.0.node_data(node);
-            if !matches!(data.kind, NodeKind::Instantiation(_)) {
+        for index in self.0.graph.node_indices() {
+            let node = &self.0.graph[index];
+            if !matches!(node.kind, NodeKind::Instantiation(_)) {
                 continue;
             }
 
-            let package = self.0.get_package(data.package.unwrap()).unwrap();
-            let world = &package.types()[package.ty()];
+            let package = &self.0[node.package.unwrap()];
+            let world = &self.0.types[package.ty()];
 
             // Go through the unsatisfied arguments and import them
             for (_, (name, kind)) in world
                 .imports
                 .iter()
                 .enumerate()
-                .filter(|(i, _)| !data.is_arg_satisfied(*i))
+                .filter(|(i, _)| !node.is_arg_satisfied(*i))
             {
                 if let Some(import) = self.0.imports.get(name).copied() {
-                    return Err(Error::ImplicitImportConflict {
-                        import,
-                        instantiation: node,
+                    return Err(EncodeError::ImplicitImportConflict {
+                        import: NodeId(import),
+                        instantiation: NodeId(index),
                         package: PackageKey::new(package),
                         name: name.to_string(),
                     });
                 }
 
+                instantiations.entry(name).or_insert(index);
+
                 aggregator = aggregator
-                    .aggregate(name, package.types(), *kind, &mut checker)
-                    .map_err(|e| Error::ImportTypeMergeConflict {
+                    .aggregate(name, &self.0.types, *kind, &mut checker)
+                    .map_err(|e| EncodeError::ImportTypeMergeConflict {
                         import: name.clone(),
+                        first: NodeId(instantiations[&name]),
+                        second: NodeId(index),
                         source: e,
                     })?;
-                arguments.push((node, name));
+                arguments.push((index, name));
             }
         }
 
@@ -1414,24 +1568,37 @@ impl<'a> CompositionGraphEncoder<'a> {
         Ok(())
     }
 
-    fn definition(&self, state: &mut State, data: &NodeData) -> u32 {
-        let types = self.0.node_types(data);
-        let name = data.export.as_deref().unwrap();
+    fn definition(&self, state: &mut State, node: &Node) -> u32 {
+        let name = node.export.as_deref().unwrap();
 
         log::debug!(
             "encoding definition for {kind} `{name}`",
-            kind = data.item_kind.desc(types)
+            kind = node.item_kind.desc(&self.0.types)
         );
 
-        let encoder = TypeEncoder::new(types);
-        let (ty, index) = match data.item_kind {
+        // Check to see if the type is already
+        let encoder = TypeEncoder::new(&self.0.types);
+        let (ty, index) = match node.item_kind {
             ItemKind::Type(ty) => match ty {
                 Type::Resource(_) => panic!("resources cannot be defined"),
-                Type::Func(id) => (ty, encoder.ty(state, Type::Func(id), None)),
-                Type::Value(id) => (ty, encoder.ty(state, Type::Value(id), None)),
+                Type::Func(_) => (ty, encoder.ty(state, ty, None)),
+                Type::Value(vt) => {
+                    // Check for an alias and use the existing index
+                    if let ValueType::Defined(id) = vt {
+                        if let DefinedType::Alias(aliased @ ValueType::Defined(_)) =
+                            &self.0.types()[id]
+                        {
+                            (ty, state.current.type_indexes[&Type::Value(*aliased)])
+                        } else {
+                            (ty, encoder.ty(state, ty, None))
+                        }
+                    } else {
+                        (ty, encoder.ty(state, ty, None))
+                    }
+                }
                 Type::Interface(id) => (ty, encoder.interface(state, id)),
                 Type::World(id) => (ty, encoder.world(state, id)),
-                Type::Module(id) => (ty, encoder.ty(state, Type::Module(id), None)),
+                Type::Module(_) => (ty, encoder.ty(state, ty, None)),
             },
             _ => panic!("only types can be defined"),
         };
@@ -1458,9 +1625,8 @@ impl<'a> CompositionGraphEncoder<'a> {
             }
         }
 
-        let encoder = TypeEncoder::new(types);
-
         // Defer to special handling if the item being imported is a resource
+        let encoder = TypeEncoder::new(types);
         if let ItemKind::Type(Type::Resource(id)) = kind {
             return encoder.import_resource(state, name, id);
         }
@@ -1511,13 +1677,13 @@ impl<'a> CompositionGraphEncoder<'a> {
     fn instantiation(
         &self,
         state: &mut State,
-        node: NodeId,
-        data: &NodeData,
+        index: NodeIndex,
+        node: &Node,
         options: EncodeOptions,
     ) -> u32 {
-        let package_id = data.package.expect("instantiation requires a package");
+        let package_id = node.package.expect("instantiation requires a package");
         let package = self.0.packages[package_id.index].package.as_ref().unwrap();
-        let imports = &package.types()[package.ty()].imports;
+        let imports = &self.0.types[package.ty()].imports;
 
         let component_index = if let Some(index) = state.packages.get(&package_id) {
             *index
@@ -1525,7 +1691,7 @@ impl<'a> CompositionGraphEncoder<'a> {
             let index = if options.define_components {
                 state.builder().component_raw(package.bytes())
             } else {
-                let encoder = TypeEncoder::new(package.types());
+                let encoder = TypeEncoder::new(&self.0.types);
                 let ty = encoder.component(state, package.ty());
                 state.builder().import(
                     &Self::package_import_name(package),
@@ -1541,24 +1707,24 @@ impl<'a> CompositionGraphEncoder<'a> {
         arguments.extend(
             self.0
                 .graph
-                .edges_directed(node, Direction::Incoming)
-                .flat_map(|(s, _, e)| {
-                    let kind = self.0.node_data(s).item_kind.into();
-                    let index = state.node_indexes[&s];
-                    match e {
-                        Edge::Alias(_) => panic!("expected only argument edges"),
-                        Edge::Argument(i) => i.iter().map(move |i| {
-                            (
-                                Cow::Borrowed(imports.get_index(*i).unwrap().0.as_str()),
-                                kind,
-                                index,
-                            )
-                        }),
+                .edges_directed(index, Direction::Incoming)
+                .map(|e| {
+                    let kind = self.0.graph[e.source()].item_kind.into();
+                    let index = state.node_indexes[&e.source()];
+                    match e.weight() {
+                        Edge::Alias(_) | Edge::Dependency => {
+                            panic!("unexpected edge for an instantiation")
+                        }
+                        Edge::Argument(i) => (
+                            Cow::Borrowed(imports.get_index(*i).unwrap().0.as_str()),
+                            kind,
+                            index,
+                        ),
                     }
                 }),
         );
 
-        if let Some(implicit) = state.implicit_args.remove(&node) {
+        if let Some(implicit) = state.implicit_args.remove(&index) {
             arguments.extend(implicit.into_iter().map(|(n, k, i)| (n.into(), k, i)));
         }
 
@@ -1577,25 +1743,24 @@ impl<'a> CompositionGraphEncoder<'a> {
         index
     }
 
-    fn alias(&self, state: &mut State, node: NodeId, data: &NodeData) -> u32 {
+    fn alias(&self, state: &mut State, node: NodeIndex) -> u32 {
         let (source, export) = self
             .0
-            .get_alias_source(node)
+            .get_alias_source(NodeId(node))
             .expect("alias should have a source");
 
-        let source_data = self.0.node_data(source);
-        let types = self.0.node_types(data);
-        let exports = match source_data.item_kind {
-            ItemKind::Instance(id) => &types[id].exports,
+        let source_node = &self.0[source];
+        let exports = match source_node.item_kind {
+            ItemKind::Instance(id) => &self.0.types[id].exports,
             _ => panic!("expected the source of an alias to be an instance"),
         };
 
         let kind = exports[export];
-        let instance = state.node_indexes[&source];
+        let instance = state.node_indexes[&source.0];
 
         log::debug!(
             "encoding alias for {kind} export `{export}` of instance index {instance}",
-            kind = kind.desc(types),
+            kind = kind.desc(&self.0.types),
         );
 
         let index = state.builder().alias(Alias::InstanceExport {
@@ -1606,7 +1771,7 @@ impl<'a> CompositionGraphEncoder<'a> {
 
         log::debug!(
             "alias of export `{export}` encoded to {kind} index {index}",
-            kind = kind.desc(types)
+            kind = kind.desc(&self.0.types)
         );
         index
     }
@@ -1632,10 +1797,10 @@ impl<'a> CompositionGraphEncoder<'a> {
         let mut modules = NameMap::new();
         let mut values = NameMap::new();
 
-        for node in self.0.nodes() {
-            let data = self.0.node_data(node);
-            if let Some(name) = &data.name {
-                let map = match data.item_kind {
+        for index in self.0.graph.node_indices() {
+            let node = &self.0.graph[index];
+            if let Some(name) = &node.name {
+                let map = match node.item_kind {
                     ItemKind::Type(_) => &mut types,
                     ItemKind::Func(_) => &mut funcs,
                     ItemKind::Instance(_) => &mut instances,
@@ -1644,7 +1809,7 @@ impl<'a> CompositionGraphEncoder<'a> {
                     ItemKind::Value(_) => &mut values,
                 };
 
-                let index = state.node_indexes[&node];
+                let index = state.node_indexes[&index];
                 map.append(index, name)
             }
         }
@@ -1685,22 +1850,6 @@ mod test {
     use wac_types::{DefinedType, PrimitiveType, Resource, ValueType};
 
     #[test]
-    fn it_errors_with_type_not_defined() {
-        let mut graph = CompositionGraph::new();
-        // Define the type in a different type collection
-        let mut types = Types::new();
-        let id = types.add_defined_type(DefinedType::Alias(ValueType::Primitive(
-            PrimitiveType::Bool,
-        )));
-        assert!(matches!(
-            graph
-                .define_type("foo", Type::Value(ValueType::Defined(id)))
-                .unwrap_err(),
-            Error::TypeNotDefined { .. }
-        ));
-    }
-
-    #[test]
     fn it_adds_a_type_definition() {
         let mut graph = CompositionGraph::new();
         let id = graph
@@ -1722,73 +1871,8 @@ mod test {
         });
         assert!(matches!(
             graph.define_type("foo", Type::Resource(id)).unwrap_err(),
-            Error::CannotDefineResource
+            DefineTypeError::CannotDefineResource
         ));
-    }
-
-    #[test]
-    fn it_validates_package_ids() {
-        let mut graph = CompositionGraph::new();
-        let old = graph
-            .register_package(
-                Package::from_bytes("foo:bar", None, wat::parse_str("(component)").unwrap())
-                    .unwrap(),
-            )
-            .unwrap();
-
-        assert_eq!(old.index, 0);
-        assert_eq!(old.generation, 0);
-
-        graph.unregister_package(old).unwrap();
-
-        let new = graph
-            .register_package(
-                Package::from_bytes("foo:bar", None, wat::parse_str("(component)").unwrap())
-                    .unwrap(),
-            )
-            .unwrap();
-
-        assert_eq!(new.index, 0);
-        assert_eq!(new.generation, 1);
-
-        assert!(matches!(
-            graph.instantiate(old).unwrap_err(),
-            Error::InvalidPackageId,
-        ));
-
-        graph.instantiate(new).unwrap();
-    }
-
-    #[test]
-    fn it_validates_node_ids() {
-        let mut graph = CompositionGraph::new();
-        let pkg = graph
-            .register_package(
-                Package::from_bytes(
-                    "foo:bar",
-                    None,
-                    wat::parse_str(r#"(component (import "foo" (func)) (export "foo" (func 0)))"#)
-                        .unwrap(),
-                )
-                .unwrap(),
-            )
-            .unwrap();
-
-        let old = graph.instantiate(pkg).unwrap();
-        assert_eq!(old.index, 0);
-        assert_eq!(old.generation, 0);
-
-        assert!(graph.remove_node(old));
-        let new = graph.instantiate(pkg).unwrap();
-        assert_eq!(new.index, 0);
-        assert_eq!(new.generation, 1);
-
-        assert!(matches!(
-            graph.alias_instance_export(old, "foo").unwrap_err(),
-            Error::InvalidNodeId,
-        ));
-
-        graph.alias_instance_export(new, "foo").unwrap();
     }
 
     #[test]
@@ -1802,7 +1886,7 @@ mod test {
             .unwrap();
         assert!(matches!(
             graph.unexport(id).unwrap_err(),
-            Error::MustExportDefinition
+            UnexportError::MustExportDefinition
         ));
     }
 }

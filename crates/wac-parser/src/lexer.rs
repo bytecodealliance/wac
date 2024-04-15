@@ -471,7 +471,7 @@ impl<'a> Lexer<'a> {
             // we can't properly show the "end of input" span.
             // For now, have the span point at the last byte in the source.
             // See: https://github.com/zkat/miette/issues/219
-            span.start -= 1;
+            span.start = span.start.saturating_sub(1);
             span.end = span.start + 1;
         }
 

@@ -1,7 +1,7 @@
 failed to resolve document
 
-  × implicit instantiation argument `foo` (function) conflicts with an explicit import
-   ╭─[tests/resolution/fail/implicit-arg-conflict.wac:5:13]
+  × import `foo` conflicts with an item that was implicitly imported by an instantiation of `foo:bar`
+   ╭─[tests/encoding/fail/implicit-arg-conflict.wac:3:8]
  2 │ 
  3 │ import foo: func();
    ·        ─┬─

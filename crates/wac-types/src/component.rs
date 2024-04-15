@@ -395,6 +395,21 @@ impl ItemKind {
             kind => kind,
         }
     }
+
+    fn _visit_defined_types<'a, E>(
+        &self,
+        types: &'a Types,
+        visitor: &mut impl FnMut(&'a Types, DefinedTypeId) -> Result<(), E>,
+    ) -> Result<(), E> {
+        match self {
+            ItemKind::Type(ty) => ty._visit_defined_types(types, visitor, false),
+            ItemKind::Func(id) => types[*id]._visit_defined_types(types, visitor),
+            ItemKind::Instance(id) => types[*id]._visit_defined_types(types, visitor),
+            ItemKind::Component(id) => types[*id]._visit_defined_types(types, visitor),
+            ItemKind::Module(_) => Ok(()),
+            ItemKind::Value(ty) => ty._visit_defined_types(types, visitor, false),
+        }
+    }
 }
 
 impl From<ItemKind> for wasm_encoder::ComponentExportKind {
@@ -439,6 +454,32 @@ impl Type {
             Type::Interface(_) => "interface",
             Type::World(_) => "world",
             Type::Module(_) => "module type",
+        }
+    }
+
+    /// Visits each defined type referenced by this type.
+    ///
+    /// If the visitor returns `Err`, the visiting stops and the error is returned.
+    pub fn visit_defined_types<'a, E>(
+        &self,
+        types: &'a Types,
+        visitor: &mut impl FnMut(&'a Types, DefinedTypeId) -> Result<(), E>,
+    ) -> Result<(), E> {
+        self._visit_defined_types(types, visitor, true)
+    }
+
+    fn _visit_defined_types<'a, E>(
+        &self,
+        types: &'a Types,
+        visitor: &mut impl FnMut(&'a Types, DefinedTypeId) -> Result<(), E>,
+        recurse: bool,
+    ) -> Result<(), E> {
+        match self {
+            Type::Module(_) | Type::Resource(_) => Ok(()),
+            Type::Func(id) => types[*id]._visit_defined_types(types, visitor),
+            Type::Value(ty) => ty._visit_defined_types(types, visitor, recurse),
+            Type::Interface(id) => types[*id]._visit_defined_types(types, visitor),
+            Type::World(id) => types[*id]._visit_defined_types(types, visitor),
         }
     }
 }
@@ -562,6 +603,25 @@ impl ValueType {
         }
     }
 
+    fn _visit_defined_types<'a, E>(
+        &self,
+        types: &'a Types,
+        visitor: &mut impl FnMut(&'a Types, DefinedTypeId) -> Result<(), E>,
+        recurse: bool,
+    ) -> Result<(), E> {
+        match self {
+            ValueType::Primitive(_) | ValueType::Borrow(_) | ValueType::Own(_) => Ok(()),
+            ValueType::Defined(id) => {
+                visitor(types, *id)?;
+                if recurse {
+                    types[*id]._visit_defined_types(types, visitor)?;
+                }
+
+                Ok(())
+            }
+        }
+    }
+
     /// Gets a description of the value type.
     pub fn desc(&self, types: &Types) -> &'static str {
         match self {
@@ -637,6 +697,51 @@ impl DefinedType {
         }
     }
 
+    fn _visit_defined_types<'a, E>(
+        &self,
+        types: &'a Types,
+        visitor: &mut impl FnMut(&'a Types, DefinedTypeId) -> Result<(), E>,
+    ) -> Result<(), E> {
+        match self {
+            DefinedType::Tuple(tys) => {
+                for ty in tys {
+                    ty._visit_defined_types(types, visitor, false)?;
+                }
+
+                Ok(())
+            }
+            DefinedType::List(ty) | DefinedType::Option(ty) => {
+                ty._visit_defined_types(types, visitor, false)
+            }
+            DefinedType::Result { ok, err } => {
+                if let Some(ty) = ok.as_ref() {
+                    ty._visit_defined_types(types, visitor, false)?;
+                }
+
+                if let Some(ty) = err.as_ref() {
+                    ty._visit_defined_types(types, visitor, false)?;
+                }
+
+                Ok(())
+            }
+            DefinedType::Variant(v) => {
+                for ty in v.cases.values().filter_map(Option::as_ref) {
+                    ty._visit_defined_types(types, visitor, false)?;
+                }
+
+                Ok(())
+            }
+            DefinedType::Record(r) => {
+                for (_, ty) in &r.fields {
+                    ty._visit_defined_types(types, visitor, false)?
+                }
+
+                Ok(())
+            }
+            DefinedType::Flags(_) | DefinedType::Enum(_) | DefinedType::Alias(_) => Ok(()),
+        }
+    }
+
     /// Gets a description of the defined type.
     pub fn desc(&self, types: &Types) -> &'static str {
         match self {
@@ -684,9 +789,10 @@ impl fmt::Display for FuncKind {
 #[cfg_attr(feature = "serde", derive(serde::Serialize))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub struct ResourceAlias {
-    /// The owning interface for the resource.
+    /// The foreign owning interface for the resource.
     ///
-    /// This may be `None` if the resource is owned by a world.
+    /// This may be `None` if the resource does not have a foreign interface owner
+    /// such as in a world or when aliasing within the same interface.
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub owner: Option<InterfaceId>,
     /// The id of the resource that was aliased.
@@ -746,6 +852,24 @@ pub struct FuncType {
     pub results: Option<FuncResult>,
 }
 
+impl FuncType {
+    fn _visit_defined_types<'a, E>(
+        &self,
+        types: &'a Types,
+        visitor: &mut impl FnMut(&'a Types, DefinedTypeId) -> Result<(), E>,
+    ) -> Result<(), E> {
+        for ty in self.params.values() {
+            ty._visit_defined_types(types, visitor, false)?;
+        }
+
+        if let Some(results) = self.results.as_ref() {
+            results._visit_defined_types(types, visitor)?;
+        }
+
+        Ok(())
+    }
+}
+
 /// Represents a function result.
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize))]
@@ -755,6 +879,25 @@ pub enum FuncResult {
     Scalar(ValueType),
     /// A list of named results.
     List(IndexMap<String, ValueType>),
+}
+
+impl FuncResult {
+    fn _visit_defined_types<'a, E>(
+        &self,
+        types: &'a Types,
+        visitor: &mut impl FnMut(&'a Types, DefinedTypeId) -> Result<(), E>,
+    ) -> Result<(), E> {
+        match self {
+            FuncResult::Scalar(ty) => ty._visit_defined_types(types, visitor, false),
+            FuncResult::List(tys) => {
+                for ty in tys.values() {
+                    ty._visit_defined_types(types, visitor, false)?;
+                }
+
+                Ok(())
+            }
+        }
+    }
 }
 
 /// Represents a used type.
@@ -789,6 +932,20 @@ pub struct Interface {
     pub exports: IndexMap<String, ItemKind>,
 }
 
+impl Interface {
+    fn _visit_defined_types<'a, E>(
+        &self,
+        types: &'a Types,
+        visitor: &mut impl FnMut(&'a Types, DefinedTypeId) -> Result<(), E>,
+    ) -> Result<(), E> {
+        for kind in self.exports.values() {
+            kind._visit_defined_types(types, visitor)?;
+        }
+
+        Ok(())
+    }
+}
+
 /// Represents a world.
 #[derive(Debug, Clone, Default)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize))]
@@ -808,6 +965,24 @@ pub struct World {
     /// The exported items of the world.
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "IndexMap::is_empty"))]
     pub exports: IndexMap<String, ItemKind>,
+}
+
+impl World {
+    fn _visit_defined_types<'a, E>(
+        &self,
+        types: &'a Types,
+        visitor: &mut impl FnMut(&'a Types, DefinedTypeId) -> Result<(), E>,
+    ) -> Result<(), E> {
+        for kind in self.imports.values() {
+            kind._visit_defined_types(types, visitor)?;
+        }
+
+        for kind in self.exports.values() {
+            kind._visit_defined_types(types, visitor)?;
+        }
+
+        Ok(())
+    }
 }
 
 /// Represents a kind of an extern item.

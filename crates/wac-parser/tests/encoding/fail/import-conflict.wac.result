@@ -1,0 +1,13 @@
+failed to resolve document
+
+  × import `foo` conflicts with an item that was implicitly imported by an instantiation of `foo:bar`
+   ╭─[tests/encoding/fail/import-conflict.wac:5:8]
+ 2 │ 
+ 3 │ let x = new foo:bar { ... };
+   ·             ───┬───
+   ·                ╰── conflicting instantiation here
+ 4 │ 
+ 5 │ import foo: func();
+   ·        ─┬─
+   ·         ╰── explicit import here
+   ╰────

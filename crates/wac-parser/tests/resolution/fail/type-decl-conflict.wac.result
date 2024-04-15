@@ -1,0 +1,14 @@
+failed to resolve document
+
+  × type declaration `i` conflicts with a previous export of the same name
+   ╭─[tests/resolution/fail/type-decl-conflict.wac:6:11]
+ 3 │ import foo: func();
+ 4 │ export foo as i;
+   ·               ┬
+   ·               ╰── previous export is here
+ 5 │ 
+ 6 │ interface i {
+   ·           ┬
+   ·           ╰── conflicting type declaration `i`
+ 7 │ 
+   ╰────

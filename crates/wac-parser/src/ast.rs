@@ -1,9 +1,14 @@
 //! Module for the AST implementation.
 
-use crate::lexer::{self, Lexer, LexerResult, Token};
+use crate::{
+    lexer::{self, Lexer, LexerResult, Token},
+    resolution::{AstResolver, Resolution, ResolutionResult},
+};
+use indexmap::IndexMap;
 use miette::{Diagnostic, SourceSpan};
 use serde::Serialize;
 use std::fmt;
+use wac_graph::types::BorrowedPackageKey;
 
 mod export;
 mod expr;
@@ -346,6 +351,16 @@ impl<'a> Document<'a> {
             directive,
             statements,
         })
+    }
+
+    /// Resolves the document.
+    ///
+    /// The returned resolution contains an encodable composition graph.
+    pub fn resolve(
+        &self,
+        packages: IndexMap<BorrowedPackageKey<'a>, Vec<u8>>,
+    ) -> ResolutionResult<Resolution> {
+        AstResolver::new(self).resolve(packages)
     }
 }
 

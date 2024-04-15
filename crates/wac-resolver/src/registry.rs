@@ -6,7 +6,7 @@ use miette::SourceSpan;
 use secrecy::Secret;
 use semver::{Comparator, Op, Version, VersionReq};
 use std::{fs, path::Path, sync::Arc};
-use wac_parser::PackageKey;
+use wac_types::BorrowedPackageKey;
 use warg_client::{
     storage::{ContentStorage, RegistryStorage},
     Client, ClientError, Config, FileSystemClient, RegistryUrl,
@@ -80,8 +80,8 @@ impl RegistryPackageResolver {
     /// If the package isn't found, an error is returned.
     pub async fn resolve<'a>(
         &self,
-        keys: &IndexMap<PackageKey<'a>, SourceSpan>,
-    ) -> Result<IndexMap<PackageKey<'a>, Arc<Vec<u8>>>, Error> {
+        keys: &IndexMap<BorrowedPackageKey<'a>, SourceSpan>,
+    ) -> Result<IndexMap<BorrowedPackageKey<'a>, Vec<u8>>, Error> {
         // Start by fetching any required package logs
         self.fetch(keys).await?;
 
@@ -142,7 +142,10 @@ impl RegistryPackageResolver {
         Ok(packages)
     }
 
-    async fn fetch(&self, keys: &IndexMap<PackageKey<'_>, SourceSpan>) -> Result<(), Error> {
+    async fn fetch<'a>(
+        &self,
+        keys: &IndexMap<BorrowedPackageKey<'a>, SourceSpan>,
+    ) -> Result<(), Error> {
         // First check if we already have the packages in client storage.
         // If not, we'll fetch the logs from the registry.
         let mut fetch = IndexMap::new();
@@ -231,10 +234,11 @@ impl RegistryPackageResolver {
 
     async fn find_missing_content<'a>(
         &self,
-        keys: &IndexMap<PackageKey<'a>, SourceSpan>,
-        packages: &mut IndexMap<PackageKey<'a>, Arc<Vec<u8>>>,
-    ) -> Result<IndexMap<AnyHash, (Version, IndexSet<PackageKey<'a>>)>, Error> {
-        let mut downloads: IndexMap<AnyHash, (Version, IndexSet<PackageKey<'a>>)> = IndexMap::new();
+        keys: &IndexMap<BorrowedPackageKey<'a>, SourceSpan>,
+        packages: &mut IndexMap<BorrowedPackageKey<'a>, Vec<u8>>,
+    ) -> Result<IndexMap<AnyHash, (Version, IndexSet<BorrowedPackageKey<'a>>)>, Error> {
+        let mut downloads: IndexMap<AnyHash, (Version, IndexSet<BorrowedPackageKey>)> =
+            IndexMap::new();
         for (key, span) in keys {
             let id =
                 key.name
@@ -316,13 +320,11 @@ impl RegistryPackageResolver {
         Ok(downloads)
     }
 
-    fn read_contents(path: &Path) -> Result<Arc<Vec<u8>>, Error> {
-        Ok(Arc::new(fs::read(path).map_err(|e| {
-            Error::RegistryContentFailure {
-                path: path.to_path_buf(),
-                source: e.into(),
-            }
-        })?))
+    fn read_contents(path: &Path) -> Result<Vec<u8>, Error> {
+        fs::read(path).map_err(|e| Error::RegistryContentFailure {
+            path: path.to_path_buf(),
+            source: e.into(),
+        })
     }
 
     pub fn auth_token(config: &Config, url: Option<&str>) -> Result<Option<Secret<String>>> {
