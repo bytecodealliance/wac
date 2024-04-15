@@ -8,7 +8,7 @@ use wac_parser::Document;
 #[derive(Args)]
 #[clap(disable_version_flag = true)]
 pub struct ParseCommand {
-    /// The path to the source file.
+    /// The path to the source WAC file.
     #[clap(value_name = "PATH")]
     pub path: PathBuf,
 }

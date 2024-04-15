@@ -36,7 +36,7 @@ pub struct ResolveCommand {
     #[clap(long, value_name = "URL")]
     pub registry: Option<String>,
 
-    /// The path to the source file.
+    /// The path to the source WAC file.
     #[clap(value_name = "PATH")]
     pub path: PathBuf,
 }

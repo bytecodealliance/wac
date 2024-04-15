@@ -737,7 +737,7 @@ enum Item {
 impl Item {
     fn kind(&self, graph: &CompositionGraph) -> ItemKind {
         match self {
-            Self::Node(id) => graph[*id].item_kind,
+            Self::Node(id) => graph[*id].item_kind(),
             Self::Use(ty) => ItemKind::Type(*ty),
             Self::Type(ty) => ItemKind::Type(*ty),
         }
@@ -788,7 +788,7 @@ impl State {
         if let Item::Node(node) = item {
             // Use only the first name encountered for the node, ignoring
             // aliasing in the form of `let x = y;`
-            if self.graph[node].name.is_none() {
+            if self.graph[node].name().is_none() {
                 self.graph.set_node_name(node, id.string.to_owned());
             }
         }
@@ -1133,10 +1133,10 @@ impl<'a> AstResolver<'a> {
     ) -> Result<(), Error> {
         if let Some((item, prev_span)) = state.root_scope().get(&name) {
             let node = &state.graph[item.node()];
-            if let NodeKind::Definition = node.kind {
+            if let NodeKind::Definition = node.kind() {
                 return Err(Error::ExportConflict {
                     name,
-                    kind: node.item_kind.desc(state.graph.types()).to_string(),
+                    kind: node.item_kind().desc(state.graph.types()).to_string(),
                     span,
                     definition: prev_span,
                     help: if !show_hint {
@@ -2720,7 +2720,7 @@ impl<'a> AstResolver<'a> {
         for (name, import) in state
             .graph
             .node_ids()
-            .filter_map(|n| match &state.graph[n].kind {
+            .filter_map(|n| match &state.graph[n].kind() {
                 NodeKind::Import(name) => Some((name, n)),
                 _ => None,
             })
@@ -2738,7 +2738,7 @@ impl<'a> AstResolver<'a> {
                 .is_subtype(
                     expected.promote(),
                     state.graph.types(),
-                    state.graph[import].item_kind,
+                    state.graph[import].item_kind(),
                     state.graph.types(),
                 )
                 .map_err(|e| Error::TargetMismatch {
@@ -2767,7 +2767,7 @@ impl<'a> AstResolver<'a> {
 
             checker
                 .is_subtype(
-                    state.graph[export].item_kind,
+                    state.graph[export].item_kind(),
                     state.graph.types(),
                     expected.promote(),
                     state.graph.types(),

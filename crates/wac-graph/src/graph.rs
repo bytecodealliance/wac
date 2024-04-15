@@ -294,17 +294,17 @@ impl RegisteredPackage {
 #[derive(Debug, Clone)]
 pub struct Node {
     /// The node kind.
-    pub kind: NodeKind,
+    kind: NodeKind,
     /// The package associated with the node, if any.
-    pub package: Option<PackageId>,
+    package: Option<PackageId>,
     /// The item kind of the node.
-    pub item_kind: ItemKind,
+    item_kind: ItemKind,
     /// The optional name to associate with the node.
     ///
     /// When the graph is encoded, node names are recorded in a `names` custom section.
-    pub name: Option<String>,
+    name: Option<String>,
     /// The name to use for exporting the node.
-    pub export: Option<String>,
+    export: Option<String>,
 }
 
 impl Node {
@@ -318,11 +318,47 @@ impl Node {
         }
     }
 
-    fn import_name(&self) -> Option<&str> {
+    /// Gets the kind of the node.
+    pub fn kind(&self) -> &NodeKind {
+        &self.kind
+    }
+
+    /// Gets the package id associated with the node.
+    ///
+    /// Returns `None` if the node is not directly associated with a package.
+    pub fn package(&self) -> Option<PackageId> {
+        self.package
+    }
+
+    /// Gets the item kind of the node.
+    pub fn item_kind(&self) -> ItemKind {
+        self.item_kind
+    }
+
+    /// Gets the name of the node.
+    ///
+    /// Node names are encoded in a `names` custom section.
+    ///
+    /// Returns `None` if the node is unnamed.
+    pub fn name(&self) -> Option<&str> {
+        self.name.as_deref()
+    }
+
+    /// Gets the import name of the node.
+    ///
+    /// Returns `Some` if the node is an import or `None` if the node is not an import.
+    pub fn import_name(&self) -> Option<&str> {
         match &self.kind {
             NodeKind::Import(name) => Some(name),
             _ => None,
         }
+    }
+
+    /// Gets the export name of the node.
+    ///
+    /// Returns `None` if the node is not exported.
+    pub fn export_name(&self) -> Option<&str> {
+        self.export.as_deref()
     }
 
     fn add_satisfied_arg(&mut self, index: usize) {
@@ -532,7 +568,10 @@ impl CompositionGraph {
         let key = entry.package.as_ref().unwrap().key();
         log::debug!("unregistering package `{key}` with the graph");
         let prev = self.package_map.remove(&key as &dyn BorrowedKey);
-        assert!(prev.is_some());
+        assert!(
+            prev.is_some(),
+            "package should exist in the package map (this is a bug)"
+        );
 
         // Finally free the package
         *entry = RegisteredPackage::new(entry.generation.wrapping_add(1));
