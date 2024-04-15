@@ -140,7 +140,7 @@ pub enum ExportError {
 #[derive(Debug, Error)]
 pub enum UnexportError {
     /// The node cannot be unexported as it is a type definition.
-    #[error("the node cannot be unexported as it is a type definition")]
+    #[error("cannot unexport a type definition")]
     MustExportDefinition,
 }
 
