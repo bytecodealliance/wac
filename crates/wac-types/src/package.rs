@@ -551,6 +551,17 @@ impl<'a> TypeConverter<'a> {
             } = ty
             {
                 self.use_or_own(Owner::Interface(id), name, *referenced, *created);
+
+                // Prevent self-referential ownership of any aliased resources in this interface
+                if let ItemKind::Type(Type::Resource(res)) = export {
+                    if let Some(ResourceAlias { owner, .. }) = &mut self.types[res].alias {
+                        if let Some(owner_id) = owner {
+                            if *owner_id == id {
+                                *owner = None;
+                            }
+                        }
+                    }
+                }
             }
 
             let prev = self.types[id].exports.insert(name.clone(), export);

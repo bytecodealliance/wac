@@ -789,9 +789,9 @@ impl fmt::Display for FuncKind {
 #[cfg_attr(feature = "serde", derive(serde::Serialize))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub struct ResourceAlias {
-    /// The owning interface for the resource.
+    /// The foreign owning interface for the resource.
     ///
-    /// This may be `None` if the resource is owned by a world.
+    /// This may be `None` if the resource does not have a foreign interface owner.
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub owner: Option<InterfaceId>,
     /// The id of the resource that was aliased.
