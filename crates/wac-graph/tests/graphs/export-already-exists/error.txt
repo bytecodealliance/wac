@@ -1,4 +1,4 @@
 failed to export node 0 in export 1 for test case `export-already-exists`
 
 Caused by:
-    export name `foo` already exists in the graph
+    an export with the name `foo` already exists
