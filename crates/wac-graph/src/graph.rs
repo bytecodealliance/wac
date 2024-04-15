@@ -200,7 +200,7 @@ pub enum EncodeError {
         node: NodeId,
     },
     /// An implicit import on an instantiation conflicts with an explicit import node.
-    #[error("an instantiation of package `{package}` implicitly imports an item named `{name}`, but it conflicts with an explicit import node of the same name")]
+    #[error("an instantiation of package `{package}` implicitly imports an item named `{name}`, but it conflicts with an explicit import of the same name")]
     ImplicitImportConflict {
         /// The existing import node.
         import: NodeId,
