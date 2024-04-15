@@ -765,11 +765,8 @@ impl<'a> TypeConverter<'a> {
             let alias_id = self.types.add_resource(Resource {
                 name: name.to_owned(),
                 alias: Some(ResourceAlias {
-                    owner: match self
-                        .find_owner(ComponentAnyTypeId::Resource(id))
-                        .expect("should have owner")
-                    {
-                        (Owner::Interface(id), _) => Some(*id),
+                    owner: match self.find_owner(ComponentAnyTypeId::Resource(id)) {
+                        Some((Owner::Interface(id), _)) => Some(*id),
                         _ => None,
                     },
                     source: *resource_id,
