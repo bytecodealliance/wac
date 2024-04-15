@@ -45,7 +45,7 @@ pub enum DefineTypeError {
         name: String,
     },
     /// The specified type name is not a valid extern name.
-    #[error("type name `{name}` is not a valid extern name")]
+    #[error("type name `{name}` is not valid")]
     InvalidExternName {
         /// The name of the type.
         name: String,
