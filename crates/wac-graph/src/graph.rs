@@ -125,7 +125,7 @@ pub enum ExportError {
         node: NodeId,
     },
     /// An invalid export name was given.
-    #[error("export name `{name}` is not a valid extern name")]
+    #[error("export name `{name}` is not valid")]
     InvalidExportName {
         /// The invalid name.
         name: String,
