@@ -1,6 +1,6 @@
 [package]
 name = "wac-parser"
-description = "A library for encoding and decoding WebAssembly compositions."
+description = "A library for parsing and encoding WebAssembly Composition (WAC) source files."
 version = { workspace = true }
 edition = { workspace = true }
 authors = { workspace = true }
