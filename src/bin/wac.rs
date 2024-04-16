@@ -1,7 +1,7 @@
 use anyhow::Result;
 use clap::Parser;
 use owo_colors::{OwoColorize, Stream, Style};
-use wac::commands::{EncodeCommand, ParseCommand, ResolveCommand};
+use wac_cli::commands::{EncodeCommand, ParseCommand, ResolveCommand};
 
 fn version() -> &'static str {
     option_env!("CARGO_VERSION_INFO").unwrap_or(env!("CARGO_PKG_VERSION"))
