@@ -81,13 +81,13 @@ For a full description of the `wac` language see [the language guide](LANGUAGE.m
 ## Installation
 
 ```
-cargo install --git https://github.com/peterhuene/wac --locked
+cargo install wac-cli
 ```
 
 To enable support Warg component registries, specify the `registry` feature:
 
 ```
-cargo install --git https://github.com/peterhuene/wac --locked --features registry
+cargo install wac-cli --features registry
 ```
 
 ## Usage
