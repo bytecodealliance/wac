@@ -11,7 +11,7 @@ on:
 
 jobs:
   publish:
-    if: github.repository == 'bytecodealliance/cargo-component'
+    if: github.repository == 'bytecodealliance/wac'
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
