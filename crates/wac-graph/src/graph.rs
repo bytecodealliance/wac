@@ -415,22 +415,6 @@ impl fmt::Debug for Edge {
     }
 }
 
-/// Represents information about a node in a composition graph.
-pub struct NodeInfo<'a> {
-    /// The item kind of the node.
-    pub kind: ItemKind,
-    /// The optional name of the node.
-    pub name: Option<&'a str>,
-    /// The package associated with the node.
-    pub package: Option<PackageId>,
-    /// The export name of the node.
-    ///
-    /// If the node is not exported, this field will be `None`.
-    pub export: Option<&'a str>,
-    /// Whether or not the node is from a type definition.
-    pub definition: bool,
-}
-
 /// Represents a composition graph.
 ///
 /// A composition graph is a directed acyclic graph (DAG) that represents a WebAssembly composition.
