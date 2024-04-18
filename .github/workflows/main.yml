@@ -3,7 +3,7 @@ on:
   push:
     branches:
       - main
-    tags: ['[0-9]*']
+    tags: ["[0-9]*"]
   pull_request:
     branches:
       - main
@@ -16,14 +16,14 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
     steps:
-    - uses: actions/checkout@v3
-    - name: Install Rust
-      run: |
-        rustup update stable --no-self-update
-        rustup default stable
-      shell: bash
-    - name: Run all tests
-      run: cargo test --all
+      - uses: actions/checkout@v3
+      - name: Install Rust
+        run: |
+          rustup update stable --no-self-update
+          rustup default stable
+        shell: bash
+      - name: Run all tests
+        run: cargo test --all
 
   check:
     name: Check feature combinations
@@ -32,29 +32,27 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
     steps:
-    - uses: actions/checkout@v3
-    - name: Install Rust
-      run: |
-        rustup update stable --no-self-update
-        rustup default stable
-      shell: bash
-    - name: Build without default features
-      run: cargo check --no-default-features
-    - name: Build the `wat` feature
-      run: cargo check --no-default-features --features wat
-    - name: Build the `wit` feature
-      run: cargo check --no-default-features --features wit
-    - name: Build the `registry` feature
-      run: cargo check --no-default-features --features registry
-    - name: Build all features
-      run: cargo check --all-features
+      - uses: actions/checkout@v3
+      - name: Install Rust
+        run: |
+          rustup update stable --no-self-update
+          rustup default stable
+        shell: bash
+      - name: Build without default features
+        run: cargo check --no-default-features
+      - name: Build the `wat` feature
+        run: cargo check --no-default-features --features wat
+      - name: Build the `wit` feature
+        run: cargo check --no-default-features --features wit
+      - name: Build all features
+        run: cargo check --all-features
 
   rustfmt:
     name: Format source code
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
-    - name: Install Rust
-      run: rustup update stable && rustup default stable && rustup component add rustfmt
-    - name: Run `cargo fmt`
-      run: cargo fmt -- --check
+      - uses: actions/checkout@v3
+      - name: Install Rust
+        run: rustup update stable && rustup default stable && rustup component add rustfmt
+      - name: Run `cargo fmt`
+        run: cargo fmt -- --check

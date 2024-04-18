@@ -37,13 +37,14 @@ thiserror = { workspace = true }
 indexmap = { workspace = true }
 miette = { workspace = true, features = ["fancy"] }
 semver = { workspace = true }
-indicatif = { workspace = true, optional = true }
+indicatif = { workspace = true }
+warg-client = { workspace = true }
+dialoguer = "0.11.0"
 
 [features]
 default = ["wit"]
 wat = ["wac-resolver/wat"]
 wit = ["wac-resolver/wit"]
-registry = ["wac-resolver/registry", "indicatif"]
 
 [workspace.dependencies]
 wac-parser = { path = "crates/wac-parser", version = "0.1.0", default-features = false }
@@ -71,11 +72,11 @@ wat = "1.202.0"
 logos = "0.14.0"
 miette = "7.2.0"
 thiserror = "1.0.58"
-warg-client = "0.4.1"
-warg-protocol = "0.4.1"
-warg-crypto = "0.4.1"
-warg-server = "0.4.1"
-warg-credentials = "0.4.1"
+warg-protocol = { git = "https://github.com/bytecodealliance/registry", branch = "namespace-enhancements" }
+warg-crypto = { git = "https://github.com/bytecodealliance/registry", branch = "namespace-enhancements" }
+warg-client = { git = "https://github.com/bytecodealliance/registry", branch = "namespace-enhancements" }
+warg-credentials = { git = "https://github.com/bytecodealliance/registry", branch = "namespace-enhancements" }
+warg-server = { git = "https://github.com/bytecodealliance/registry", branch = "namespace-enhancements" }
 secrecy = "0.8.0"
 futures = "0.3.30"
 indicatif = "0.17.8"

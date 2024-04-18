@@ -3,6 +3,8 @@ use anyhow::{Context, Result};
 use clap::Args;
 use std::{fs, path::PathBuf};
 use wac_parser::Document;
+use wac_resolver::CommandError;
+use warg_client::Retry;
 
 fn parse<T, U>(s: &str) -> Result<(T, U)>
 where
@@ -32,7 +34,6 @@ pub struct ResolveCommand {
     pub deps: Vec<(String, PathBuf)>,
 
     /// The URL of the registry to use.
-    #[cfg(feature = "registry")]
     #[clap(long, value_name = "URL")]
     pub registry: Option<String>,
 
@@ -43,7 +44,7 @@ pub struct ResolveCommand {
 
 impl ResolveCommand {
     /// Executes the command.
-    pub async fn exec(self) -> Result<()> {
+    pub async fn exec(self, retry: Option<Retry>) -> Result<(), CommandError> {
         log::debug!("executing resolve command");
 
         let contents = fs::read_to_string(&self.path)
@@ -54,14 +55,12 @@ impl ResolveCommand {
         let resolver = PackageResolver::new(
             self.deps_dir,
             self.deps.into_iter().collect(),
-            #[cfg(feature = "registry")]
             self.registry.as_deref(),
-        )?;
+            retry,
+        )
+        .await?;
 
-        let packages = resolver
-            .resolve(&document)
-            .await
-            .map_err(|e| fmt_err(e, &self.path, &contents))?;
+        let packages = resolver.resolve(&document).await?;
 
         let resolution = document
             .resolve(packages)

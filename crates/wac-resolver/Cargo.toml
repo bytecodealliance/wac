@@ -13,7 +13,7 @@ repository = { workspace = true }
 wac-types = { workspace = true }
 wac-parser = { workspace = true }
 semver = { workspace = true }
-thiserror = { workspace = true }
+thiserror.workspace = true
 anyhow = { workspace = true }
 log = { workspace = true }
 wit-component = { workspace = true }
@@ -21,13 +21,14 @@ indexmap = { workspace = true }
 wat = { workspace = true, optional = true }
 wit-parser = { workspace = true, optional = true }
 miette = { workspace = true }
-warg-client = { workspace = true, optional = true }
-warg-protocol = { workspace = true, optional = true }
-warg-crypto = { workspace = true, optional = true }
-warg-credentials = { workspace = true, optional = true }
-secrecy = { workspace = true, optional = true }
-tokio = { workspace = true, optional = true }
-futures = { workspace = true, optional = true }
+warg-client = { workspace = true }
+warg-protocol = { workspace = true }
+warg-crypto = { workspace = true }
+warg-credentials = { workspace = true }
+secrecy = { workspace = true}
+tokio = { workspace = true}
+futures = { workspace = true}
+serde_json = "1.0.116"
 
 [dev-dependencies]
 wac-graph = { workspace = true }
@@ -38,7 +39,7 @@ tokio-util = "0.7.10"
 tempdir = "0.3.7"
 
 [features]
-default = ["registry"]
+default = []
 wat = ["dep:wat"]
 wit = ["wit-parser"]
-registry = ["warg-client", "warg-protocol", "warg-crypto", "warg-credentials", "secrecy", "tokio", "futures"]
+

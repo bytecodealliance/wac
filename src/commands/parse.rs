@@ -3,6 +3,7 @@ use anyhow::{Context, Result};
 use clap::Args;
 use std::{fs, path::PathBuf};
 use wac_parser::Document;
+use wac_resolver::CommandError;
 
 /// Parses a WAC source file into a JSON AST representation.
 #[derive(Args)]
@@ -15,7 +16,7 @@ pub struct ParseCommand {
 
 impl ParseCommand {
     /// Executes the command.
-    pub async fn exec(self) -> Result<()> {
+    pub async fn exec(self) -> Result<(), CommandError> {
         log::debug!("executing parse command");
 
         let contents = fs::read_to_string(&self.path)
@@ -23,7 +24,8 @@ impl ParseCommand {
 
         let document = Document::parse(&contents).map_err(|e| fmt_err(e, &self.path, &contents))?;
 
-        serde_json::to_writer_pretty(std::io::stdout(), &document)?;
+        serde_json::to_writer_pretty(std::io::stdout(), &document)
+            .map_err(|e| CommandError::Serde(e))?;
         println!();
 
         Ok(())

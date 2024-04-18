@@ -1,3 +1,5 @@
+use crate::CommandError;
+
 use super::Error;
 use anyhow::Result;
 use futures::{stream::FuturesUnordered, StreamExt};
@@ -9,10 +11,11 @@ use std::{fs, path::Path, sync::Arc};
 use wac_types::BorrowedPackageKey;
 use warg_client::{
     storage::{ContentStorage, RegistryStorage},
-    Client, ClientError, Config, FileSystemClient, RegistryUrl,
+    Client, ClientError, Config, FileSystemClient, RegistryUrl, Retry,
 };
 use warg_credentials::keyring::get_auth_token;
 use warg_crypto::hash::AnyHash;
+use warg_protocol::registry::PackageName;
 
 /// Implemented by progress bars.
 ///
@@ -45,14 +48,18 @@ impl RegistryPackageResolver {
     /// client configuration file.
     ///
     /// If `url` is `None`, the default URL will be used.
-    pub fn new(url: Option<&str>, bar: Option<Box<dyn ProgressBar>>) -> Result<Self> {
+    pub async fn new(
+        url: Option<&str>,
+        bar: Option<Box<dyn ProgressBar>>,
+        retry: Option<Retry>,
+    ) -> Result<Self> {
         let config = Config::from_default_file()?.unwrap_or_default();
+        let client = Client::new_with_config(url, &config, Self::auth_token(&config, url)?).await?;
+        if let Some(retry) = retry {
+            retry.store_namespace(&client).await?;
+        }
         Ok(Self {
-            client: Arc::new(Client::new_with_config(
-                url,
-                &config,
-                Self::auth_token(&config, url)?,
-            )?),
+            client: Arc::new(client),
             bar,
         })
     }
@@ -60,17 +67,15 @@ impl RegistryPackageResolver {
     /// Creates a new registry package resolver with the given configuration.
     ///
     /// If `url` is `None`, the default URL will be used.
-    pub fn new_with_config(
+    pub async fn new_with_config(
         url: Option<&str>,
         config: &Config,
         bar: Option<Box<dyn ProgressBar>>,
     ) -> Result<Self> {
         Ok(Self {
-            client: Arc::new(Client::new_with_config(
-                url,
-                config,
-                Self::auth_token(config, url)?,
-            )?),
+            client: Arc::new(
+                Client::new_with_config(url, config, Self::auth_token(config, url)?).await?,
+            ),
             bar,
         })
     }
@@ -81,7 +86,7 @@ impl RegistryPackageResolver {
     pub async fn resolve<'a>(
         &self,
         keys: &IndexMap<BorrowedPackageKey<'a>, SourceSpan>,
-    ) -> Result<IndexMap<BorrowedPackageKey<'a>, Vec<u8>>, Error> {
+    ) -> Result<IndexMap<BorrowedPackageKey<'a>, Vec<u8>>, CommandError> {
         // Start by fetching any required package logs
         self.fetch(keys).await?;
 
@@ -89,7 +94,6 @@ impl RegistryPackageResolver {
         // is missing from local storage.
         let mut packages = IndexMap::new();
         let missing = self.find_missing_content(keys, &mut packages).await?;
-
         if !missing.is_empty() {
             if let Some(bar) = self.bar.as_ref() {
                 bar.init(missing.len());
@@ -101,7 +105,7 @@ impl RegistryPackageResolver {
                 let client = self.client.clone();
                 let hash = hash.clone();
                 tasks.push(tokio::spawn(async move {
-                    Ok((index, client.download_content(&hash).await?))
+                    Ok((index, client.download_content(None, &hash).await?))
                 }));
             }
 
@@ -145,12 +149,12 @@ impl RegistryPackageResolver {
     async fn fetch<'a>(
         &self,
         keys: &IndexMap<BorrowedPackageKey<'a>, SourceSpan>,
-    ) -> Result<(), Error> {
+    ) -> Result<(), CommandError> {
         // First check if we already have the packages in client storage.
         // If not, we'll fetch the logs from the registry.
         let mut fetch = IndexMap::new();
         for (key, span) in keys {
-            let id =
+            let id: PackageName =
                 key.name
                     .parse()
                     .map_err(|e: anyhow::Error| Error::PackageResolutionFailure {
@@ -164,7 +168,14 @@ impl RegistryPackageResolver {
             if let Some(info) = self
                 .client
                 .registry()
-                .load_package(self.client.get_warg_registry(), &id)
+                .load_package(
+                    self.client
+                        .get_warg_registry(id.namespace())
+                        .await
+                        .map_err(|e| CommandError::WargClient(e))?
+                        .as_ref(),
+                    &id,
+                )
                 .await
                 .map_err(|e| Error::PackageResolutionFailure {
                     name: key.name.to_string(),
@@ -217,15 +228,35 @@ impl RegistryPackageResolver {
                         bar.finish();
                     }
                 }
-                Err(ClientError::PackageDoesNotExist { name }) => {
-                    return Err(Error::PackageDoesNotExist {
-                        name: name.to_string(),
-                        span: *fetch[&name],
-                    })
-                }
-                Err(e) => {
-                    return Err(Error::RegistryUpdateFailure { source: e.into() });
-                }
+                Err(e) => match &e {
+                    ClientError::PackageDoesNotExistWithHint { .. } => {
+                        return Err(CommandError::WargHint(e));
+                    }
+                    ClientError::NoHomeRegistryUrl { .. }
+                    | ClientError::ResettingRegistryLocalStateFailed { .. }
+                    | ClientError::ClearContentCacheFailed { .. }
+                    | ClientError::InvalidCheckpointSignature { .. }
+                    | ClientError::InvalidCheckpointKeyId { .. }
+                    | ClientError::NoOperatorRecords { .. }
+                    | ClientError::OperatorValidationFailed { .. }
+                    | ClientError::CannotInitializePackage { .. }
+                    | ClientError::MustInitializePackage { .. }
+                    | ClientError::NotPublishing { .. }
+                    | ClientError::NothingToPublish { .. }
+                    | ClientError::PackageDoesNotExist { .. }
+                    | ClientError::PackageVersionDoesNotExist { .. }
+                    | ClientError::PackageValidationFailed { .. }
+                    | ClientError::ContentNotFound { .. }
+                    | ClientError::IncorrectContent { .. }
+                    | ClientError::PackageLogEmpty { .. }
+                    | ClientError::PublishRejected { .. }
+                    | ClientError::PackageMissingContent { .. }
+                    | ClientError::CheckpointLogLengthRewind { .. }
+                    | ClientError::CheckpointChangedLogRootOrMapRoot { .. }
+                    | ClientError::SimilarNamespace { .. }
+                    | ClientError::Api(_)
+                    | ClientError::Other(_) => return Err(CommandError::WargClient(e)),
+                },
             }
         }
 
@@ -236,11 +267,11 @@ impl RegistryPackageResolver {
         &self,
         keys: &IndexMap<BorrowedPackageKey<'a>, SourceSpan>,
         packages: &mut IndexMap<BorrowedPackageKey<'a>, Vec<u8>>,
-    ) -> Result<IndexMap<AnyHash, (Version, IndexSet<BorrowedPackageKey<'a>>)>, Error> {
+    ) -> Result<IndexMap<AnyHash, (Version, IndexSet<BorrowedPackageKey<'a>>)>, CommandError> {
         let mut downloads: IndexMap<AnyHash, (Version, IndexSet<BorrowedPackageKey>)> =
             IndexMap::new();
         for (key, span) in keys {
-            let id =
+            let id: PackageName =
                 key.name
                     .parse()
                     .map_err(|e: anyhow::Error| Error::PackageResolutionFailure {
@@ -252,7 +283,14 @@ impl RegistryPackageResolver {
             let info = self
                 .client
                 .registry()
-                .load_package(self.client.get_warg_registry(), &id)
+                .load_package(
+                    self.client
+                        .get_warg_registry(id.namespace())
+                        .await
+                        .map_err(|e| CommandError::WargClient(e.into()))?
+                        .as_ref(),
+                    &id,
+                )
                 .await
                 .map_err(|e| Error::PackageResolutionFailure {
                     name: key.name.to_string(),
@@ -277,24 +315,24 @@ impl RegistryPackageResolver {
             let release = match info.state.find_latest_release(&req) {
                 Some(release) if !release.yanked() => release,
                 Some(release) => {
-                    return Err(Error::PackageVersionYanked {
+                    return Err(CommandError::WacResolution(Error::PackageVersionYanked {
                         name: key.name.to_string(),
                         version: release.version.clone(),
                         span: *span,
-                    });
+                    }))
                 }
                 None => {
                     if let Some(version) = key.version {
-                        return Err(Error::UnknownPackageVersion {
+                        return Err(CommandError::WacResolution(Error::UnknownPackageVersion {
                             name: key.name.to_string(),
                             version: version.clone(),
                             span: *span,
-                        });
+                        }));
                     } else {
-                        return Err(Error::PackageLogEmpty {
+                        return Err(CommandError::WacResolution(Error::PackageLogEmpty {
                             name: key.name.to_string(),
                             span: *span,
-                        });
+                        }));
                     }
                 }
             };

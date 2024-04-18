@@ -1,19 +1,21 @@
 //! Modules for package resolvers.
 
+use crate::Error as WacResolutionError;
+use anyhow::anyhow;
 use indexmap::IndexMap;
 use miette::{Diagnostic, SourceSpan};
-use wac_parser::Document;
+use thiserror::Error;
+use wac_parser::{resolution::Error as WacError, Document};
 
 mod fs;
-#[cfg(feature = "registry")]
 mod registry;
 mod visitor;
 
 pub use fs::*;
-#[cfg(feature = "registry")]
 pub use registry::*;
 pub use visitor::*;
 use wac_types::BorrowedPackageKey;
+use warg_client::ClientError;
 
 /// Represents a package resolution error.
 #[derive(thiserror::Error, Diagnostic, Debug)]
@@ -29,7 +31,6 @@ pub enum Error {
         span: SourceSpan,
     },
     /// An unknown package version was encountered.
-    #[cfg(feature = "registry")]
     #[error("version {version} of package `{name}` does not exist")]
     UnknownPackageVersion {
         /// The name of the package.
@@ -57,7 +58,6 @@ pub enum Error {
         span: SourceSpan,
     },
     /// The requested package version has been yanked.
-    #[cfg(feature = "registry")]
     #[error("version {version} of package `{name}` has been yanked")]
     PackageVersionYanked {
         /// The name of the package.
@@ -69,7 +69,6 @@ pub enum Error {
         span: SourceSpan,
     },
     /// A package log was empty.
-    #[cfg(feature = "registry")]
     #[error("a release for package `{name}` has not yet been published")]
     PackageLogEmpty {
         /// The name of the package.
@@ -79,7 +78,6 @@ pub enum Error {
         span: SourceSpan,
     },
     /// A failure occurred while updating logs from the registry.
-    #[cfg(feature = "registry")]
     #[error("failed to update registry logs")]
     RegistryUpdateFailure {
         /// The underlying error.
@@ -87,7 +85,6 @@ pub enum Error {
         source: anyhow::Error,
     },
     /// A failure occurred while downloading content from the registry.
-    #[cfg(feature = "registry")]
     #[error("failed to download content from the registry")]
     RegistryDownloadFailure {
         /// The underlying error.
@@ -95,7 +92,6 @@ pub enum Error {
         source: anyhow::Error,
     },
     /// A failure occurred while reading content from registry storage.
-    #[cfg(feature = "registry")]
     #[error("failed to read content path `{path}`", path = .path.display())]
     RegistryContentFailure {
         /// The path to the content.
@@ -148,4 +144,65 @@ pub fn packages<'a>(
 
     visitor.visit(document)?;
     Ok(keys)
+}
+
+#[derive(Debug, Error)]
+/// Error for WAC commands
+pub enum CommandError {
+    /// General errors
+    #[error("Error: `{0}`")]
+    General(anyhow::Error),
+    /// Serde errors
+    #[error("Error: `{0}`")]
+    Serde(serde_json::Error),
+    /// Wac resolution errors
+    #[error("Error: `{0}`")]
+    WacResolution(WacResolutionError),
+    /// Wac errors
+    #[error("Error: `{0}`")]
+    Wac(WacError),
+    /// Client Error
+    #[error("Warg Client Error: {0}")]
+    WargClient(ClientError),
+    /// Client Error With Hint
+    #[error("Warg Client Error: {0}")]
+    WargHint(ClientError),
+}
+
+/// Error from warg client
+pub struct WargClientError(pub ClientError);
+
+impl std::fmt::Debug for WargClientError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_tuple("WargClientError").field(&self.0).finish()
+    }
+}
+
+impl From<anyhow::Error> for CommandError {
+    fn from(value: anyhow::Error) -> Self {
+        CommandError::General(value)
+    }
+}
+
+impl From<WacResolutionError> for CommandError {
+    fn from(value: WacResolutionError) -> Self {
+        CommandError::General(anyhow!(value))
+    }
+}
+
+impl From<serde_json::Error> for CommandError {
+    fn from(value: serde_json::Error) -> Self {
+        CommandError::Serde(value)
+    }
+}
+
+impl From<WargClientError> for CommandError {
+    fn from(value: WargClientError) -> Self {
+        match &value.0 {
+            ClientError::PackageDoesNotExistWithHint { .. } => {
+                CommandError::WargHint(value.0.into())
+            }
+            _ => CommandError::WargClient(value.0.into()),
+        }
+    }
 }

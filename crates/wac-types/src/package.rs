@@ -56,7 +56,7 @@ impl fmt::Display for PackageKey {
 }
 
 /// A borrowed package key.
-#[derive(Copy, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct BorrowedPackageKey<'a> {
     /// The package name.
     pub name: &'a str,

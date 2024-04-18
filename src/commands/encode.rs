@@ -1,5 +1,5 @@
 use crate::{fmt_err, PackageResolver};
-use anyhow::{bail, Context, Result};
+use anyhow::{anyhow, Context, Result};
 use clap::Args;
 use std::{
     fs,
@@ -8,6 +8,8 @@ use std::{
 };
 use wac_graph::EncodeOptions;
 use wac_parser::Document;
+use wac_resolver::CommandError;
+use warg_client::Retry;
 use wasmprinter::print_bytes;
 
 fn parse<T, U>(s: &str) -> Result<(T, U)>
@@ -60,7 +62,6 @@ pub struct EncodeCommand {
     pub output: Option<PathBuf>,
 
     /// The URL of the registry to use.
-    #[cfg(feature = "registry")]
     #[clap(long, value_name = "URL")]
     pub registry: Option<String>,
 
@@ -71,7 +72,7 @@ pub struct EncodeCommand {
 
 impl EncodeCommand {
     /// Executes the command.
-    pub async fn exec(self) -> Result<()> {
+    pub async fn exec(self, retry: Option<Retry>) -> Result<(), CommandError> {
         log::debug!("executing encode command");
 
         let contents = fs::read_to_string(&self.path)
@@ -82,28 +83,31 @@ impl EncodeCommand {
         let resolver = PackageResolver::new(
             self.deps_dir,
             self.deps.into_iter().collect(),
-            #[cfg(feature = "registry")]
             self.registry.as_deref(),
-        )?;
+            retry,
+        )
+        .await?;
 
-        let packages = resolver
-            .resolve(&document)
-            .await
-            .map_err(|e| fmt_err(e, &self.path, &contents))?;
+        let packages = resolver.resolve(&document).await?;
 
         let resolution = document
             .resolve(packages)
             .map_err(|e| fmt_err(e, &self.path, &contents))?;
 
         if !self.wat && self.output.is_none() && std::io::stdout().is_terminal() {
-            bail!("cannot print binary wasm output to a terminal; pass the `-t` flag to print the text format instead");
+            return Err(anyhow!(
+            "cannot print binary wasm output to a terminal; pass the `-t` flag to print the text format instead"
+        )
+        .into());
         }
 
-        let mut bytes = resolution.encode(EncodeOptions {
-            define_components: !self.import_dependencies,
-            validate: !self.no_validate,
-            ..Default::default()
-        })?;
+        let mut bytes = resolution
+            .encode(EncodeOptions {
+                define_components: !self.import_dependencies,
+                validate: !self.no_validate,
+                ..Default::default()
+            })
+            .map_err(|e| CommandError::Wac(e))?;
         if self.wat {
             bytes = print_bytes(&bytes)
                 .context("failed to convert binary wasm output to text")?

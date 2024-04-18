@@ -11,12 +11,12 @@ use std::{
     path::{Path, PathBuf},
 };
 use wac_parser::Document;
-use wac_resolver::{packages, Error, FileSystemPackageResolver};
+use wac_resolver::{packages, CommandError, Error, FileSystemPackageResolver};
 use wac_types::BorrowedPackageKey;
+use warg_client::Retry;
 
 pub mod commands;
 
-#[cfg(feature = "registry")]
 mod progress;
 
 fn fmt_err(e: impl Into<Report>, path: &Path, source: &str) -> anyhow::Error {
@@ -46,24 +46,25 @@ fn fmt_err(e: impl Into<Report>, path: &Path, source: &str) -> anyhow::Error {
 /// If it cannot find a matching package, it will check the registry.
 pub struct PackageResolver {
     fs: FileSystemPackageResolver,
-    #[cfg(feature = "registry")]
     registry: wac_resolver::RegistryPackageResolver,
 }
 
 impl PackageResolver {
     /// Creates a new package resolver.
-    pub fn new(
+    pub async fn new(
         dir: impl Into<PathBuf>,
         overrides: HashMap<String, PathBuf>,
-        #[cfg(feature = "registry")] registry: Option<&str>,
+        registry: Option<&str>,
+        retry: Option<Retry>,
     ) -> Result<Self> {
         Ok(Self {
             fs: FileSystemPackageResolver::new(dir, overrides, false),
-            #[cfg(feature = "registry")]
             registry: wac_resolver::RegistryPackageResolver::new(
                 registry,
                 Some(Box::new(progress::ProgressBar::new())),
-            )?,
+                retry,
+            )
+            .await?,
         })
     }
 
@@ -71,7 +72,7 @@ impl PackageResolver {
     pub async fn resolve<'a>(
         &self,
         document: &'a Document<'a>,
-    ) -> Result<IndexMap<BorrowedPackageKey<'a>, Vec<u8>>, Error> {
+    ) -> Result<IndexMap<BorrowedPackageKey<'a>, Vec<u8>>, CommandError> {
         let mut keys = packages(document)?;
 
         // Next, we resolve as many of the packages from the file system as possible
@@ -82,7 +83,6 @@ impl PackageResolver {
 
         // Next resolve the remaining packages from the registry
         // The registry resolver will error on missing package
-        #[cfg(feature = "registry")]
         if !keys.is_empty() {
             let reg_packages = self.registry.resolve(&keys).await?;
             keys.retain(|key, _| !reg_packages.contains_key(key));
@@ -91,10 +91,10 @@ impl PackageResolver {
 
         // At this point keys should be empty, otherwise we have an unknown package
         if let Some((key, span)) = keys.first() {
-            return Err(Error::UnknownPackage {
+            return Err(CommandError::WacResolution(Error::UnknownPackage {
                 name: key.name.to_string(),
                 span: *span,
-            });
+            }));
         }
 
         Ok(packages)
