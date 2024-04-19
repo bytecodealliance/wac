@@ -172,7 +172,7 @@ impl RegistryPackageResolver {
                     self.client
                         .get_warg_registry(id.namespace())
                         .await
-                        .map_err(|e| CommandError::WargClient(e))?
+                        .map_err(CommandError::WargClient)?
                         .as_ref(),
                     &id,
                 )
@@ -287,7 +287,7 @@ impl RegistryPackageResolver {
                     self.client
                         .get_warg_registry(id.namespace())
                         .await
-                        .map_err(|e| CommandError::WargClient(e.into()))?
+                        .map_err(CommandError::WargClient)?
                         .as_ref(),
                     &id,
                 )

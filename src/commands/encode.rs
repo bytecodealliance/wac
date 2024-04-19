@@ -107,7 +107,7 @@ impl EncodeCommand {
                 validate: !self.no_validate,
                 ..Default::default()
             })
-            .map_err(|e| CommandError::Wac(e))?;
+            .map_err(CommandError::Wac)?;
         if self.wat {
             bytes = print_bytes(&bytes)
                 .context("failed to convert binary wasm output to text")?
