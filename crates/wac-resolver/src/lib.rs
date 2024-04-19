@@ -199,10 +199,8 @@ impl From<serde_json::Error> for CommandError {
 impl From<WargClientError> for CommandError {
     fn from(value: WargClientError) -> Self {
         match &value.0 {
-            ClientError::PackageDoesNotExistWithHint { .. } => {
-                CommandError::WargHint(value.0.into())
-            }
-            _ => CommandError::WargClient(value.0.into()),
+            ClientError::PackageDoesNotExistWithHint { .. } => CommandError::WargHint(value.0),
+            _ => CommandError::WargClient(value.0),
         }
     }
 }

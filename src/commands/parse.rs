@@ -24,8 +24,7 @@ impl ParseCommand {
 
         let document = Document::parse(&contents).map_err(|e| fmt_err(e, &self.path, &contents))?;
 
-        serde_json::to_writer_pretty(std::io::stdout(), &document)
-            .map_err(|e| CommandError::Serde(e))?;
+        serde_json::to_writer_pretty(std::io::stdout(), &document).map_err(CommandError::Serde)?;
         println!();
 
         Ok(())
