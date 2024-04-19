@@ -1,7 +1,6 @@
 //! Modules for package resolvers.
 
 use crate::Error as WacResolutionError;
-use anyhow::anyhow;
 use indexmap::IndexMap;
 use miette::{Diagnostic, SourceSpan};
 use thiserror::Error;
@@ -150,23 +149,23 @@ pub fn packages<'a>(
 /// Error for WAC commands
 pub enum CommandError {
     /// General errors
-    #[error("Error: `{0}`")]
-    General(anyhow::Error),
+    #[error(transparent)]
+    General(#[from] anyhow::Error),
     /// Serde errors
-    #[error("Error: `{0}`")]
-    Serde(serde_json::Error),
+    #[error(transparent)]
+    Serde(#[from] serde_json::Error),
     /// Wac resolution errors
-    #[error("Error: `{0}`")]
-    WacResolution(WacResolutionError),
+    #[error(transparent)]
+    WacResolution(#[from] WacResolutionError),
     /// Wac errors
-    #[error("Error: `{0}`")]
-    Wac(WacError),
+    #[error(transparent)]
+    Wac(#[from] WacError),
     /// Client Error
-    #[error("Warg Client Error: {0}")]
-    WargClient(ClientError),
+    #[error("warg client error: {0}")]
+    WargClient(String, ClientError),
     /// Client Error With Hint
-    #[error("Warg Client Error: {0}")]
-    WargHint(ClientError),
+    #[error("warg client error with hint: {0}")]
+    WargHint(String, ClientError),
 }
 
 /// Error from warg client
@@ -175,32 +174,5 @@ pub struct WargClientError(pub ClientError);
 impl std::fmt::Debug for WargClientError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_tuple("WargClientError").field(&self.0).finish()
-    }
-}
-
-impl From<anyhow::Error> for CommandError {
-    fn from(value: anyhow::Error) -> Self {
-        CommandError::General(value)
-    }
-}
-
-impl From<WacResolutionError> for CommandError {
-    fn from(value: WacResolutionError) -> Self {
-        CommandError::General(anyhow!(value))
-    }
-}
-
-impl From<serde_json::Error> for CommandError {
-    fn from(value: serde_json::Error) -> Self {
-        CommandError::Serde(value)
-    }
-}
-
-impl From<WargClientError> for CommandError {
-    fn from(value: WargClientError) -> Self {
-        match &value.0 {
-            ClientError::PackageDoesNotExistWithHint { .. } => CommandError::WargHint(value.0),
-            _ => CommandError::WargClient(value.0),
-        }
     }
 }

@@ -35,7 +35,7 @@ async fn main() -> Result<()> {
             Wac::Resolve(cmd) => cmd.exec(retry).await,
             Wac::Encode(cmd) => cmd.exec(retry).await,
         } {
-            if let CommandError::WargHint(ClientError::PackageDoesNotExistWithHint { name, hint }) = &err {
+            if let CommandError::WargHint(_, ClientError::PackageDoesNotExistWithHint { name, hint }) = &err {
                 if let Some((namespace, registry)) = hint.to_str().unwrap().split_once('=') {
                     let prompt = format!(
                       "The package `{}`, does not exist in the registry you're using.
@@ -66,13 +66,15 @@ async fn main() -> Result<()> {
                           },
                         }
                           {
-                        eprintln!(
-                          "{error}: {e:?}",
-                          error = "error".if_supports_color(Stream::Stderr, |text| {
-                              text.style(Style::new().red().bold())
-                          })
-                      );
-                      std::process::exit(1);
+                            eprintln!(
+                              "{error}: {e:?}",
+                              error = "error".if_supports_color(Stream::Stderr, |text| {
+                                text.style(Style::new().red().bold())
+                              })
+                            );
+                          std::process::exit(1);
+                        } else {
+                          return Ok(());
                         }
                     }
                 }

@@ -97,8 +97,7 @@ impl EncodeCommand {
         if !self.wat && self.output.is_none() && std::io::stdout().is_terminal() {
             return Err(anyhow!(
             "cannot print binary wasm output to a terminal; pass the `-t` flag to print the text format instead"
-        )
-        .into());
+        ))?;
         }
 
         let mut bytes = resolution

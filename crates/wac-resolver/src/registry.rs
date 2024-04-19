@@ -1,6 +1,4 @@
-use crate::CommandError;
-
-use super::Error;
+use super::{CommandError, Error};
 use anyhow::Result;
 use futures::{stream::FuturesUnordered, StreamExt};
 use indexmap::{IndexMap, IndexSet};
@@ -51,6 +49,10 @@ impl RegistryPackageResolver {
     pub async fn new(
         url: Option<&str>,
         bar: Option<Box<dyn ProgressBar>>,
+        // Indicates that this was created after an interactive retry.
+        // This occurs when the CLI attempted to leverage a package from the wrong registry.
+        // The server responds with a hint as to which registry is used and the client maps that package namespace to the domain provided.
+        // After this, the CLI command is retried
         retry: Option<Retry>,
     ) -> Result<Self> {
         let config = Config::from_default_file()?.unwrap_or_default();
@@ -154,14 +156,7 @@ impl RegistryPackageResolver {
         // If not, we'll fetch the logs from the registry.
         let mut fetch = IndexMap::new();
         for (key, span) in keys {
-            let id: PackageName =
-                key.name
-                    .parse()
-                    .map_err(|e: anyhow::Error| Error::PackageResolutionFailure {
-                        name: key.name.to_string(),
-                        span: *span,
-                        source: e,
-                    })?;
+            let id: PackageName = key.name.parse()?;
 
             // Load the package from client storage to see if we already
             // have a matching version present.
@@ -172,16 +167,17 @@ impl RegistryPackageResolver {
                     self.client
                         .get_warg_registry(id.namespace())
                         .await
-                        .map_err(CommandError::WargClient)?
+                        .map_err(|e| {
+                            CommandError::WargClient(
+                                "failed getting warg registry domain from package namespace"
+                                    .to_string(),
+                                e,
+                            )
+                        })?
                         .as_ref(),
                     &id,
                 )
-                .await
-                .map_err(|e| Error::PackageResolutionFailure {
-                    name: key.name.to_string(),
-                    span: *span,
-                    source: e,
-                })?
+                .await?
             {
                 if let Some(version) = key.version {
                     let req = VersionReq {
@@ -230,32 +226,17 @@ impl RegistryPackageResolver {
                 }
                 Err(e) => match &e {
                     ClientError::PackageDoesNotExistWithHint { .. } => {
-                        return Err(CommandError::WargHint(e));
+                        return Err(CommandError::WargHint(
+                            "failed updating warg logs".to_string(),
+                            e,
+                        ));
                     }
-                    ClientError::NoHomeRegistryUrl { .. }
-                    | ClientError::ResettingRegistryLocalStateFailed { .. }
-                    | ClientError::ClearContentCacheFailed { .. }
-                    | ClientError::InvalidCheckpointSignature { .. }
-                    | ClientError::InvalidCheckpointKeyId { .. }
-                    | ClientError::NoOperatorRecords { .. }
-                    | ClientError::OperatorValidationFailed { .. }
-                    | ClientError::CannotInitializePackage { .. }
-                    | ClientError::MustInitializePackage { .. }
-                    | ClientError::NotPublishing { .. }
-                    | ClientError::NothingToPublish { .. }
-                    | ClientError::PackageDoesNotExist { .. }
-                    | ClientError::PackageVersionDoesNotExist { .. }
-                    | ClientError::PackageValidationFailed { .. }
-                    | ClientError::ContentNotFound { .. }
-                    | ClientError::IncorrectContent { .. }
-                    | ClientError::PackageLogEmpty { .. }
-                    | ClientError::PublishRejected { .. }
-                    | ClientError::PackageMissingContent { .. }
-                    | ClientError::CheckpointLogLengthRewind { .. }
-                    | ClientError::CheckpointChangedLogRootOrMapRoot { .. }
-                    | ClientError::SimilarNamespace { .. }
-                    | ClientError::Api(_)
-                    | ClientError::Other(_) => return Err(CommandError::WargClient(e)),
+                    _ => {
+                        return Err(CommandError::WargClient(
+                            "failed updating warg logs".to_string(),
+                            e,
+                        ))
+                    }
                 },
             }
         }
@@ -271,14 +252,7 @@ impl RegistryPackageResolver {
         let mut downloads: IndexMap<AnyHash, (Version, IndexSet<BorrowedPackageKey>)> =
             IndexMap::new();
         for (key, span) in keys {
-            let id: PackageName =
-                key.name
-                    .parse()
-                    .map_err(|e: anyhow::Error| Error::PackageResolutionFailure {
-                        name: key.name.to_string(),
-                        span: *span,
-                        source: e,
-                    })?;
+            let id: PackageName = key.name.parse()?;
 
             let info = self
                 .client
@@ -287,16 +261,17 @@ impl RegistryPackageResolver {
                     self.client
                         .get_warg_registry(id.namespace())
                         .await
-                        .map_err(CommandError::WargClient)?
+                        .map_err(|e| {
+                            CommandError::WargClient(
+                                "failed getting warg resistry domain from package namespace"
+                                    .to_string(),
+                                e,
+                            )
+                        })?
                         .as_ref(),
                     &id,
                 )
-                .await
-                .map_err(|e| Error::PackageResolutionFailure {
-                    name: key.name.to_string(),
-                    span: *span,
-                    source: e,
-                })?
+                .await?
                 .expect("package log should be present after fetching");
 
             let req = match key.version {
