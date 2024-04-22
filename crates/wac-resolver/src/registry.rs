@@ -46,13 +46,14 @@ impl RegistryPackageResolver {
     /// client configuration file.
     ///
     /// If `url` is `None`, the default URL will be used.
+    ///
+    /// The `Retry` argument indicates that this was created after an interactive retry.
+    /// This occurs when the CLI attempted to leverage a package from the wrong registry.
+    /// The server responds with a hint as to which registry is used and the client maps that package namespace to the domain provided.
+    /// After this, the CLI command is retried
     pub async fn new(
         url: Option<&str>,
         bar: Option<Box<dyn ProgressBar>>,
-        // Indicates that this was created after an interactive retry.
-        // This occurs when the CLI attempted to leverage a package from the wrong registry.
-        // The server responds with a hint as to which registry is used and the client maps that package namespace to the domain provided.
-        // After this, the CLI command is retried
         retry: Option<Retry>,
     ) -> Result<Self> {
         let config = Config::from_default_file()?.unwrap_or_default();

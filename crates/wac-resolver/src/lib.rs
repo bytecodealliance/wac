@@ -161,10 +161,10 @@ pub enum CommandError {
     #[error(transparent)]
     Wac(#[from] WacError),
     /// Client Error
-    #[error("warg client error: {0}")]
+    #[error("warg client error ({0}): {1}")]
     WargClient(String, ClientError),
     /// Client Error With Hint
-    #[error("warg client error with hint: {0}")]
+    #[error("warg client error with hint ({0}): {1}")]
     WargHint(String, ClientError),
 }
 

@@ -28,58 +28,108 @@ enum Wac {
 #[tokio::main]
 async fn main() -> Result<()> {
     pretty_env_logger::init();
-
-    with_interactive_retry(|retry: Option<Retry>| async {
-        if let Err(err) = match Wac::parse() {
-            Wac::Parse(cmd) => cmd.exec().await,
-            Wac::Resolve(cmd) => cmd.exec(retry).await,
-            Wac::Encode(cmd) => cmd.exec(retry).await,
-        } {
-            if let CommandError::WargHint(_, ClientError::PackageDoesNotExistWithHint { name, hint }) = &err {
-                if let Some((namespace, registry)) = hint.to_str().unwrap().split_once('=') {
-                    let prompt = format!(
-                      "The package `{}`, does not exist in the registry you're using.
-                      However, the package namespace `{namespace}` does exist in the registry at {registry}.
-                      Would you like to configure your warg cli to use this registry for packages with this namespace in the future? y/N\n",
-                      name.name(),
-                    );
-                    if Confirm::with_theme(&ColorfulTheme::default())
-                        .with_prompt(prompt)
-                        .interact()
-                        .unwrap()
-                    {
-                        if let Err(e) = match Wac::parse() {
-                          Wac::Parse(cmd) => cmd.exec().await,
-                          Wac::Resolve(cmd) => {
-                              cmd.exec(Some(Retry::new(
-                                                namespace.to_string(),
-                                                registry.to_string(),
-                                            )))
-                                            .await
-                          },
-                          Wac::Encode(cmd) => {
-                              cmd.exec(Some(Retry::new(
+    if let Err(err) = match Wac::parse() {
+        Wac::Parse(cmd) => cmd.exec().await,
+        Wac::Resolve(cmd) => cmd.exec(None).await,
+        Wac::Encode(cmd) => cmd.exec(None).await,
+    } {
+        if let CommandError::WargHint(_, ClientError::PackageDoesNotExistWithHint { name, hint }) =
+            &err
+        {
+            if let Some((namespace, registry)) = hint.to_str().unwrap().split_once('=') {
+                let prompt = format!(
+                  "The package `{}`, does not exist in the registry you're using.
+                  However, the package namespace `{namespace}` does exist in the registry at {registry}.
+                  Would you like to configure your warg cli to use this registry for packages with this namespace in the future? y/N\n",
+                  name.name(),
+                );
+                if Confirm::with_theme(&ColorfulTheme::default())
+                    .with_prompt(prompt)
+                    .interact()
+                    .unwrap()
+                {
+                    with_interactive_retry(|_: Option<Retry>| async {
+                      if let Err(err) = match Wac::parse() {
+                        Wac::Parse(cmd) => cmd.exec().await,
+                        Wac::Resolve(cmd) => {
+                            cmd.exec(Some(Retry::new(
                                 namespace.to_string(),
                                 registry.to_string(),
                             )))
-                                .await
-                          },
+                            .await
                         }
-                          {
-                            eprintln!(
-                              "{error}: {e:?}",
-                              error = "error".if_supports_color(Stream::Stderr, |text| {
-                                text.style(Style::new().red().bold())
-                              })
+                        Wac::Encode(cmd) => {
+                            cmd.exec(Some(Retry::new(
+                                namespace.to_string(),
+                                registry.to_string(),
+                            )))
+                            .await
+                        }
+                    } {
+                            if let CommandError::WargHint(
+                                _,
+                                ClientError::PackageDoesNotExistWithHint { name, hint },
+                            ) = &err
+                            {
+                                if let Some((namespace, registry)) =
+                                    hint.to_str().unwrap().split_once('=')
+                                {
+                                    let prompt = format!(
+                              "The package `{}`, does not exist in the registry you're using.
+                              However, the package namespace `{namespace}` does exist in the registry at {registry}.
+                              Would you like to configure your warg cli to use this registry for packages with this namespace in the future? y/N\n",
+                              name.name(),
                             );
-                          std::process::exit(1);
-                        } else {
-                          return Ok(());
+                                    if Confirm::with_theme(&ColorfulTheme::default())
+                                        .with_prompt(prompt)
+                                        .interact()
+                                        .unwrap()
+                                    {
+                                        if let Err(e) = match Wac::parse() {
+                                            Wac::Parse(cmd) => cmd.exec().await,
+                                            Wac::Resolve(cmd) => {
+                                                cmd.exec(Some(Retry::new(
+                                                    namespace.to_string(),
+                                                    registry.to_string(),
+                                                )))
+                                                .await
+                                            }
+                                            Wac::Encode(cmd) => {
+                                                cmd.exec(Some(Retry::new(
+                                                    namespace.to_string(),
+                                                    registry.to_string(),
+                                                )))
+                                                .await
+                                            }
+                                        } {
+                                            eprintln!(
+                                                "{error}: {e:?}",
+                                                error = "error"
+                                                    .if_supports_color(Stream::Stderr, |text| {
+                                                        text.style(Style::new().red().bold())
+                                                    })
+                                            );
+                                            std::process::exit(1);
+                                        } else {
+                                            return Ok(());
+                                        }
+                                    }
+                                }
+                            }
+
+                            eprintln!(
+                                "{error}: {err:?}",
+                                error = "error".if_supports_color(Stream::Stderr, |text| {
+                                    text.style(Style::new().red().bold())
+                                })
+                            );
+                            std::process::exit(1);
                         }
-                    }
+                        Ok(())
+                    }).await?;
                 }
             }
-
+        } else {
             eprintln!(
                 "{error}: {err:?}",
                 error = "error".if_supports_color(Stream::Stderr, |text| {
@@ -88,8 +138,6 @@ async fn main() -> Result<()> {
             );
             std::process::exit(1);
         }
-        Ok(())
-    })
-    .await?;
+    }
     Ok(())
 }
