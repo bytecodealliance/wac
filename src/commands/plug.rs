@@ -1,6 +1,6 @@
 use std::{io::Write as _, path::PathBuf};
 
-use anyhow::{Context as _, Result};
+use anyhow::{bail, Context as _, Result};
 use clap::Args;
 use wac_graph::{CompositionGraph, EncodeOptions, NodeId, PackageId};
 use wac_types::{Package, SubtypeChecker};
@@ -60,6 +60,15 @@ impl PlugCommand {
             )?;
         }
 
+        // Check we've actually done any plugging.
+        if graph
+            .get_instantiation_arguments(socket_instantiation)
+            .next()
+            .is_none()
+        {
+            bail!("no plugs were used to plug into the socket component")
+        }
+
         // Export all exports from the socket component.
         for name in graph.types()[graph[socket].ty()]
             .exports
@@ -99,7 +108,6 @@ fn plug_into_socket(
 ) -> Result<(), anyhow::Error> {
     let plug = Package::from_bytes(name, None, plug, graph.types_mut())?;
     let plug = graph.register_package(plug)?;
-    let plug_instantiation = graph.instantiate(plug);
 
     let mut plugs = Vec::new();
     let mut cache = Default::default();
@@ -112,10 +120,13 @@ fn plug_into_socket(
         }
     }
 
-    for plug in plugs {
-        log::debug!("using export `{plug}` for plug");
-        let export = graph.alias_instance_export(plug_instantiation, &plug)?;
-        graph.set_instantiation_argument(socket_instantiation, &plug, export)?;
+    // Instantiate the plug component
+    let mut plug_instantiation = None;
+    for plug_name in plugs {
+        log::debug!("using export `{plug_name}` for plug");
+        let plug_instantiation = *plug_instantiation.get_or_insert_with(|| graph.instantiate(plug));
+        let export = graph.alias_instance_export(plug_instantiation, &plug_name)?;
+        graph.set_instantiation_argument(socket_instantiation, &plug_name, export)?;
     }
     Ok(())
 }
