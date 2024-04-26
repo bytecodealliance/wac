@@ -1,4 +1,7 @@
-use std::{io::Write as _, path::PathBuf};
+use std::{
+    io::{IsTerminal as _, Write as _},
+    path::PathBuf,
+};
 
 use anyhow::{bail, Context as _, Result};
 use clap::Args;
@@ -18,6 +21,10 @@ pub struct PlugCommand {
     /// The path to the socket component
     #[clap(value_name = "SOCKET_PATH", required = true)]
     pub socket: PathBuf,
+
+    /// Whether to emit the WebAssembly text format.
+    #[clap(long, short = 't')]
+    pub wat: bool,
 
     /// The path to write the output to.
     ///
@@ -43,21 +50,28 @@ impl PlugCommand {
         let socket = graph.register_package(socket)?;
         let socket_instantiation = graph.instantiate(socket);
 
+        // Collect the plugs by their names
+        let mut plugs_by_name = std::collections::HashMap::<_, Vec<_>>::new();
+        for plug in self.plugs.iter() {
+            let name = plug
+                .file_stem()
+                .map(|fs| fs.to_string_lossy())
+                .with_context(|| format!("path to plug '{}' was not a file", plug.display()))?;
+            // TODO(rylev): sanitize the name to ensure it's a valid package identifier.
+            plugs_by_name.entry(name).or_default().push(plug);
+        }
+
         // Plug each plug into the socket.
-        for (i, plug) in self.plugs.iter().enumerate() {
-            let plug = std::fs::read(&plug).with_context(|| {
-                format!(
-                    "failed to read plug component `{path}`",
-                    path = plug.display()
-                )
-            })?;
-            plug_into_socket(
-                &format!("plug{i}"),
-                plug,
-                socket,
-                socket_instantiation,
-                &mut graph,
-            )?;
+        for (name, plug_paths) in plugs_by_name {
+            for (i, plug_path) in plug_paths.iter().enumerate() {
+                let mut name = format!("plug:{name}");
+                // If there's more than one plug with the same name, append an index to the name.
+                if plug_paths.len() > 1 {
+                    use core::fmt::Write;
+                    write!(&mut name, "{i}").unwrap();
+                }
+                plug_into_socket(&name, plug_path, socket, socket_instantiation, &mut graph)?;
+            }
         }
 
         // Check we've actually done any plugging.
@@ -66,7 +80,7 @@ impl PlugCommand {
             .next()
             .is_none()
         {
-            bail!("no plugs were used to plug into the socket component")
+            bail!("the socket component had no matching imports for the plugs that were provided")
         }
 
         // Export all exports from the socket component.
@@ -80,7 +94,18 @@ impl PlugCommand {
             graph.export(export, &name)?;
         }
 
-        let bytes = graph.encode(EncodeOptions::default())?;
+        let binary_output_to_terminal =
+            !self.wat && self.output.is_none() && std::io::stdout().is_terminal();
+        if binary_output_to_terminal {
+            bail!("cannot print binary wasm output to a terminal; pass the `-t` flag to print the text format instead");
+        }
+
+        let mut bytes = graph.encode(EncodeOptions::default())?;
+        if self.wat {
+            bytes = wasmprinter::print_bytes(&bytes)
+                .context("failed to convert binary wasm output to text")?
+                .into_bytes();
+        }
         match &self.output {
             Some(path) => {
                 std::fs::write(&path, bytes).context(format!(
@@ -92,6 +117,10 @@ impl PlugCommand {
                 std::io::stdout()
                     .write_all(&bytes)
                     .context("failed to write to stdout")?;
+
+                if self.wat {
+                    println!();
+                }
             }
         }
         Ok(())
@@ -101,12 +130,12 @@ impl PlugCommand {
 /// Take the exports of the plug component and plug them into the socket component.
 fn plug_into_socket(
     name: &str,
-    plug: Vec<u8>,
+    plug_path: &std::path::Path,
     socket: PackageId,
     socket_instantiation: NodeId,
     graph: &mut CompositionGraph,
 ) -> Result<(), anyhow::Error> {
-    let plug = Package::from_bytes(name, None, plug, graph.types_mut())?;
+    let plug = Package::from_file(name, None, plug_path, graph.types_mut())?;
     let plug = graph.register_package(plug)?;
 
     let mut plugs = Vec::new();
