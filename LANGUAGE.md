@@ -485,7 +485,7 @@ ids                 ::= id (',' id)* ','?
 enum-decl           ::= 'enum' id '{' ids '}'
 type-alias          ::= 'type' id '=' (func-type | type) ';'
 func-type-ref       ::= func-type | id
-func-type           ::= '(' params? ')' ('->' results)?
+func-type           ::= 'func' '(' params? ')' ('->' results)?
 params              ::= named-type (',' named-type)* ','?
 results             ::= type
                       | '(' named-type (',' named-type)* ','? ')'
