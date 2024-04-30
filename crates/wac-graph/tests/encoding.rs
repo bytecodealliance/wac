@@ -171,6 +171,7 @@ impl GraphFile {
                         path = path.display()
                     )
                 })?,
+                None if path.is_dir() => Self::load_wit_package(test_case, &path)?,
                 _ => bail!(
                     "unexpected file extension for package file `{path}`",
                     path = package.path.display()
@@ -331,6 +332,7 @@ fn encoding() -> Result<()> {
             })?
             .into_composition_graph(&path, test_case)
             .and_then(|graph| {
+                println!("{:?}", graph);
                 graph
                     .encode(EncodeOptions {
                         // We import the component definitions instead
