@@ -23,7 +23,7 @@ pub struct TypeAggregator {
     /// The aggregated types collection.
     types: Types,
     /// The map from import name to aggregated item kind.
-    names: IndexMap<String, ItemKind>,
+    imports: IndexMap<String, ItemKind>,
     /// A map from foreign type to remapped local type.
     remapped: HashMap<Type, Type>,
     /// A map of interface names to remapped interface id.
@@ -41,9 +41,9 @@ impl TypeAggregator {
         &self.types
     }
 
-    /// Iterates the named types in the aggregator.
-    pub fn iter(&self) -> impl Iterator<Item = (&str, ItemKind)> {
-        self.names.iter().map(|(n, k)| (n.as_str(), *k))
+    /// Iterates the imported types in the aggregator.
+    pub fn imports(&self) -> impl Iterator<Item = (&str, ItemKind)> {
+        self.imports.iter().map(|(n, k)| (n.as_str(), *k))
     }
 
     /// Aggregates a item kind from a specified type collection using the given
@@ -60,13 +60,13 @@ impl TypeAggregator {
         // First check if this import has already been remapped into our
         // types collection.
         // If it has already been remapped, do a merge; otherwise, remap it.
-        if let Some(existing) = self.names.get(name).copied() {
+        if let Some(existing) = self.imports.get(name).copied() {
             self.merge_item_kind(existing, types, kind, checker)?;
             return Ok(self);
         }
 
-        let ty = self.remap_item_kind(types, kind, checker)?;
-        let prev = self.names.insert(name.to_string(), ty);
+        let remapped = self.remap_item_kind(types, kind, checker)?;
+        let prev = self.imports.insert(name.to_string(), remapped);
         assert!(prev.is_none());
         Ok(self)
     }
@@ -549,11 +549,27 @@ impl TypeAggregator {
             alias: resource
                 .alias
                 .map(|a| -> Result<_> {
+                    let owner = a
+                        .owner
+                        .map(|id| {
+                            // There's no need to merge the interface here as
+                            // merging is done as part of the interface remapping
+                            self.remap_interface(types, id, checker)
+                        })
+                        .transpose()?;
+                    // If there is an owning interface, ensure it is imported
+                    if let Some(owner) = owner {
+                        let name = self.types()[owner]
+                            .id
+                            .as_deref()
+                            .expect("interface has no id");
+                        if !self.imports.contains_key(name) {
+                            self.imports
+                                .insert(name.to_owned(), ItemKind::Instance(owner));
+                        }
+                    }
                     Ok(ResourceAlias {
-                        owner: a
-                            .owner
-                            .map(|id| self.remap_interface(types, id, checker))
-                            .transpose()?,
+                        owner,
                         source: self.remap_resource(types, a.source, checker)?,
                     })
                 })
