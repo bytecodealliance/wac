@@ -1533,7 +1533,7 @@ impl<'a> CompositionGraphEncoder<'a> {
         }
 
         // Next encode the imports
-        for (name, kind) in aggregator.iter() {
+        for (name, kind) in aggregator.imports() {
             log::debug!("import `{name}` is being implicitly imported");
             let index = self.import(state, name, aggregator.types(), kind);
             encoded.insert(name, (kind.into(), index));
