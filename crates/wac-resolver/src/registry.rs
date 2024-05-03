@@ -1,18 +1,15 @@
 use super::Error;
 use anyhow::Result;
 use futures::{stream::FuturesUnordered, StreamExt};
-use indexmap::{IndexMap, IndexSet};
+use indexmap::IndexMap;
 use miette::SourceSpan;
 use secrecy::Secret;
-use semver::{Comparator, Op, Version, VersionReq};
+use semver::{Version, VersionReq};
 use std::{fs, path::Path, sync::Arc};
 use wac_types::BorrowedPackageKey;
-use warg_client::{
-    storage::{ContentStorage, RegistryStorage},
-    Client, ClientError, Config, FileSystemClient, RegistryUrl,
-};
+use warg_client::{Client, ClientError, Config, FileSystemClient, RegistryUrl};
 use warg_credentials::keyring::get_auth_token;
-use warg_crypto::hash::AnyHash;
+use warg_protocol::registry::PackageName;
 
 /// Implemented by progress bars.
 ///
@@ -82,242 +79,120 @@ impl RegistryPackageResolver {
         &self,
         keys: &IndexMap<BorrowedPackageKey<'a>, SourceSpan>,
     ) -> Result<IndexMap<BorrowedPackageKey<'a>, Vec<u8>>, Error> {
-        // Start by fetching any required package logs
-        self.fetch(keys).await?;
+        // parses into `PackageName` and maps back to `SourceSpan`
+        let package_names_with_source_span = keys
+            .iter()
+            .map(|(key, span)| {
+                Ok((
+                    PackageName::new(key.name.to_string()).map_err(|_| {
+                        Error::InvalidPackageName {
+                            name: key.name.to_string(),
+                            span: *span,
+                        }
+                    })?,
+                    (key.version.cloned(), *span),
+                ))
+            })
+            .collect::<Result<IndexMap<PackageName, (Option<Version>, SourceSpan)>, Error>>()?;
 
-        // All the logs have been updated, now we need to see what content
-        // is missing from local storage.
-        let mut packages = IndexMap::new();
-        let missing = self.find_missing_content(keys, &mut packages).await?;
+        // fetch required package logs and return error if any not found
+        if let Some(bar) = self.bar.as_ref() {
+            bar.init(1);
+            bar.println("Updating", "package logs from the registry");
+        }
 
-        if !missing.is_empty() {
+        match self
+            .client
+            .fetch_packages(package_names_with_source_span.keys())
+            .await
+        {
+            Ok(_) => {}
+            Err(ClientError::PackageDoesNotExist { name }) => {
+                return Err(Error::PackageDoesNotExist {
+                    name: name.to_string(),
+                    span: package_names_with_source_span.get(&name).unwrap().1,
+                });
+            }
+            Err(err) => {
+                return Err(Error::RegistryUpdateFailure { source: err.into() });
+            }
+        }
+
+        if let Some(bar) = self.bar.as_ref() {
+            bar.inc(1);
+            bar.finish();
+
+            // download package content if not in cache
+            bar.init(keys.len());
+            bar.println("Downloading", "package content from the registry");
+        }
+
+        let mut tasks = FuturesUnordered::new();
+        for (index, (package_name, (version, span))) in
+            package_names_with_source_span.into_iter().enumerate()
+        {
+            let client = self.client.clone();
+            tasks.push(tokio::spawn(async move {
+                Ok((
+                    index,
+                    if let Some(version) = version {
+                        client
+                            .download_exact(&package_name, &version)
+                            .await
+                            .map_err(|err| match err {
+                                ClientError::PackageVersionDoesNotExist { name, version } => {
+                                    Error::PackageVersionYankedOrDoesNotExist {
+                                        name: name.to_string(),
+                                        version,
+                                        span,
+                                    }
+                                }
+                                err => Error::RegistryDownloadFailure { source: err.into() },
+                            })?
+                    } else {
+                        client
+                            .download(&package_name, &VersionReq::STAR)
+                            .await
+                            .map_err(|err| Error::RegistryDownloadFailure { source: err.into() })?
+                            .ok_or_else(|| Error::PackageNoReleases {
+                                name: package_name.to_string(),
+                                span,
+                            })?
+                    },
+                ))
+            }));
+        }
+
+        let mut packages = IndexMap::with_capacity(keys.len());
+        let count = tasks.len();
+        let mut finished = 0;
+
+        while let Some(res) = tasks.next().await {
+            let (index, download) = res.unwrap()?;
+
+            finished += 1;
+
+            let (key, _) = keys.get_index(index).unwrap();
+
             if let Some(bar) = self.bar.as_ref() {
-                bar.init(missing.len());
-                bar.println("Downloading", "package content from the registry");
+                bar.inc(1);
+                let BorrowedPackageKey { name, .. } = key;
+                bar.println(
+                    "Downloaded",
+                    &format!("package `{name}` {version}", version = download.version),
+                )
             }
 
-            let mut tasks = FuturesUnordered::new();
-            for (index, hash) in missing.keys().enumerate() {
-                let client = self.client.clone();
-                let hash = hash.clone();
-                tasks.push(tokio::spawn(async move {
-                    Ok((index, client.download_content(&hash).await?))
-                }));
-            }
+            packages.insert(*key, Self::read_contents(&download.path)?);
+        }
 
-            let count = tasks.len();
-            let mut finished = 0;
-            while let Some(res) = tasks.next().await {
-                let (index, path) = res
-                    .unwrap()
-                    .map_err(|e| Error::RegistryDownloadFailure { source: e })?;
+        assert_eq!(finished, count);
 
-                let (hash, (version, set)) = missing.get_index(index).unwrap();
-                log::debug!("downloaded content `{hash}`");
-
-                finished += 1;
-
-                if let Some(bar) = self.bar.as_ref() {
-                    bar.inc(1);
-                    let first = set.first().unwrap();
-                    bar.println(
-                        "Downloaded",
-                        &format!("package `{name}` {version} ({hash})", name = first.name),
-                    )
-                }
-
-                let contents = Self::read_contents(&path)?;
-                for key in set {
-                    packages.insert(*key, contents.clone());
-                }
-            }
-
-            assert_eq!(finished, count);
-
-            if let Some(bar) = self.bar.as_ref() {
-                bar.finish();
-            }
+        if let Some(bar) = self.bar.as_ref() {
+            bar.finish();
         }
 
         Ok(packages)
-    }
-
-    async fn fetch<'a>(
-        &self,
-        keys: &IndexMap<BorrowedPackageKey<'a>, SourceSpan>,
-    ) -> Result<(), Error> {
-        // First check if we already have the packages in client storage.
-        // If not, we'll fetch the logs from the registry.
-        let mut fetch = IndexMap::new();
-        for (key, span) in keys {
-            let id =
-                key.name
-                    .parse()
-                    .map_err(|e: anyhow::Error| Error::PackageResolutionFailure {
-                        name: key.name.to_string(),
-                        span: *span,
-                        source: e,
-                    })?;
-
-            // Load the package from client storage to see if we already
-            // have a matching version present.
-            if let Some(info) = self
-                .client
-                .registry()
-                .load_package(self.client.get_warg_registry(), &id)
-                .await
-                .map_err(|e| Error::PackageResolutionFailure {
-                    name: key.name.to_string(),
-                    span: *span,
-                    source: e,
-                })?
-            {
-                if let Some(version) = key.version {
-                    let req = VersionReq {
-                        comparators: vec![Comparator {
-                            op: Op::Exact,
-                            major: version.major,
-                            minor: Some(version.minor),
-                            patch: Some(version.patch),
-                            pre: version.pre.clone(),
-                        }],
-                    };
-
-                    // Version already present, no need to fetch the log
-                    if info.state.find_latest_release(&req).is_some() {
-                        log::debug!(
-                            "package log for `{name}` has a release version {version}",
-                            name = key.name
-                        );
-                        continue;
-                    }
-                }
-            }
-
-            fetch.entry(id).or_insert_with(|| {
-                log::debug!(
-                    "fetching log for package `{name}` from the registry",
-                    name = key.name
-                );
-                span
-            });
-        }
-
-        // Fetch the logs
-        if !fetch.is_empty() {
-            if let Some(bar) = self.bar.as_ref() {
-                bar.init(1);
-                bar.println("Updating", "package logs from the registry");
-            }
-
-            match self.client.upsert(fetch.keys()).await {
-                Ok(_) => {
-                    if let Some(bar) = self.bar.as_ref() {
-                        bar.inc(1);
-                        bar.finish();
-                    }
-                }
-                Err(ClientError::PackageDoesNotExist { name }) => {
-                    return Err(Error::PackageDoesNotExist {
-                        name: name.to_string(),
-                        span: *fetch[&name],
-                    })
-                }
-                Err(e) => {
-                    return Err(Error::RegistryUpdateFailure { source: e.into() });
-                }
-            }
-        }
-
-        Ok(())
-    }
-
-    async fn find_missing_content<'a>(
-        &self,
-        keys: &IndexMap<BorrowedPackageKey<'a>, SourceSpan>,
-        packages: &mut IndexMap<BorrowedPackageKey<'a>, Vec<u8>>,
-    ) -> Result<IndexMap<AnyHash, (Version, IndexSet<BorrowedPackageKey<'a>>)>, Error> {
-        let mut downloads: IndexMap<AnyHash, (Version, IndexSet<BorrowedPackageKey>)> =
-            IndexMap::new();
-        for (key, span) in keys {
-            let id =
-                key.name
-                    .parse()
-                    .map_err(|e: anyhow::Error| Error::PackageResolutionFailure {
-                        name: key.name.to_string(),
-                        span: *span,
-                        source: e,
-                    })?;
-
-            let info = self
-                .client
-                .registry()
-                .load_package(self.client.get_warg_registry(), &id)
-                .await
-                .map_err(|e| Error::PackageResolutionFailure {
-                    name: key.name.to_string(),
-                    span: *span,
-                    source: e,
-                })?
-                .expect("package log should be present after fetching");
-
-            let req = match key.version {
-                Some(v) => VersionReq {
-                    comparators: vec![Comparator {
-                        op: Op::Exact,
-                        major: v.major,
-                        minor: Some(v.minor),
-                        patch: Some(v.patch),
-                        pre: v.pre.clone(),
-                    }],
-                },
-                None => VersionReq::STAR,
-            };
-
-            let release = match info.state.find_latest_release(&req) {
-                Some(release) if !release.yanked() => release,
-                Some(release) => {
-                    return Err(Error::PackageVersionYanked {
-                        name: key.name.to_string(),
-                        version: release.version.clone(),
-                        span: *span,
-                    });
-                }
-                None => {
-                    if let Some(version) = key.version {
-                        return Err(Error::UnknownPackageVersion {
-                            name: key.name.to_string(),
-                            version: version.clone(),
-                            span: *span,
-                        });
-                    } else {
-                        return Err(Error::PackageLogEmpty {
-                            name: key.name.to_string(),
-                            span: *span,
-                        });
-                    }
-                }
-            };
-
-            let hash = release.content().unwrap();
-            if let Some(path) = self.client.content().content_location(hash) {
-                packages.insert(*key, Self::read_contents(&path)?);
-            } else {
-                log::debug!(
-                    "downloading content for version {version} of package `{name}`",
-                    name = key.name,
-                    version = release.version
-                );
-
-                downloads
-                    .entry(hash.clone())
-                    .or_insert_with(|| (release.version.clone(), Default::default()))
-                    .1
-                    .insert(*key);
-            }
-        }
-
-        Ok(downloads)
     }
 
     fn read_contents(path: &Path) -> Result<Vec<u8>, Error> {

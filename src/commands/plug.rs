@@ -108,7 +108,7 @@ impl PlugCommand {
         }
         match &self.output {
             Some(path) => {
-                std::fs::write(&path, bytes).context(format!(
+                std::fs::write(path, bytes).context(format!(
                     "failed to write output file `{path}`",
                     path = path.display()
                 ))?;
@@ -143,7 +143,10 @@ fn plug_into_socket(
     let mut checker = SubtypeChecker::new(&mut cache);
     for (name, plug_ty) in &graph.types()[graph[plug].ty()].exports {
         if let Some(socket_ty) = graph.types()[graph[socket].ty()].imports.get(name) {
-            if let Ok(_) = checker.is_subtype(*plug_ty, graph.types(), *socket_ty, graph.types()) {
+            if checker
+                .is_subtype(*plug_ty, graph.types(), *socket_ty, graph.types())
+                .is_ok()
+            {
                 plugs.push(name.clone());
             }
         }

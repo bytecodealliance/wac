@@ -71,11 +71,16 @@ wat = "1.202.0"
 logos = "0.14.0"
 miette = "7.2.0"
 thiserror = "1.0.58"
-warg-client = "0.4.1"
-warg-protocol = "0.4.1"
-warg-crypto = "0.4.1"
-warg-server = "0.4.1"
-warg-credentials = "0.4.1"
+warg-protocol = { git = "https://github.com/bytecodealliance/registry", rev = "ac901b9" }
+warg-crypto = { git = "https://github.com/bytecodealliance/registry", rev = "ac901b9" }
+warg-client = { git = "https://github.com/bytecodealliance/registry", rev = "ac901b9" }
+warg-credentials = { git = "https://github.com/bytecodealliance/registry", rev = "ac901b9" }
+warg-server = { git = "https://github.com/bytecodealliance/registry", rev = "ac901b9" }
+#warg-client = "0.4.1"
+#warg-protocol = "0.4.1"
+#warg-crypto = "0.4.1"
+#warg-server = "0.4.1"
+#warg-credentials = "0.4.1"
 secrecy = "0.8.0"
 futures = "0.3.30"
 indicatif = "0.17.8"

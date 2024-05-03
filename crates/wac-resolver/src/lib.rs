@@ -28,6 +28,15 @@ pub enum Error {
         #[label(primary, "unknown package `{name}`")]
         span: SourceSpan,
     },
+    /// An invalid package name was encountered.
+    #[error("invalid package name `{name}`")]
+    InvalidPackageName {
+        /// The name of the package.
+        name: String,
+        /// The span where the error occurred.
+        #[label(primary, "invalid package name `{name}`")]
+        span: SourceSpan,
+    },
     /// An unknown package version was encountered.
     #[cfg(feature = "registry")]
     #[error("version {version} of package `{name}` does not exist")]
@@ -56,22 +65,22 @@ pub enum Error {
         #[label(primary, "package `{name}` does not exist")]
         span: SourceSpan,
     },
-    /// The requested package version has been yanked.
+    /// The requested package version has been yanked or does not exist.
     #[cfg(feature = "registry")]
-    #[error("version {version} of package `{name}` has been yanked")]
-    PackageVersionYanked {
+    #[error("version {version} of package `{name}` has been yanked or does not exist")]
+    PackageVersionYankedOrDoesNotExist {
         /// The name of the package.
         name: String,
-        /// The version of the package that has been yanked.
+        /// The version of the package.
         version: semver::Version,
         /// The span where the error occurred.
-        #[label(primary, "{version} has been yanked")]
+        #[label(primary, "{version} has been yanked or does not exist")]
         span: SourceSpan,
     },
-    /// A package log was empty.
+    /// A package has no releases.
     #[cfg(feature = "registry")]
-    #[error("a release for package `{name}` has not yet been published")]
-    PackageLogEmpty {
+    #[error("package `{name}` has no releases")]
+    PackageNoReleases {
         /// The name of the package.
         name: String,
         /// The span where the error occurred.
