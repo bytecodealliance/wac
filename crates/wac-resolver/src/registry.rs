@@ -107,7 +107,7 @@ impl RegistryPackageResolver {
             .await
         {
             Ok(_) => {}
-            Err(ClientError::PackageDoesNotExist { name }) => {
+            Err(ClientError::PackageDoesNotExist { name, .. }) => {
                 return Err(Error::PackageDoesNotExist {
                     name: name.to_string(),
                     span: package_names_with_source_span.get(&name).unwrap().1,
