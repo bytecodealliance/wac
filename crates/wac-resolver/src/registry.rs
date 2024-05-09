@@ -3,12 +3,10 @@ use anyhow::Result;
 use futures::{stream::FuturesUnordered, StreamExt};
 use indexmap::IndexMap;
 use miette::SourceSpan;
-use secrecy::Secret;
 use semver::{Version, VersionReq};
 use std::{fs, path::Path, sync::Arc};
 use wac_types::BorrowedPackageKey;
-use warg_client::{Client, ClientError, Config, FileSystemClient, RegistryUrl};
-use warg_credentials::keyring::get_auth_token;
+use warg_client::{Client, ClientError, Config, FileSystemClient};
 use warg_protocol::registry::PackageName;
 
 /// Implemented by progress bars.
@@ -43,13 +41,8 @@ impl RegistryPackageResolver {
     ///
     /// If `url` is `None`, the default URL will be used.
     pub fn new(url: Option<&str>, bar: Option<Box<dyn ProgressBar>>) -> Result<Self> {
-        let config = Config::from_default_file()?.unwrap_or_default();
         Ok(Self {
-            client: Arc::new(Client::new_with_config(
-                url,
-                &config,
-                Self::auth_token(&config, url)?,
-            )?),
+            client: Arc::new(Client::new_with_default_config(url)?),
             bar,
         })
     }
@@ -63,11 +56,7 @@ impl RegistryPackageResolver {
         bar: Option<Box<dyn ProgressBar>>,
     ) -> Result<Self> {
         Ok(Self {
-            client: Arc::new(Client::new_with_config(
-                url,
-                config,
-                Self::auth_token(config, url)?,
-            )?),
+            client: Arc::new(Client::new_with_config(url, config, None)?),
             bar,
         })
     }
@@ -200,19 +189,5 @@ impl RegistryPackageResolver {
             path: path.to_path_buf(),
             source: e.into(),
         })
-    }
-
-    pub fn auth_token(config: &Config, url: Option<&str>) -> Result<Option<Secret<String>>> {
-        if config.keyring_auth {
-            return if let Some(url) = url {
-                Ok(get_auth_token(&RegistryUrl::new(url)?)?)
-            } else if let Some(url) = config.home_url.as_ref() {
-                Ok(get_auth_token(&RegistryUrl::new(url)?)?)
-            } else {
-                Ok(None)
-            };
-        }
-
-        Ok(None)
     }
 }

@@ -43,7 +43,7 @@ indicatif = { workspace = true, optional = true }
 default = ["wit", "registry"]
 wat = ["wac-resolver/wat"]
 wit = ["wac-resolver/wit"]
-registry = ["wac-resolver/registry", "indicatif"]
+registry = ["wac-resolver/registry", "dep:indicatif"]
 
 [workspace.dependencies]
 wac-parser = { path = "crates/wac-parser", version = "0.1.0", default-features = false }
@@ -71,12 +71,10 @@ wat = "1.202.0"
 logos = "0.14.0"
 miette = "7.2.0"
 thiserror = "1.0.58"
-warg-client = "0.5.0"
-warg-protocol = "0.5.0"
-warg-crypto = "0.5.0"
-warg-server = "0.5.0"
-warg-credentials = "0.5.0"
-secrecy = "0.8.0"
+warg-client = "0.6.0"
+warg-protocol = "0.6.0"
+warg-crypto = "0.6.0"
+warg-server = "0.6.0"
 futures = "0.3.30"
 indicatif = "0.17.8"
 pretty_assertions = "1.4.0"
