@@ -40,7 +40,7 @@ semver = { workspace = true }
 indicatif = { workspace = true, optional = true }
 
 [features]
-default = ["wit"]
+default = ["wit", "registry"]
 wat = ["wac-resolver/wat"]
 wit = ["wac-resolver/wit"]
 registry = ["wac-resolver/registry", "indicatif"]
