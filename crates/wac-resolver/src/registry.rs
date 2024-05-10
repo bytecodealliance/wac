@@ -130,7 +130,7 @@ impl RegistryPackageResolver {
                             .await
                             .map_err(|err| match err {
                                 ClientError::PackageVersionDoesNotExist { name, version } => {
-                                    Error::PackageVersionYankedOrDoesNotExist {
+                                    Error::PackageVersionDoesNotExist {
                                         name: name.to_string(),
                                         version,
                                         span,

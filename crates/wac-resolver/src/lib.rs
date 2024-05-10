@@ -65,16 +65,16 @@ pub enum Error {
         #[label(primary, "package `{name}` does not exist")]
         span: SourceSpan,
     },
-    /// The requested package version has been yanked or does not exist.
+    /// The requested package version does not exist.
     #[cfg(feature = "registry")]
-    #[error("version {version} of package `{name}` has been yanked or does not exist")]
-    PackageVersionYankedOrDoesNotExist {
+    #[error("version {version} of package `{name}` does not exist")]
+    PackageVersionDoesNotExist {
         /// The name of the package.
         name: String,
         /// The version of the package.
         version: semver::Version,
         /// The span where the error occurred.
-        #[label(primary, "{version} has been yanked or does not exist")]
+        #[label(primary, "{version} does not exist")]
         span: SourceSpan,
     },
     /// A package has no releases.
