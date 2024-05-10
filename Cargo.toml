@@ -23,6 +23,8 @@ wac-types = { workspace = true }
 wac-graph = { workspace = true }
 wac-resolver = { workspace = true, default-features = false }
 wac-parser = { workspace = true, default-features = false }
+warg-client = { workspace = true, optional = true }
+warg-protocol = { workspace = true, optional = true }
 anyhow = { workspace = true }
 clap = { workspace = true }
 pretty_env_logger = { workspace = true }
@@ -43,7 +45,7 @@ indicatif = { workspace = true, optional = true }
 default = ["wit", "registry"]
 wat = ["wac-resolver/wat"]
 wit = ["wac-resolver/wit"]
-registry = ["wac-resolver/registry", "dep:indicatif"]
+registry = ["wac-resolver/registry", "dep:indicatif", "dep:warg-client", "dep:warg-protocol"]
 
 [workspace.dependencies]
 wac-parser = { path = "crates/wac-parser", version = "0.1.0", default-features = false }

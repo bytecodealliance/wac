@@ -3858,6 +3858,8 @@ dependencies = [
  "wac-parser",
  "wac-resolver",
  "wac-types",
+ "warg-client",
+ "warg-protocol",
  "wasmprinter 0.202.0",
  "wat",
 ]
