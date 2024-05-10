@@ -3,9 +3,8 @@ use std::{
     path::PathBuf,
 };
 
-use anyhow::{anyhow, bail, Context as _, Error, Result};
+use anyhow::{bail, Context as _, Error, Result};
 use clap::Args;
-use std::borrow::Cow;
 use std::str::FromStr;
 use wac_graph::{CompositionGraph, EncodeOptions, NodeId, PackageId};
 use wac_types::{Package, SubtypeChecker};
@@ -30,17 +29,16 @@ impl FromStr for PackageRef {
     type Err = Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if cfg!(not(feature = "registry")) {
-            return Ok(Self::LocalPath(PathBuf::from(s)));
-        }
-
         #[cfg(feature = "registry")]
-        if let Ok(package_name) = PackageName::new(s) {
+        return if let Ok(package_name) = PackageName::new(s) {
             // only `namespace:package-name` without file extensions is valid
             Ok(Self::RegistryPackage(package_name))
         } else {
             Ok(Self::LocalPath(PathBuf::from(s)))
-        }
+        };
+
+        #[cfg(not(feature = "registry"))]
+        Ok(Self::LocalPath(PathBuf::from(s)))
     }
 }
 
@@ -48,6 +46,7 @@ impl std::fmt::Display for PackageRef {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::LocalPath(path) => write!(f, "{}", path.display()),
+            #[cfg(feature = "registry")]
             Self::RegistryPackage(name) => write!(f, "{}", name),
         }
     }
@@ -98,16 +97,18 @@ impl PlugCommand {
                 client
                     .as_ref()
                     .ok_or_else(|| {
-                        anyhow!("Warg registry is not configured. Package `{name}` was not found.")
+                        anyhow::anyhow!(
+                            "Warg registry is not configured. Package `{name}` was not found."
+                        )
                     })?
                     .download(name, &semver::VersionReq::STAR)
                     .await?
-                    .ok_or_else(|| anyhow!("package `{name}` was not found"))?
+                    .ok_or_else(|| anyhow::anyhow!("package `{name}` was not found"))?
                     .path
             }
             PackageRef::LocalPath(path) => path.clone(),
         };
-        let socket = std::fs::read(&socket_path).with_context(|| {
+        let socket = std::fs::read(socket_path).with_context(|| {
             format!(
                 "failed to read socket component `{socket}`",
                 socket = self.socket
@@ -122,7 +123,8 @@ impl PlugCommand {
         let mut plugs_by_name = std::collections::HashMap::<_, Vec<_>>::new();
         for plug in self.plugs.iter() {
             let name = match plug {
-                PackageRef::RegistryPackage(name) => Cow::Borrowed(name.as_ref()),
+                #[cfg(feature = "registry")]
+                PackageRef::RegistryPackage(name) => std::borrow::Cow::Borrowed(name.as_ref()),
                 PackageRef::LocalPath(path) => path
                     .file_stem()
                     .map(|fs| fs.to_string_lossy())
@@ -137,14 +139,15 @@ impl PlugCommand {
         for (name, plug_refs) in plugs_by_name {
             for (i, plug_ref) in plug_refs.iter().enumerate() {
                 let (mut name, path) = match plug_ref {
+                    #[cfg(feature = "registry")]
                     PackageRef::RegistryPackage(name) => (
                         name.as_ref().to_string(),
                         client
                             .as_ref()
-                            .ok_or_else(|| anyhow!("Warg registry is not configured. Package `{name}` was not found."))?
+                            .ok_or_else(|| anyhow::anyhow!("Warg registry is not configured. Package `{name}` was not found."))?
                             .download(name, &semver::VersionReq::STAR)
                             .await?
-                            .ok_or_else(|| anyhow!("package `{name}` was not found"))?
+                            .ok_or_else(|| anyhow::anyhow!("package `{name}` was not found"))?
                             .path,
                     ),
                     PackageRef::LocalPath(path) => (format!("plug:{name}"), path.clone()),
