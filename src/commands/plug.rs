@@ -22,7 +22,7 @@ pub enum PackageRef {
     LocalPath(PathBuf),
     /// The registry package name.
     #[cfg(feature = "registry")]
-    RegistryPackage(PackageName), // TODO handle package versions
+    RegistryPackage((PackageName, Option<semver::Version>)),
 }
 
 impl FromStr for PackageRef {
@@ -30,12 +30,20 @@ impl FromStr for PackageRef {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         #[cfg(feature = "registry")]
-        return if let Ok(package_name) = PackageName::new(s) {
-            // only `namespace:package-name` without file extensions is valid
-            Ok(Self::RegistryPackage(package_name))
-        } else {
-            Ok(Self::LocalPath(PathBuf::from(s)))
-        };
+        return Ok(s
+            .split_once('@')
+            .map(|(name, version)| {
+                match (PackageName::new(name), semver::Version::parse(version)) {
+                    (Ok(name), Ok(ver)) => Ok(Some(Self::RegistryPackage((name, Some(ver))))),
+                    (Ok(_), Err(e)) => bail!("invalid version for package `{s}`: {e}"),
+                    (Err(_), _) => Ok(None),
+                }
+            })
+            .unwrap_or(Ok(None))?
+            .unwrap_or_else(|| match PackageName::new(s) {
+                Ok(name) => Self::RegistryPackage((name, None)),
+                _ => Self::LocalPath(PathBuf::from(s)),
+            }));
 
         #[cfg(not(feature = "registry"))]
         Ok(Self::LocalPath(PathBuf::from(s)))
@@ -47,7 +55,9 @@ impl std::fmt::Display for PackageRef {
         match self {
             Self::LocalPath(path) => write!(f, "{}", path.display()),
             #[cfg(feature = "registry")]
-            Self::RegistryPackage(name) => write!(f, "{}", name),
+            Self::RegistryPackage((name, Some(ver))) => write!(f, "{}@{}", name, ver),
+            #[cfg(feature = "registry")]
+            Self::RegistryPackage((name, None)) => write!(f, "{}", name),
         }
     }
 }
@@ -93,20 +103,39 @@ impl PlugCommand {
 
         let socket_path = match &self.socket {
             #[cfg(feature = "registry")]
-            PackageRef::RegistryPackage(name) => {
-                client
-                    .as_ref()
-                    .ok_or_else(|| {
-                        anyhow::anyhow!(
-                            "Warg registry is not configured. Package `{name}` was not found."
-                        )
-                    })?
-                    .download(name, &semver::VersionReq::STAR)
-                    .await?
-                    .ok_or_else(|| anyhow::anyhow!("package `{name}` was not found"))?
-                    .path
+            PackageRef::RegistryPackage((name, version)) => {
+                let client = client.as_ref().ok_or_else(|| {
+                    anyhow::anyhow!(
+                        "Warg registry is not configured. Package `{name}` was not found."
+                    )
+                })?;
+
+                if let Some(ver) = version {
+                    let download = client.download_exact(name, ver).await?;
+                    println!(
+                        "Plugging `{name}` version `{ver}` using registry `{registry}`",
+                        registry = client.url()
+                    );
+                    download.path
+                } else {
+                    let download = client
+                        .download(name, &semver::VersionReq::STAR)
+                        .await?
+                        .ok_or_else(|| anyhow::anyhow!("package `{name}` was not found"))?;
+
+                    println!(
+                        "Plugging `{name}` version `{ver}` using registry `{registry}`",
+                        ver = &download.version,
+                        registry = client.url()
+                    );
+                    download.path
+                }
             }
-            PackageRef::LocalPath(path) => path.clone(),
+            PackageRef::LocalPath(path) => {
+                println!("Plugging `{path}`", path = path.display());
+
+                path.clone()
+            }
         };
         let socket = std::fs::read(socket_path).with_context(|| {
             format!(
@@ -124,7 +153,7 @@ impl PlugCommand {
         for plug in self.plugs.iter() {
             let name = match plug {
                 #[cfg(feature = "registry")]
-                PackageRef::RegistryPackage(name) => std::borrow::Cow::Borrowed(name.as_ref()),
+                PackageRef::RegistryPackage((name, _)) => std::borrow::Cow::Borrowed(name.as_ref()),
                 PackageRef::LocalPath(path) => path
                     .file_stem()
                     .map(|fs| fs.to_string_lossy())
@@ -140,17 +169,41 @@ impl PlugCommand {
             for (i, plug_ref) in plug_refs.iter().enumerate() {
                 let (mut name, path) = match plug_ref {
                     #[cfg(feature = "registry")]
-                    PackageRef::RegistryPackage(name) => (
-                        name.as_ref().to_string(),
-                        client
-                            .as_ref()
-                            .ok_or_else(|| anyhow::anyhow!("Warg registry is not configured. Package `{name}` was not found."))?
-                            .download(name, &semver::VersionReq::STAR)
-                            .await?
-                            .ok_or_else(|| anyhow::anyhow!("package `{name}` was not found"))?
-                            .path,
-                    ),
-                    PackageRef::LocalPath(path) => (format!("plug:{name}"), path.clone()),
+                    PackageRef::RegistryPackage((name, version)) => {
+                        let client = client.as_ref().ok_or_else(|| {
+                            anyhow::anyhow!(
+                                "Warg registry is not configured. Package `{name}` was not found."
+                            )
+                        })?;
+
+                        let path = if let Some(ver) = version {
+                            let download = client.download_exact(name, ver).await?;
+                            println!(
+                                "    with `{name}` version `{ver}` using registry `{registry}`",
+                                registry = client.url()
+                            );
+                            download.path
+                        } else {
+                            let download = client
+                                .download(name, &semver::VersionReq::STAR)
+                                .await?
+                                .ok_or_else(|| anyhow::anyhow!("package `{name}` was not found"))?;
+
+                            println!(
+                                "    with `{name}` version `{ver}` using registry `{registry}`",
+                                ver = &download.version,
+                                registry = client.url()
+                            );
+                            download.path
+                        };
+
+                        let name = name.as_ref().to_string();
+                        (name, path)
+                    }
+                    PackageRef::LocalPath(path) => {
+                        println!("    with `{path}`", path = path.display());
+                        (format!("plug:{name}"), path.clone())
+                    }
                 };
                 // If there's more than one plug with the same name, append an index to the name.
                 if plug_refs.len() > 1 {
@@ -199,6 +252,7 @@ impl PlugCommand {
                     "failed to write output file `{path}`",
                     path = path.display()
                 ))?;
+                println!("\nWrote plugged component: `{path}`", path = path.display());
             }
             None => {
                 std::io::stdout()
