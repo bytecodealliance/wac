@@ -86,7 +86,6 @@ impl RegistryPackageResolver {
 
         // fetch required package logs and return error if any not found
         if let Some(bar) = self.bar.as_ref() {
-            bar.init(1);
             bar.println("Updating", "package logs from the registry");
         }
 
@@ -108,9 +107,6 @@ impl RegistryPackageResolver {
         }
 
         if let Some(bar) = self.bar.as_ref() {
-            bar.inc(1);
-            bar.finish();
-
             // download package content if not in cache
             bar.init(keys.len());
             bar.println("Downloading", "package content from the registry");

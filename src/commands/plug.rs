@@ -112,7 +112,7 @@ impl PlugCommand {
 
                 if let Some(ver) = version {
                     let download = client.download_exact(name, ver).await?;
-                    println!(
+                    log::debug!(
                         "Plugging `{name}` version `{ver}` using registry `{registry}`",
                         registry = client.url()
                     );
@@ -123,7 +123,7 @@ impl PlugCommand {
                         .await?
                         .ok_or_else(|| anyhow::anyhow!("package `{name}` was not found"))?;
 
-                    println!(
+                    log::debug!(
                         "Plugging `{name}` version `{ver}` using registry `{registry}`",
                         ver = &download.version,
                         registry = client.url()
@@ -132,7 +132,7 @@ impl PlugCommand {
                 }
             }
             PackageRef::LocalPath(path) => {
-                println!("Plugging `{path}`", path = path.display());
+                log::debug!("Plugging `{path}`", path = path.display());
 
                 path.clone()
             }
@@ -178,7 +178,7 @@ impl PlugCommand {
 
                         let path = if let Some(ver) = version {
                             let download = client.download_exact(name, ver).await?;
-                            println!(
+                            log::debug!(
                                 "    with `{name}` version `{ver}` using registry `{registry}`",
                                 registry = client.url()
                             );
@@ -189,7 +189,7 @@ impl PlugCommand {
                                 .await?
                                 .ok_or_else(|| anyhow::anyhow!("package `{name}` was not found"))?;
 
-                            println!(
+                            log::debug!(
                                 "    with `{name}` version `{ver}` using registry `{registry}`",
                                 ver = &download.version,
                                 registry = client.url()
@@ -201,7 +201,7 @@ impl PlugCommand {
                         (name, path)
                     }
                     PackageRef::LocalPath(path) => {
-                        println!("    with `{path}`", path = path.display());
+                        log::debug!("    with `{path}`", path = path.display());
                         (format!("plug:{name}"), path.clone())
                     }
                 };
@@ -252,7 +252,7 @@ impl PlugCommand {
                     "failed to write output file `{path}`",
                     path = path.display()
                 ))?;
-                println!("\nWrote plugged component: `{path}`", path = path.display());
+                log::debug!("\nWrote plugged component: `{path}`", path = path.display());
             }
             None => {
                 std::io::stdout()
