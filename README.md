@@ -88,9 +88,25 @@ cargo install wac-cli
 
 The `wac` CLI tool has three commands:
 
+* `wac plug` - Plugs the imports of a component with one or more other components.
 * `wac parse` - Parses a composition into a JSON representation of the AST.
 * `wac resolve` - Resolves a composition into a JSON representation.
 * `wac encode` - Encodes a WAC source file as a WebAssembly component.
+
+### Quick & Easy Compositions
+
+To do simple compositions, use the `wac plug` command:
+
+```
+wac plug my-socket.wasm --plug my-plug.wasm -o plugged.wasm
+```
+
+or mixing in packages published to a Warg regsitry:
+
+```
+wac plug my-namespace:package-name --plug some-namespace:other-package-name -o plugged.wasm
+```
+
 
 ### Encoding Compositions
 
@@ -150,6 +166,6 @@ wac encode --dep foo:bar=./baz.wasm -o output.wasm input.wac
 By default, dependencies must be binary-encoded WebAssembly components; to
 enable support for WAT files, use the `wat` build-time feature.
 
-If the `registry` build-time feature is enabled, then dependencies may be
+Unless built without default features (explicitly the `registry` feature), then dependencies may be
 automatically resolved from a Warg registry and do not need to exist in the
 `deps` subdirectory or specified via the `--dep` CLI option.
