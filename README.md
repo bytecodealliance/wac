@@ -101,7 +101,7 @@ To do simple compositions, use the `wac plug` command:
 wac plug my-socket.wasm --plug my-plug.wasm -o plugged.wasm
 ```
 
-or mixing in packages published to a Warg regsitry:
+Or mixing in packages published to a Warg registry:
 
 ```
 wac plug my-namespace:package-name --plug some-namespace:other-package-name -o plugged.wasm
