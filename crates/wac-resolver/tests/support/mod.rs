@@ -149,6 +149,9 @@ pub async fn spawn_server(root: &Path) -> Result<(ServerInstance, warg_client::C
         namespace_map_path: Some(root.join("namespaces")),
         keyring_auth: false,
         keys: Default::default(),
+        ignore_federation_hints: false,
+        auto_accept_federation_hints: false,
+        disable_interactive: true,
     };
 
     Ok((instance, config))

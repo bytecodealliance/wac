@@ -23,6 +23,8 @@ wac-types = { workspace = true }
 wac-graph = { workspace = true }
 wac-resolver = { workspace = true, default-features = false }
 wac-parser = { workspace = true, default-features = false }
+warg-client = { workspace = true, optional = true }
+warg-protocol = { workspace = true, optional = true }
 anyhow = { workspace = true }
 clap = { workspace = true }
 pretty_env_logger = { workspace = true }
@@ -40,10 +42,10 @@ semver = { workspace = true }
 indicatif = { workspace = true, optional = true }
 
 [features]
-default = ["wit"]
+default = ["wit", "registry"]
 wat = ["wac-resolver/wat"]
 wit = ["wac-resolver/wit"]
-registry = ["wac-resolver/registry", "indicatif"]
+registry = ["wac-resolver/registry", "dep:indicatif", "dep:warg-client", "dep:warg-protocol"]
 
 [workspace.dependencies]
 wac-parser = { path = "crates/wac-parser", version = "0.1.0", default-features = false }
@@ -71,12 +73,10 @@ wat = "1.202.0"
 logos = "0.14.0"
 miette = "7.2.0"
 thiserror = "1.0.58"
-warg-client = "0.4.1"
-warg-protocol = "0.4.1"
-warg-crypto = "0.4.1"
-warg-server = "0.4.1"
-warg-credentials = "0.4.1"
-secrecy = "0.8.0"
+warg-client = "0.6.0"
+warg-protocol = "0.6.0"
+warg-crypto = "0.6.0"
+warg-server = "0.6.0"
 futures = "0.3.30"
 indicatif = "0.17.8"
 pretty_assertions = "1.4.0"

@@ -24,8 +24,6 @@ miette = { workspace = true }
 warg-client = { workspace = true, optional = true }
 warg-protocol = { workspace = true, optional = true }
 warg-crypto = { workspace = true, optional = true }
-warg-credentials = { workspace = true, optional = true }
-secrecy = { workspace = true, optional = true }
 tokio = { workspace = true, optional = true }
 futures = { workspace = true, optional = true }
 
@@ -40,5 +38,5 @@ tempdir = "0.3.7"
 [features]
 default = ["registry"]
 wat = ["dep:wat"]
-wit = ["wit-parser"]
-registry = ["warg-client", "warg-protocol", "warg-crypto", "warg-credentials", "secrecy", "tokio", "futures"]
+wit = ["dep:wit-parser"]
+registry = ["dep:warg-client", "dep:warg-protocol", "dep:warg-crypto", "dep:tokio", "dep:futures"]

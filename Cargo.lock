@@ -776,6 +776,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "dialoguer"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "658bce805d770f407bc62102fca7c2c64ceef2fbcb2b8bd19d2765ce093980de"
+dependencies = [
+ "console",
+ "shell-words",
+ "tempfile",
+ "thiserror",
+ "zeroize",
+]
+
+[[package]]
 name = "diff"
 version = "0.1.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1428,7 +1441,7 @@ dependencies = [
  "httpdate",
  "itoa",
  "pin-project-lite",
- "socket2 0.4.10",
+ "socket2 0.5.6",
  "tokio",
  "tower-service",
  "tracing",
@@ -1656,9 +1669,9 @@ dependencies = [
 
 [[package]]
 name = "keyring"
-version = "2.3.2"
+version = "2.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1be8bc4c6b6e9d85ecdad090fcf342a9216f53d747a537cc05e3452fd650ca46"
+checksum = "363387f0019d714aa60cc30ab4fe501a747f4c08fc58f069dd14be971bd495a0"
 dependencies = [
  "byteorder",
  "lazy_static 1.4.0",
@@ -1856,18 +1869,6 @@ dependencies = [
 
 [[package]]
 name = "miette"
-version = "5.10.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "59bb584eaeeab6bd0226ccf3509a69d7936d148cf3d036ad350abe35e8c6856e"
-dependencies = [
- "miette-derive 5.10.0",
- "once_cell",
- "thiserror",
- "unicode-width",
-]
-
-[[package]]
-name = "miette"
 version = "7.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4edc8853320c2a0dab800fbda86253c8938f6ea88510dc92c5f1ed20e794afc1"
@@ -1875,7 +1876,7 @@ dependencies = [
  "backtrace",
  "backtrace-ext",
  "cfg-if",
- "miette-derive 7.2.0",
+ "miette-derive",
  "owo-colors",
  "serde 1.0.197",
  "supports-color 3.0.0",
@@ -1885,17 +1886,6 @@ dependencies = [
  "textwrap",
  "thiserror",
  "unicode-width",
-]
-
-[[package]]
-name = "miette-derive"
-version = "5.10.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "49e7bc1560b95a3c4a25d03de42fe76ca718ab92d1a22a55b9b4cf67b3ae635c"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 2.0.57",
 ]
 
 [[package]]
@@ -2544,12 +2534,12 @@ dependencies = [
 
 [[package]]
 name = "prost-reflect"
-version = "0.12.0"
+version = "0.13.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "057237efdb71cf4b3f9396302a3d6599a92fa94063ba537b66130980ea9909f3"
+checksum = "6f5eec97d5d34bdd17ad2db2219aabf46b054c6c41bd5529767c9ce55be5898f"
 dependencies = [
- "logos 0.13.0",
- "miette 5.10.0",
+ "logos 0.14.0",
+ "miette",
  "once_cell",
  "prost",
  "prost-types",
@@ -2566,12 +2556,12 @@ dependencies = [
 
 [[package]]
 name = "protox"
-version = "0.5.1"
+version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "00bb76c5f6221de491fe2c8f39b106330bbd9762c6511119c07940e10eb9ff11"
+checksum = "a29b3c5596eb23a849deba860b53ffd468199d9ad5fe4402a7d55379e16aa2d2"
 dependencies = [
  "bytes",
- "miette 5.10.0",
+ "miette",
  "prost",
  "prost-reflect",
  "prost-types",
@@ -2581,12 +2571,12 @@ dependencies = [
 
 [[package]]
 name = "protox-parse"
-version = "0.5.0"
+version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7b4581f441c58863525a3e6bec7b8de98188cf75239a56c725a3e7288450a33f"
+checksum = "033b939d76d358f7c32120c86c71f515bae45e64f2bde455200356557276276c"
 dependencies = [
  "logos 0.13.0",
- "miette 5.10.0",
+ "miette",
  "prost-types",
  "thiserror",
 ]
@@ -3173,6 +3163,12 @@ checksum = "f40ca3c46823713e0d4209592e8d6e826aa57e928f09752619fc696c499637f6"
 dependencies = [
  "lazy_static 1.4.0",
 ]
+
+[[package]]
+name = "shell-words"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "24188a676b6ae68c3b2cb3a01be17fbf7240ce009799bb56d5b1409051e78fde"
 
 [[package]]
 name = "signal-hook-registry"
@@ -3850,7 +3846,7 @@ dependencies = [
  "indexmap 2.2.6",
  "indicatif",
  "log",
- "miette 7.2.0",
+ "miette",
  "owo-colors",
  "pretty_env_logger",
  "semver",
@@ -3862,6 +3858,8 @@ dependencies = [
  "wac-parser",
  "wac-resolver",
  "wac-types",
+ "warg-client",
+ "warg-protocol",
  "wasmprinter 0.202.0",
  "wat",
 ]
@@ -3899,7 +3897,7 @@ dependencies = [
  "indexmap 2.2.6",
  "log",
  "logos 0.14.0",
- "miette 7.2.0",
+ "miette",
  "owo-colors",
  "pretty_assertions",
  "pretty_env_logger",
@@ -3925,9 +3923,8 @@ dependencies = [
  "futures",
  "indexmap 2.2.6",
  "log",
- "miette 7.2.0",
+ "miette",
  "pretty_assertions",
- "secrecy",
  "semver",
  "tempdir",
  "thiserror",
@@ -3937,7 +3934,6 @@ dependencies = [
  "wac-parser",
  "wac-types",
  "warg-client",
- "warg-credentials",
  "warg-crypto",
  "warg-protocol",
  "warg-server",
@@ -3987,9 +3983,9 @@ dependencies = [
 
 [[package]]
 name = "warg-api"
-version = "0.4.1"
+version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "12bf1e22e1e396b98a2181219b06d1a49a3478c1b9d87a29cd9cd819d714e6c3"
+checksum = "b08e86feb745fa5a4e9b3ed8c53ca7353ce474c9164573e7963c65eab0e20998"
 dependencies = [
  "indexmap 2.2.6",
  "itertools 0.12.1",
@@ -4002,19 +3998,21 @@ dependencies = [
 
 [[package]]
 name = "warg-client"
-version = "0.4.1"
+version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d56cfaf9781ca2d084468bbdd8bbc1e35947bb2a19f8d3940d899852f6dd78aa"
+checksum = "ecb95cdddbc52c73e774d6d555412bb8060156f1ac666df733c18bdeb923c22c"
 dependencies = [
  "anyhow",
  "async-recursion",
  "async-trait",
  "bytes",
  "clap",
+ "dialoguer",
  "dirs",
  "futures-util",
  "indexmap 2.2.6",
  "itertools 0.12.1",
+ "keyring",
  "libc",
  "normpath",
  "once_cell",
@@ -4045,24 +4043,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "warg-credentials"
-version = "0.4.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "626224ba1a00965282b669d2611654fd6292a15396ed8c850ce91684678fe19f"
-dependencies = [
- "anyhow",
- "indexmap 2.2.6",
- "keyring",
- "secrecy",
- "warg-client",
- "warg-crypto",
-]
-
-[[package]]
 name = "warg-crypto"
-version = "0.4.1"
+version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d2a8c47e96a7f1903931b34db9a1f0d22bcb3761a203ee6861db686daaedcb4b"
+checksum = "79344c8bd2cf133533ce6352b6491fbb343e374a8c09527073adda5015c89c92"
 dependencies = [
  "anyhow",
  "base64",
@@ -4081,9 +4065,9 @@ dependencies = [
 
 [[package]]
 name = "warg-protobuf"
-version = "0.4.1"
+version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ceed0e698efd0fab8bb747efd452156a65149eb389f7fe2a6b6b3ced4e25ab24"
+checksum = "975e38d2ddba1d26f46713d75cccecf3769ebaae7d14b0dcb830d207867c50bf"
 dependencies = [
  "anyhow",
  "pbjson",
@@ -4100,9 +4084,9 @@ dependencies = [
 
 [[package]]
 name = "warg-protocol"
-version = "0.4.1"
+version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "69be98a2e9e0aeace7cbd62184b11462d259c5e391e6208d59506c9a2d33571c"
+checksum = "fb997bf019742f796123539e9c9031d3ec8ed973950a0534e1f6af508e27e4f1"
 dependencies = [
  "anyhow",
  "base64",
@@ -4123,9 +4107,9 @@ dependencies = [
 
 [[package]]
 name = "warg-server"
-version = "0.4.1"
+version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "07f15457ced83df5c2298f225fc83b6700e93c7bf320a2e4ef01114c0b34d7ce"
+checksum = "a8ada7d9f5ec554959501509b60229da52f5bd0e535b6b83eef2ca4f7f47d127"
 dependencies = [
  "anyhow",
  "axum",
@@ -4154,9 +4138,9 @@ dependencies = [
 
 [[package]]
 name = "warg-transparency"
-version = "0.4.1"
+version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4d272b3002b9e5f6f636817089ba091e1ba7b85858e72529f96e24bc9827f530"
+checksum = "f04b4573fd7c7ebee61f5b4645b464e7dcd656386d0ca4c77b37533ad1bb98d9"
 dependencies = [
  "anyhow",
  "indexmap 2.2.6",

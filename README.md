@@ -84,12 +84,6 @@ For a full description of the `wac` language see [the language guide](LANGUAGE.m
 cargo install wac-cli
 ```
 
-To enable support Warg component registries, specify the `registry` feature:
-
-```
-cargo install wac-cli --features registry
-```
-
 ## Usage
 
 The `wac` CLI tool has three commands:
