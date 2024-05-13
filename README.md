@@ -166,6 +166,6 @@ wac encode --dep foo:bar=./baz.wasm -o output.wasm input.wac
 By default, dependencies must be binary-encoded WebAssembly components; to
 enable support for WAT files, use the `wat` build-time feature.
 
-Unless built without default features (explicitly the `registry` feature), then dependencies may be
+If built with default features, then dependencies may be
 automatically resolved from a Warg registry and do not need to exist in the
 `deps` subdirectory or specified via the `--dep` CLI option.
