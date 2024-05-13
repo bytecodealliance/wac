@@ -99,12 +99,17 @@ impl PlugCommand {
         let mut graph = CompositionGraph::new();
 
         #[cfg(feature = "registry")]
-        let client = FileSystemClient::new_with_default_config(self.registry.as_deref()).ok();
+        let mut client = None;
 
         let socket_path = match &self.socket {
             #[cfg(feature = "registry")]
             PackageRef::RegistryPackage((name, version)) => {
-                let client = client.as_ref().ok_or_else(|| {
+                if client.is_none() {
+                    client = Some(FileSystemClient::new_with_default_config(
+                        self.registry.as_deref(),
+                    ));
+                }
+                let client = client.as_ref().unwrap().as_ref().map_err(|_| {
                     anyhow::anyhow!(
                         "Warg registry is not configured. Package `{name}` was not found."
                     )
@@ -170,7 +175,12 @@ impl PlugCommand {
                 let (mut name, path) = match plug_ref {
                     #[cfg(feature = "registry")]
                     PackageRef::RegistryPackage((name, version)) => {
-                        let client = client.as_ref().ok_or_else(|| {
+                        if client.is_none() {
+                            client = Some(FileSystemClient::new_with_default_config(
+                                self.registry.as_deref(),
+                            ));
+                        }
+                        let client = client.as_ref().unwrap().as_ref().map_err(|_| {
                             anyhow::anyhow!(
                                 "Warg registry is not configured. Package `{name}` was not found."
                             )
