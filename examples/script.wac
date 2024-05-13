@@ -1,0 +1,13 @@
+package example:composition;
+
+// Instantiate the `hello` component
+let hello = new example:hello {};
+
+// Instantiate the `greeter` component plugging its one `hello` import with 
+// the `hello` export of the `hello` component.
+let greeter = new example:greeter {
+  hello: hello.hello,
+};
+
+// Export the greet function from the greeter component
+export greeter.greet;
