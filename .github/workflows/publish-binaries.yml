@@ -48,13 +48,11 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install Rust
         run: rustup update stable --no-self-update && rustup default stable && rustup target add ${{ matrix.rust-target }}
-      - run: sudo apt install -y librust-openssl-sys-dev
-        if: matrix.os == 'ubuntu-latest'
       - run: cargo build --release --target ${{ matrix.rust-target }}
         if: ${{ ! matrix.cross }}
       - run: cargo install cross
         if: ${{ matrix.cross }}
-      - run: cross build --release --target ${{ matrix.rust-target }}
+      - run: cross build --release --target ${{ matrix.rust-target }} --features native-tls-vendored
         if: ${{ matrix.cross }}
       - run: mv ./target/${{ matrix.rust-target }}/release/wac.exe ./target/${{ matrix.rust-target }}/release/wac-${{ matrix.rust-target }}
         if: matrix.os == 'windows-latest'
@@ -89,13 +87,11 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install Rust
         run: rustup update stable --no-self-update && rustup default stable && rustup target add ${{ matrix.rust-target }}
-      - run: sudo apt install -y librust-openssl-sys-dev
-        if: matrix.os == 'ubuntu-latest'
       - run: cargo build --release --target ${{ matrix.rust-target }}
         if: ${{ ! matrix.cross }}
       - run: cargo install cross
         if: ${{ matrix.cross }}
-      - run: cross build --release --target ${{ matrix.rust-target }}
+      - run: cross build --release --target ${{ matrix.rust-target }} --features native-tls-vendored
         if: ${{ matrix.cross }}
       - run: mv ./target/${{ matrix.rust-target }}/release/wac.exe ./target/${{ matrix.rust-target }}/release/wac-${{ matrix.rust-target }}
         if: matrix.os == 'windows-latest'
