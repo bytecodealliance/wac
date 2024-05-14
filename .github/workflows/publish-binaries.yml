@@ -48,6 +48,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install Rust
         run: rustup update stable --no-self-update && rustup default stable && rustup target add ${{ matrix.rust-target }}
+      - run: sudo apt install libssl-dev -y
+        if: matrix.os == 'ubuntu-latest'
       - run: cargo build --release --target ${{ matrix.rust-target }}
         if: ${{ ! matrix.cross }}
       - run: cargo install cross
@@ -87,6 +89,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install Rust
         run: rustup update stable --no-self-update && rustup default stable && rustup target add ${{ matrix.rust-target }}
+      - run: sudo apt install libssl-dev -y
+        if: matrix.os == 'ubuntu-latest'
       - run: cargo build --release --target ${{ matrix.rust-target }}
         if: ${{ ! matrix.cross }}
       - run: cargo install cross
