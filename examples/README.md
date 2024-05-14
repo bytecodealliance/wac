@@ -1,7 +1,7 @@
 # Examples
 
-This example is composed of two different but equal ways for composing two example components together
-* using the `wac` CLI
+This example is composed of three different but equal ways for composing two example components together
+* two ways using the `wac` CLI
 * using the `wac-graph` library crate
 
 The example uses two input components (both located in the `deps` directory) that will be composed together:
@@ -34,22 +34,32 @@ world root {
 
 The resulting composed component will therefore only have the exported `greet` function originally from the `greeter` component.
 
-## CLI
+## `wac encode`
 
 `wac` can be used as a CLI tool. The `wac encode` command takes a wac script as input which defines how two components are composed together.
 
 Running the following command should produce a new component that is the composition of the `hello` and `greeter` components.
 
-```
-wac encode composition.wac -o composed.wasm  
+```bash
+wac encode script.wac -o composed.wasm
 ```
 
-*Note*: `wac encode` expects to find any input components inside of a `deps` folder in a directory named after the namespace part of the input component's name. In our example, the wac script uses the `example:greeter` and `example:hello` input components so `wac encode` expects to find those components in the `deps/example` directory.
+*Note*: `wac encode` expects to find any input components inside of a `deps` folder in a directory named after the namespace part of the input component's name (however, this is configurable with the `--deps-dir` option). In our example, the wac script uses the `example:greeter` and `example:hello` input components so `wac encode` expects to find those components in the `deps/example` directory.
+
+## `wac plug`
+
+`wac` also comes with an opinionated CLI option called `wac plug` which will "plug" the exports of one component (the "plug") into equivalently named imports of another component (the "socket").
+
+In this example, we can do this with the following invocation:
+
+```bash
+wac plug --plug deps/example/hello.wasm deps/example/greeter.wasm -o composed.wasm
+```
 
 ## Programmatic Graph API
 
 You can also build the composition using the programmatic API used by the `programmatic` example binary. This can be done by running the following inside the `programmatic` directory:
 
-```
-$ cargo run
+```bash
+cargo run
 ```
