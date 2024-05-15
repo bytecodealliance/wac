@@ -48,6 +48,9 @@ wit = ["wac-resolver/wit"]
 registry = ["wac-resolver/registry", "dep:indicatif", "dep:warg-client", "dep:warg-protocol"]
 native-tls-vendored = ["warg-client?/native-tls-vendored"]
 
+[workspace]
+members = ["examples/programmatic"]
+
 [workspace.dependencies]
 wac-parser = { path = "crates/wac-parser", version = "0.1.0", default-features = false }
 wac-resolver = { path = "crates/wac-resolver", version = "0.1.0", default-features = false }
@@ -64,7 +67,10 @@ clap = { version = "4.5.4", features = ["derive"] }
 semver = { version = "1.0.22", features = ["serde"] }
 pretty_env_logger = "0.5.0"
 log = "0.4.21"
-tokio = { version = "1.37.0", default-features = false, features = ["macros", "rt-multi-thread"] }
+tokio = { version = "1.37.0", default-features = false, features = [
+    "macros",
+    "rt-multi-thread",
+] }
 owo-colors = { version = "4.0.0", features = ["supports-colors"] }
 indexmap = { version = "2.2.6", features = ["serde"] }
 id-arena = "2.2.1"

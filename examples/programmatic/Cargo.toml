@@ -1,0 +1,7 @@
+[package]
+name = "programmatic-example"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+wac-graph = { path = "../../crates/wac-graph" }
