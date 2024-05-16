@@ -61,7 +61,7 @@ export i2.foo as "bar";
 "#,
     )?;
 
-    let resolver = RegistryPackageResolver::new_with_config(None, &config, None)?;
+    let resolver = RegistryPackageResolver::new_with_config(None, &config, None).await?;
     let packages = resolver.resolve(&packages(&document)?).await?;
 
     let resolution = document.resolve(packages)?;
