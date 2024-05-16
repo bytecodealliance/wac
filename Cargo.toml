@@ -10,7 +10,7 @@ keywords = { workspace = true }
 repository = { workspace = true }
 
 [workspace.package]
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 authors = ["Peter Huene <peter@huene.dev>"]
 license = "Apache-2.0 WITH LLVM-exception"
@@ -52,10 +52,10 @@ native-tls-vendored = ["warg-client?/native-tls-vendored"]
 members = ["examples/programmatic"]
 
 [workspace.dependencies]
-wac-parser = { path = "crates/wac-parser", version = "0.1.0", default-features = false }
-wac-resolver = { path = "crates/wac-resolver", version = "0.1.0", default-features = false }
-wac-graph = { path = "crates/wac-graph", version = "0.1.0" }
-wac-types = { path = "crates/wac-types", version = "0.1.0" }
+wac-parser = { path = "crates/wac-parser", version = "0.2.0", default-features = false }
+wac-resolver = { path = "crates/wac-resolver", version = "0.2.0", default-features = false }
+wac-graph = { path = "crates/wac-graph", version = "0.2.0" }
+wac-types = { path = "crates/wac-types", version = "0.2.0" }
 wit-parser = "0.202.0"
 wasmparser = "0.202.0"
 wit-component = "0.202.0"
