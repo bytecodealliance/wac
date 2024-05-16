@@ -80,8 +80,18 @@ For a full description of the `wac` language see [the language guide](LANGUAGE.m
 
 ## Installation
 
+To install the `wac` CLI from source, run the following command:
+
 ```
 cargo install wac-cli
+```
+
+If you have the [cargo-binstall](https://github.com/cargo-bins/cargo-binstall)
+utility installed, `wac` CLI can also be installed via a prebuilt
+release artifact, saving time on the installation:
+
+```
+cargo binstall wac-cli
 ```
 
 ## Usage
