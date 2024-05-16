@@ -56,7 +56,8 @@ impl ResolveCommand {
             self.deps.into_iter().collect(),
             #[cfg(feature = "registry")]
             self.registry.as_deref(),
-        )?;
+        )
+        .await?;
 
         let packages = resolver
             .resolve(&document)

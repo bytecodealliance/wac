@@ -64,7 +64,7 @@ pub async fn publish(
     content: Vec<u8>,
     init: bool,
 ) -> Result<()> {
-    let client = FileSystemClient::new_with_config(None, config, None)?;
+    let client = FileSystemClient::new_with_config(None, config, None).await?;
 
     let digest = client
         .content()
@@ -148,6 +148,7 @@ pub async fn spawn_server(root: &Path) -> Result<(ServerInstance, warg_client::C
         content_dir: Some(root.join("content")),
         namespace_map_path: Some(root.join("namespaces")),
         keyring_auth: false,
+        keyring_backend: None,
         keys: Default::default(),
         ignore_federation_hints: false,
         auto_accept_federation_hints: false,

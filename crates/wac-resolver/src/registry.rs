@@ -40,9 +40,9 @@ impl RegistryPackageResolver {
     /// client configuration file.
     ///
     /// If `url` is `None`, the default URL will be used.
-    pub fn new(url: Option<&str>, bar: Option<Box<dyn ProgressBar>>) -> Result<Self> {
+    pub async fn new(url: Option<&str>, bar: Option<Box<dyn ProgressBar>>) -> Result<Self> {
         Ok(Self {
-            client: Arc::new(Client::new_with_default_config(url)?),
+            client: Arc::new(Client::new_with_default_config(url).await?),
             bar,
         })
     }
@@ -50,13 +50,13 @@ impl RegistryPackageResolver {
     /// Creates a new registry package resolver with the given configuration.
     ///
     /// If `url` is `None`, the default URL will be used.
-    pub fn new_with_config(
+    pub async fn new_with_config(
         url: Option<&str>,
         config: &Config,
         bar: Option<Box<dyn ProgressBar>>,
     ) -> Result<Self> {
         Ok(Self {
-            client: Arc::new(Client::new_with_config(url, config, None)?),
+            client: Arc::new(Client::new_with_config(url, config, None).await?),
             bar,
         })
     }
