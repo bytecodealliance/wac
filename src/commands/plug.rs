@@ -105,9 +105,9 @@ impl PlugCommand {
             #[cfg(feature = "registry")]
             PackageRef::RegistryPackage((name, version)) => {
                 if client.is_none() {
-                    client = Some(FileSystemClient::new_with_default_config(
-                        self.registry.as_deref(),
-                    ));
+                    client = Some(
+                        FileSystemClient::new_with_default_config(self.registry.as_deref()).await,
+                    );
                 }
                 let client = client.as_ref().unwrap().as_ref().map_err(|_| {
                     anyhow::anyhow!(
@@ -176,9 +176,10 @@ impl PlugCommand {
                     #[cfg(feature = "registry")]
                     PackageRef::RegistryPackage((name, version)) => {
                         if client.is_none() {
-                            client = Some(FileSystemClient::new_with_default_config(
-                                self.registry.as_deref(),
-                            ));
+                            client = Some(
+                                FileSystemClient::new_with_default_config(self.registry.as_deref())
+                                    .await,
+                            );
                         }
                         let client = client.as_ref().unwrap().as_ref().map_err(|_| {
                             anyhow::anyhow!(

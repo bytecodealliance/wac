@@ -52,7 +52,7 @@ pub struct PackageResolver {
 
 impl PackageResolver {
     /// Creates a new package resolver.
-    pub fn new(
+    pub async fn new(
         dir: impl Into<PathBuf>,
         overrides: HashMap<String, PathBuf>,
         #[cfg(feature = "registry")] registry: Option<&str>,
@@ -63,7 +63,8 @@ impl PackageResolver {
             registry: wac_resolver::RegistryPackageResolver::new(
                 registry,
                 Some(Box::new(progress::ProgressBar::new())),
-            )?,
+            )
+            .await?,
         })
     }
 

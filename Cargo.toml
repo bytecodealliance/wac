@@ -80,10 +80,15 @@ wat = "1.202.0"
 logos = "0.14.0"
 miette = "7.2.0"
 thiserror = "1.0.58"
-warg-client = "0.6.0"
-warg-protocol = "0.6.0"
-warg-crypto = "0.6.0"
-warg-server = "0.6.0"
+
+warg-client = { git = "https://github.com/calvinrp/bytecodealliance-registry", rev = "972ddd7" }
+warg-protocol = { git = "https://github.com/calvinrp/bytecodealliance-registry", rev = "972ddd7" }
+warg-crypto = { git = "https://github.com/calvinrp/bytecodealliance-registry", rev = "972ddd7" }
+warg-server = { git = "https://github.com/calvinrp/bytecodealliance-registry", rev = "972ddd7" }
+#warg-client = "0.6.0"
+#warg-protocol = "0.6.0"
+#warg-crypto = "0.6.0"
+#warg-server = "0.6.0"
 futures = "0.3.30"
 indicatif = "0.17.8"
 pretty_assertions = "1.4.0"
