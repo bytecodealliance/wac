@@ -17,6 +17,6 @@
   (import "foo" (instance (;0;) (type 0)))
   (export "foo" (instance 0))
   (@producers
-    (processed-by "wac-parser" "0.3.0-dev")
+    (processed-by "wac-parser" "0.4.0-dev")
   )
 )
