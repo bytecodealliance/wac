@@ -79,7 +79,7 @@ impl EncodeCommand {
 
         let document = Document::parse(&contents).map_err(|e| fmt_err(e, &self.path, &contents))?;
 
-        let resolver = PackageResolver::new(
+        let mut resolver = PackageResolver::new(
             self.deps_dir,
             self.deps.into_iter().collect(),
             #[cfg(feature = "registry")]

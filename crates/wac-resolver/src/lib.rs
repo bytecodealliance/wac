@@ -19,6 +19,9 @@ use wac_types::BorrowedPackageKey;
 #[derive(thiserror::Error, Diagnostic, Debug)]
 #[diagnostic(code("failed to resolve document"))]
 pub enum Error {
+    /// Failed to create registry client.
+    #[error("failed to create registry client: {0:#}")]
+    RegistryClientFailed(anyhow::Error),
     /// An unknown package was encountered.
     #[error("unknown package `{name}`")]
     UnknownPackage {

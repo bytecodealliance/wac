@@ -47,7 +47,7 @@ fn fmt_err(e: impl Into<Report>, path: &Path, source: &str) -> anyhow::Error {
 pub struct PackageResolver {
     fs: FileSystemPackageResolver,
     #[cfg(feature = "registry")]
-    registry: wac_resolver::RegistryPackageResolver,
+    registry: Option<wac_resolver::RegistryPackageResolver>,
 }
 
 impl PackageResolver {
@@ -60,17 +60,23 @@ impl PackageResolver {
         Ok(Self {
             fs: FileSystemPackageResolver::new(dir, overrides, false),
             #[cfg(feature = "registry")]
-            registry: wac_resolver::RegistryPackageResolver::new(
-                registry,
-                Some(Box::new(progress::ProgressBar::new())),
-            )
-            .await?,
+            registry: if registry.is_some() {
+                Some(
+                    wac_resolver::RegistryPackageResolver::new(
+                        registry,
+                        Some(Box::new(progress::ProgressBar::new())),
+                    )
+                    .await?,
+                )
+            } else {
+                None
+            },
         })
     }
 
     /// Resolve all packages referenced in the given document.
     pub async fn resolve<'a>(
-        &self,
+        &mut self,
         document: &'a Document<'a>,
     ) -> Result<IndexMap<BorrowedPackageKey<'a>, Vec<u8>>, Error> {
         let mut keys = packages(document)?;
@@ -85,7 +91,17 @@ impl PackageResolver {
         // The registry resolver will error on missing package
         #[cfg(feature = "registry")]
         if !keys.is_empty() {
-            let reg_packages = self.registry.resolve(&keys).await?;
+            if self.registry.is_none() {
+                self.registry = Some(
+                    wac_resolver::RegistryPackageResolver::new(
+                        None,
+                        Some(Box::new(progress::ProgressBar::new())),
+                    )
+                    .await
+                    .map_err(Error::RegistryClientFailed)?,
+                );
+            }
+            let reg_packages = self.registry.as_ref().unwrap().resolve(&keys).await?;
             keys.retain(|key, _| !reg_packages.contains_key(key));
             packages.extend(reg_packages);
         }
