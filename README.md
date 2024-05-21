@@ -96,7 +96,7 @@ cargo binstall wac-cli
 
 ## Usage
 
-The `wac` CLI tool has three commands:
+The `wac` CLI tool has the following commands:
 
 * `wac plug` - Plugs the imports of a component with one or more other components.
 * `wac parse` - Parses a composition into a JSON representation of the AST.
