@@ -1,0 +1,6 @@
+package test:comp;
+
+interface my-handler {
+    use wasi:http/types@0.2.0.{incoming-request, response-outparam};
+    handle: func(request: incoming-request, response-out: response-outparam);
+}

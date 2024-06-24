@@ -1,0 +1,126 @@
+{
+  "docs": [],
+  "directive": {
+    "package": {
+      "string": "test:comp",
+      "name": "test:comp",
+      "version": null,
+      "span": {
+        "offset": 8,
+        "length": 9
+      }
+    }
+  },
+  "statements": [
+    {
+      "Type": {
+        "interface": {
+          "docs": [],
+          "id": {
+            "string": "my-handler",
+            "span": {
+              "offset": 30,
+              "length": 10
+            }
+          },
+          "items": [
+            {
+              "use": {
+                "docs": [],
+                "path": {
+                  "package": {
+                    "span": {
+                      "offset": 51,
+                      "length": 21
+                    },
+                    "string": "wasi:http/types@0.2.0",
+                    "name": "wasi:http",
+                    "segments": "types",
+                    "version": "0.2.0"
+                  }
+                },
+                "items": [
+                  {
+                    "id": {
+                      "string": "incoming-request",
+                      "span": {
+                        "offset": 74,
+                        "length": 16
+                      }
+                    },
+                    "asId": null
+                  },
+                  {
+                    "id": {
+                      "string": "response-outparam",
+                      "span": {
+                        "offset": 92,
+                        "length": 17
+                      }
+                    },
+                    "asId": null
+                  }
+                ]
+              }
+            },
+            {
+              "export": {
+                "docs": [],
+                "id": {
+                  "string": "handle",
+                  "span": {
+                    "offset": 116,
+                    "length": 6
+                  }
+                },
+                "ty": {
+                  "func": {
+                    "params": [
+                      {
+                        "id": {
+                          "string": "request",
+                          "span": {
+                            "offset": 129,
+                            "length": 7
+                          }
+                        },
+                        "ty": {
+                          "ident": {
+                            "string": "incoming-request",
+                            "span": {
+                              "offset": 138,
+                              "length": 16
+                            }
+                          }
+                        }
+                      },
+                      {
+                        "id": {
+                          "string": "response-out",
+                          "span": {
+                            "offset": 156,
+                            "length": 12
+                          }
+                        },
+                        "ty": {
+                          "ident": {
+                            "string": "response-outparam",
+                            "span": {
+                              "offset": 170,
+                              "length": 17
+                            }
+                          }
+                        }
+                      }
+                    ],
+                    "results": "empty"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    }
+  ]
+}
