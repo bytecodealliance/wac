@@ -95,7 +95,7 @@ fn detect_invalid_input(source: &str) -> Result<(), (Error, SourceSpan)> {
 #[logos(subpattern word = r"[a-z][a-z0-9]*|[A-Z][A-Z0-9]*")]
 #[logos(subpattern id = r"%?(?&word)(-(?&word))*")]
 #[logos(subpattern package_name = r"(?&id)(:(?&id))+")]
-#[logos(subpattern semver = r"[0-9a-zA-Z-\.\+]+")]
+#[logos(subpattern semver = r"([0-9]+)(\.[0-9a-zA-Z-\+]+)*")]
 pub enum Token {
     /// A comment.
     #[regex(r"//[^\n]*", logos::skip)]
