@@ -2717,7 +2717,7 @@ impl<'a> AstResolver<'a> {
 
         // The output is allowed to import a subset of the world's imports
         checker.invert();
-        for (name, import) in state.graph.imports().unwrap() {
+        for (name, import) in state.graph.imports() {
             let expected = world
                 .imports
                 .get(name)
