@@ -609,7 +609,7 @@ pub enum Error {
         world: String,
         /// The span where the error occurred.
         #[label(primary, "cannot have an import named `{name}`")]
-        span: SourceSpan,
+        span: Option<SourceSpan>,
     },
     /// Missing an export for the target world.
     #[error("target world `{world}` requires an export named `{name}`")]
@@ -2717,21 +2717,14 @@ impl<'a> AstResolver<'a> {
 
         // The output is allowed to import a subset of the world's imports
         checker.invert();
-        for (name, import) in state
-            .graph
-            .node_ids()
-            .filter_map(|n| match &state.graph[n].kind() {
-                NodeKind::Import(name) => Some((name, n)),
-                _ => None,
-            })
-        {
+        for (name, import) in state.graph.imports().unwrap() {
             let expected = world
                 .imports
                 .get(name)
                 .ok_or_else(|| Error::ImportNotInTarget {
-                    name: name.clone(),
+                    name: name.to_owned(),
                     world: path.string.to_owned(),
-                    span: state.import_spans[&import],
+                    span: state.import_spans.get(&import).copied(),
                 })?;
 
             checker
@@ -2743,7 +2736,7 @@ impl<'a> AstResolver<'a> {
                 )
                 .map_err(|e| Error::TargetMismatch {
                     kind: ExternKind::Import,
-                    name: name.clone(),
+                    name: name.to_owned(),
                     world: path.string.to_owned(),
                     span: state.import_spans[&import],
                     source: e,
