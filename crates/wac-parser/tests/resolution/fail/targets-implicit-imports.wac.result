@@ -1,0 +1,4 @@
+failed to resolve document
+
+  × import `a` has a mismatched type for target world `test:comp/foo`
+  ╰─▶ expected instance, found function

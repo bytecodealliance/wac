@@ -1,0 +1,20 @@
+package test:comp targets test:comp/foo;
+
+interface indirect-dependency {
+    variant my-variant {
+        foo
+    }
+}
+
+interface direct-dependency {
+    use indirect-dependency.{my-variant};
+    
+    fun: func() -> my-variant;
+}
+
+world foo {   
+    import a: direct-dependency;
+}
+
+
+let i = new foo:bar { ... };
