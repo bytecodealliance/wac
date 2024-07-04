@@ -1261,8 +1261,10 @@ impl CompositionGraph {
     }
 
     /// Yields an iterator over the resolved imports (both implicit and explicit) of the graph.
-    pub fn imports(&self) -> impl Iterator<Item = (&str, NodeId)> {
-        let mut imports = HashMap::new();
+    ///
+    /// The iterator returns the name, the `ItemKind`, and an optional node id for explicit imports.
+    pub fn imports(&self) -> impl Iterator<Item = (&str, ItemKind, Option<NodeId>)> {
+        let mut imports = Vec::new();
         for index in self.graph.node_indices() {
             let node = &self.graph[index];
             if !matches!(node.kind, NodeKind::Instantiation(_)) {
@@ -1279,15 +1281,15 @@ impl CompositionGraph {
                 .filter(|(i, _)| !node.is_arg_satisfied(*i));
 
             // Go through the unsatisfied arguments and import them
-            for (_, (name, _)) in unsatisfied_args {
-                imports.insert(name.as_str(), NodeId(index));
+            for (_, (name, item_kind)) in unsatisfied_args {
+                imports.push((name.as_str(), *item_kind, None));
             }
         }
 
         for n in self.node_ids() {
             let node = &self.graph[n.0];
             if let NodeKind::Import(name) = &node.kind {
-                imports.insert(name.as_str(), n);
+                imports.push((name.as_str(), node.item_kind, Some(n)));
             }
         }
         imports.into_iter()

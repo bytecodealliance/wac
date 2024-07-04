@@ -635,7 +635,7 @@ pub enum Error {
         world: String,
         /// The span where the error occurred.
         #[label(primary, "mismatched type for {kind} `{name}`")]
-        span: SourceSpan,
+        span: Option<SourceSpan>,
         /// The source of the error.
         #[source]
         source: anyhow::Error,
@@ -2717,28 +2717,28 @@ impl<'a> AstResolver<'a> {
 
         // The output is allowed to import a subset of the world's imports
         checker.invert();
-        for (name, import) in state.graph.imports() {
+        for (name, item_kind, import_node) in state.graph.imports() {
             let expected = world
                 .imports
                 .get(name)
                 .ok_or_else(|| Error::ImportNotInTarget {
                     name: name.to_owned(),
                     world: path.string.to_owned(),
-                    span: state.import_spans.get(&import).copied(),
+                    span: import_node.map(|n| state.import_spans[&n]),
                 })?;
 
             checker
                 .is_subtype(
                     expected.promote(),
                     state.graph.types(),
-                    state.graph[import].item_kind(),
+                    item_kind,
                     state.graph.types(),
                 )
                 .map_err(|e| Error::TargetMismatch {
                     kind: ExternKind::Import,
                     name: name.to_owned(),
                     world: path.string.to_owned(),
-                    span: state.import_spans[&import],
+                    span: import_node.map(|n| state.import_spans[&n]),
                     source: e,
                 })?;
         }
@@ -2769,7 +2769,7 @@ impl<'a> AstResolver<'a> {
                     kind: ExternKind::Export,
                     name: name.clone(),
                     world: path.string.to_owned(),
-                    span: state.export_spans[&export],
+                    span: state.export_spans.get(&export).copied(),
                     source: e,
                 })?;
         }
