@@ -2,7 +2,9 @@ package test:comp targets test:comp/foo;
 
 interface indirect-dependency {
     variant my-variant {
-        foo
+        foo,
+        // Extra variant that the instance does not have
+        bar
     }
 }
 
@@ -13,7 +15,7 @@ interface direct-dependency {
 }
 
 world foo {   
-    import a: direct-dependency;
+    import direct-dependency;
 }
 
 

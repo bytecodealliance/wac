@@ -2712,15 +2712,17 @@ impl<'a> AstResolver<'a> {
         world: WorldId,
     ) -> ResolutionResult<()> {
         let world = &state.graph.types()[world];
+        // The interfaces imported implicitly through uses.
+        let implicit_imported_interfaces = world.implicit_imported_interfaces(state.graph.types());
         let mut cache = Default::default();
         let mut checker = SubtypeChecker::new(&mut cache);
 
         // The output is allowed to import a subset of the world's imports
         checker.invert();
         for (name, item_kind, import_node) in state.graph.imports() {
-            let expected = world
-                .imports
+            let expected = implicit_imported_interfaces
                 .get(name)
+                .or_else(|| world.imports.get(name))
                 .ok_or_else(|| Error::ImportNotInTarget {
                     name: name.to_owned(),
                     world: path.string.to_owned(),

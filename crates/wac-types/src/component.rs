@@ -983,6 +983,30 @@ impl World {
 
         Ok(())
     }
+
+    /// The interfaces imported implicitly through uses.
+    pub fn implicit_imported_interfaces<'a>(
+        &'a self,
+        types: &'a Types,
+    ) -> IndexMap<&str, ItemKind> {
+        let mut interfaces = IndexMap::new();
+        for (_, import) in self.imports.iter() {
+            if let ItemKind::Instance(interface_id) = import {
+                let import = &types[*interface_id];
+                for (_, used_item) in &import.uses {
+                    let used_interface_id = used_item.interface;
+                    let used_interface = &types[used_interface_id];
+                    // The id must be set since used interfaces are always named.
+                    let used_interface_name = used_interface.id.as_ref().unwrap();
+                    interfaces.insert(
+                        used_interface_name.as_str(),
+                        ItemKind::Instance(used_interface_id),
+                    );
+                }
+            }
+        }
+        interfaces
+    }
 }
 
 /// Represents a kind of an extern item.
