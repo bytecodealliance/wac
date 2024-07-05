@@ -1,0 +1,4 @@
+failed to resolve document
+
+  × import `test:comp/indirect-dependency` has a mismatched type for target world `test:comp/foo`
+  ╰─▶ instance has unexpected resource export `other-resource`

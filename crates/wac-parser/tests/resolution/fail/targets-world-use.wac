@@ -1,0 +1,13 @@
+package test:comp targets test:comp/foo;
+
+interface indirect-dependency {
+    // The resource is actually named "other-resource" in the instance
+    resource my-resource {}
+}
+
+world foo {   
+    use indirect-dependency.{my-resource};
+    import my-func: func() -> my-resource;
+}
+
+let i = new foo:bar { ... };
