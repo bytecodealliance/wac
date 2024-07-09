@@ -1,7 +1,9 @@
 use anyhow::Result;
 use clap::Parser;
 use owo_colors::{OwoColorize, Stream, Style};
-use wac_cli::commands::{ComposeCommand, ParseCommand, PlugCommand, ResolveCommand};
+use wac_cli::commands::{
+    ComposeCommand, ParseCommand, PlugCommand, ResolveCommand, TargetsCommand,
+};
 
 fn version() -> &'static str {
     option_env!("CARGO_VERSION_INFO").unwrap_or(env!("CARGO_PKG_VERSION"))
@@ -21,6 +23,7 @@ enum Wac {
     Compose(ComposeCommand),
     Parse(ParseCommand),
     Resolve(ResolveCommand),
+    Targets(TargetsCommand),
 }
 
 #[tokio::main]
@@ -32,6 +35,7 @@ async fn main() -> Result<()> {
         Wac::Resolve(cmd) => cmd.exec().await,
         Wac::Compose(cmd) => cmd.exec().await,
         Wac::Plug(cmd) => cmd.exec().await,
+        Wac::Targets(cmd) => cmd.exec().await,
     } {
         eprintln!(
             "{error}: {e:?}",

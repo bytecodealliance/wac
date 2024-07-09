@@ -100,6 +100,7 @@ The `wac` CLI tool has the following commands:
 
 * `wac plug` - Plugs the imports of a component with one or more other components.
 * `wac compose` - Compose WebAssembly components using the provided WAC source file.
+* `wac targets` - Determines whether a given component conforms to the supplied wit world.
 * `wac parse` - Parses a composition into a JSON representation of the AST.
 * `wac resolve` - Resolves a composition into a JSON representation.
 
@@ -117,6 +118,17 @@ Or mixing in packages published to a Warg registry:
 wac plug my-namespace:package-name --plug some-namespace:other-package-name -o plugged.wasm
 ```
 
+### Checking Whether a Component Implements a World
+
+To see whether a given component implements a given world, use the `wac targets` command:
+
+```
+wac targets my-component.wasm my-wit.wit
+```
+
+If `my-component.wasm` implements the world defined in `my-wit.wit` then the command will succeed. Otherwise, an error will be returned.
+
+If `my-wit.wit` has multiple world definitions, you can disambiguate using the `--world` flag.
 
 ### Encoding Compositions
 
