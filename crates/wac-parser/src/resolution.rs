@@ -609,7 +609,7 @@ pub enum Error {
         world: String,
         /// The span where the error occurred.
         #[label(primary, "cannot have an import named `{name}`")]
-        span: SourceSpan,
+        span: Option<SourceSpan>,
     },
     /// Missing an export for the target world.
     #[error("target world `{world}` requires an export named `{name}`")]
@@ -635,7 +635,7 @@ pub enum Error {
         world: String,
         /// The span where the error occurred.
         #[label(primary, "mismatched type for {kind} `{name}`")]
-        span: SourceSpan,
+        span: Option<SourceSpan>,
         /// The source of the error.
         #[source]
         source: anyhow::Error,
@@ -2712,40 +2712,35 @@ impl<'a> AstResolver<'a> {
         world: WorldId,
     ) -> ResolutionResult<()> {
         let world = &state.graph.types()[world];
+        // The interfaces imported implicitly through uses.
+        let implicit_imported_interfaces = world.implicit_imported_interfaces(state.graph.types());
         let mut cache = Default::default();
         let mut checker = SubtypeChecker::new(&mut cache);
 
         // The output is allowed to import a subset of the world's imports
         checker.invert();
-        for (name, import) in state
-            .graph
-            .node_ids()
-            .filter_map(|n| match &state.graph[n].kind() {
-                NodeKind::Import(name) => Some((name, n)),
-                _ => None,
-            })
-        {
-            let expected = world
-                .imports
+        for (name, item_kind, import_node) in state.graph.imports() {
+            let expected = implicit_imported_interfaces
                 .get(name)
+                .or_else(|| world.imports.get(name))
                 .ok_or_else(|| Error::ImportNotInTarget {
-                    name: name.clone(),
+                    name: name.to_owned(),
                     world: path.string.to_owned(),
-                    span: state.import_spans[&import],
+                    span: import_node.map(|n| state.import_spans[&n]),
                 })?;
 
             checker
                 .is_subtype(
                     expected.promote(),
                     state.graph.types(),
-                    state.graph[import].item_kind(),
+                    item_kind,
                     state.graph.types(),
                 )
                 .map_err(|e| Error::TargetMismatch {
                     kind: ExternKind::Import,
-                    name: name.clone(),
+                    name: name.to_owned(),
                     world: path.string.to_owned(),
-                    span: state.import_spans[&import],
+                    span: import_node.map(|n| state.import_spans[&n]),
                     source: e,
                 })?;
         }
@@ -2776,7 +2771,7 @@ impl<'a> AstResolver<'a> {
                     kind: ExternKind::Export,
                     name: name.clone(),
                     world: path.string.to_owned(),
-                    span: state.export_spans[&export],
+                    span: state.export_spans.get(&export).copied(),
                     source: e,
                 })?;
         }

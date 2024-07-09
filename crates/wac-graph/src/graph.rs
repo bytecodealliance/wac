@@ -1259,6 +1259,41 @@ impl CompositionGraph {
             generation: entry.generation,
         }
     }
+
+    /// Yields an iterator over the resolved imports (both implicit and explicit) of the graph.
+    ///
+    /// The iterator returns the name, the `ItemKind`, and an optional node id for explicit imports.
+    pub fn imports(&self) -> impl Iterator<Item = (&str, ItemKind, Option<NodeId>)> {
+        let mut imports = Vec::new();
+        for index in self.graph.node_indices() {
+            let node = &self.graph[index];
+            if !matches!(node.kind, NodeKind::Instantiation(_)) {
+                continue;
+            }
+
+            let package = &self[node.package.unwrap()];
+            let world = &self.types[package.ty()];
+
+            let unsatisfied_args = world
+                .imports
+                .iter()
+                .enumerate()
+                .filter(|(i, _)| !node.is_arg_satisfied(*i));
+
+            // Go through the unsatisfied arguments and import them
+            for (_, (name, item_kind)) in unsatisfied_args {
+                imports.push((name.as_str(), *item_kind, None));
+            }
+        }
+
+        for n in self.node_ids() {
+            let node = &self.graph[n.0];
+            if let NodeKind::Import(name) = &node.kind {
+                imports.push((name.as_str(), node.item_kind, Some(n)));
+            }
+        }
+        imports.into_iter()
+    }
 }
 
 impl Index<NodeId> for CompositionGraph {
@@ -1489,18 +1524,60 @@ impl<'a> CompositionGraphEncoder<'a> {
     }
 
     /// Encode both implicit and explicit imports.
+    ///
+    /// `import_nodes` are expected to only be `NodeKind::Import` nodes.
     fn encode_imports(
         &self,
         state: &mut State,
         import_nodes: Vec<NodeIndex>,
     ) -> Result<(), EncodeError> {
-        let mut aggregator = TypeAggregator::default();
-        let mut instantiations = HashMap::new();
-        let mut arguments = Vec::new();
+        let mut explicit_imports = HashMap::new();
+        let mut implicit_imports = Vec::new();
+        let aggregator =
+            self.resolve_imports(import_nodes, &mut implicit_imports, &mut explicit_imports)?;
+
         let mut encoded = HashMap::new();
+
+        // Next encode the imports
+        for (name, kind) in aggregator.imports() {
+            log::debug!("import `{name}` is being imported");
+            let index = self.import(state, name, aggregator.types(), kind);
+            encoded.insert(name, (kind.into(), index));
+        }
+
+        // Populate the implicit argument map
+        for (name, node) in implicit_imports {
+            let (kind, index) = encoded[name];
+            state
+                .implicit_args
+                .entry(node)
+                .or_default()
+                .push((name.to_owned(), kind, index));
+        }
+
+        // Finally, populate the node indexes with the encoded explicit imports
+        for (name, node_index) in explicit_imports {
+            let (_, encoded_index) = encoded[name];
+            state.node_indexes.insert(node_index, encoded_index);
+        }
+
+        Ok(())
+    }
+
+    /// Resolves the imports (both implicit and explicit) of the given nodes.
+    ///
+    /// Populates hashmaps that map the implicit and explicit import nodes to their import names.
+    /// Returns a type aggregator that contains the resolved types of the imports.
+    fn resolve_imports(
+        &'a self,
+        import_nodes: Vec<NodeIndex>,
+        implicit_imports: &mut Vec<(&'a str, NodeIndex)>,
+        explicit_imports: &mut HashMap<&'a str, NodeIndex>,
+    ) -> Result<TypeAggregator, EncodeError> {
+        let mut instantiations = HashMap::new();
+        let mut aggregator = TypeAggregator::default();
         let mut cache = Default::default();
         let mut checker = SubtypeChecker::new(&mut cache);
-        let mut explicit_imports = HashMap::new();
 
         log::debug!("populating implicit imports");
 
@@ -1541,7 +1618,7 @@ impl<'a> CompositionGraphEncoder<'a> {
                         second: NodeId(index),
                         source: e,
                     })?;
-                arguments.push((index, name));
+                implicit_imports.push((name, index));
             }
         }
 
@@ -1556,31 +1633,7 @@ impl<'a> CompositionGraphEncoder<'a> {
                     .unwrap();
             }
         }
-
-        // Next encode the imports
-        for (name, kind) in aggregator.imports() {
-            log::debug!("import `{name}` is being imported");
-            let index = self.import(state, name, aggregator.types(), kind);
-            encoded.insert(name, (kind.into(), index));
-        }
-
-        // Populate the implicit argument map
-        for (node, name) in arguments {
-            let (kind, index) = encoded[name.as_str()];
-            state
-                .implicit_args
-                .entry(node)
-                .or_default()
-                .push((name.clone(), kind, index));
-        }
-
-        // Finally, populate the node indexes with the encoded explicit imports
-        for (name, node_index) in explicit_imports {
-            let (_, encoded_index) = encoded[name];
-            state.node_indexes.insert(node_index, encoded_index);
-        }
-
-        Ok(())
+        Ok(aggregator)
     }
 
     fn definition(&self, state: &mut State, node: &Node) -> u32 {

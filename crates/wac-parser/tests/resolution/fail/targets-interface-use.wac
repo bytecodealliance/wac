@@ -1,0 +1,22 @@
+package test:comp targets test:comp/foo;
+
+interface indirect-dependency {
+    variant my-variant {
+        foo,
+        // Extra variant that the instance does not have
+        bar
+    }
+}
+
+interface direct-dependency {
+    use indirect-dependency.{my-variant};
+    
+    fun: func() -> my-variant;
+}
+
+world foo {   
+    import direct-dependency;
+}
+
+
+let i = new foo:bar { ... };

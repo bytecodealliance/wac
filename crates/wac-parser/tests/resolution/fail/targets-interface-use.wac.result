@@ -1,0 +1,5 @@
+failed to resolve document
+
+  × import `test:comp/indirect-dependency` has a mismatched type for target world `test:comp/foo`
+  ├─▶ mismatched type for export `my-variant`
+  ╰─▶ expected a variant case count of 2, found a count of 1
