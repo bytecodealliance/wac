@@ -50,6 +50,6 @@
   (alias export $x "foo" (instance (;2;)))
   (export (;3;) "foo" (instance 2))
   (@producers
-    (processed-by "wac-parser" "0.4.0-dev")
+    (processed-by "wac-parser" "0.4.0")
   )
 )

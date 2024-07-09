@@ -46,6 +46,6 @@
     )
   )
   (@producers
-    (processed-by "wac-parser" "0.4.0-dev")
+    (processed-by "wac-parser" "0.4.0")
   )
 )
