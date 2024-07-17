@@ -39,6 +39,8 @@
 
 pub(crate) mod encoding;
 mod graph;
+mod plug;
 
 pub use graph::*;
+pub use plug::*;
 pub use wac_types as types;
