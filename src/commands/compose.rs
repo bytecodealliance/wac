@@ -25,10 +25,10 @@ where
     ))
 }
 
-/// Encodes a WAC source file into a WebAssembly component.
+/// Compose WebAssembly components using the provided WAC source file.
 #[derive(Args)]
 #[clap(disable_version_flag = true)]
-pub struct EncodeCommand {
+pub struct ComposeCommand {
     /// The directory to search for package dependencies.
     #[clap(long, value_name = "PATH", default_value = "deps")]
     pub deps_dir: PathBuf,
@@ -37,7 +37,7 @@ pub struct EncodeCommand {
     #[clap(long = "dep", short, value_name = "PKG=PATH", value_parser = parse::<String, PathBuf>)]
     pub deps: Vec<(String, PathBuf)>,
 
-    /// Whether to skip validation of the encoded WebAssembly component.
+    /// Whether to skip validation of the composed WebAssembly component.
     #[clap(long)]
     pub no_validate: bool,
 
@@ -69,10 +69,10 @@ pub struct EncodeCommand {
     pub path: PathBuf,
 }
 
-impl EncodeCommand {
+impl ComposeCommand {
     /// Executes the command.
     pub async fn exec(self) -> Result<()> {
-        log::debug!("executing encode command");
+        log::debug!("executing compose command");
 
         let contents = fs::read_to_string(&self.path)
             .with_context(|| format!("failed to read file `{path}`", path = self.path.display()))?;

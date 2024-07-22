@@ -99,9 +99,9 @@ cargo binstall wac-cli
 The `wac` CLI tool has the following commands:
 
 * `wac plug` - Plugs the imports of a component with one or more other components.
+* `wac compose` - Compose WebAssembly components using the provided WAC source file.
 * `wac parse` - Parses a composition into a JSON representation of the AST.
 * `wac resolve` - Resolves a composition into a JSON representation.
-* `wac encode` - Encodes a WAC source file as a WebAssembly component.
 
 ### Quick & Easy Compositions
 
@@ -120,20 +120,20 @@ wac plug my-namespace:package-name --plug some-namespace:other-package-name -o p
 
 ### Encoding Compositions
 
-To encode a composition, use the `wac encode` command:
+To perform a composition, use the `wac compose` command:
 
 ```
-wac encode -t input.wac
+wac compose -t input.wac
 ```
 
-This will encode `input.wac` as a WebAssembly component and write the text
+This will use `input.wac` to perform the composition and write the text
 representation of the component to stdout.
 
 ```
-wac encode -o output.wasm input.wac
+wac compose -o output.wasm input.wac
 ```
 
-This will encode `input.wac` as a WebAssembly component named `output.wasm`.
+This will perform the composition specified in `input.wac` and output a WebAssembly component named `output.wasm`.
 
 #### Dependencies
 
@@ -143,7 +143,7 @@ to cause dependencies to be imported in the output component, use the
 `--import-dependencies` flag:
 
 ```
-wac encode --import-dependencies -o output.wasm input.wac
+wac compose --import-dependencies -o output.wasm input.wac
 ```
 
 Dependencies may be located within a `deps` subdirectory, with an expected structure of:
@@ -170,7 +170,7 @@ search for dependencies.
 The location of specific dependencies may also be specified with the `--dep` CLI option:
 
 ```
-wac encode --dep foo:bar=./baz.wasm -o output.wasm input.wac
+wac compose --dep foo:bar=./baz.wasm -o output.wasm input.wac
 ```
 
 By default, dependencies must be binary-encoded WebAssembly components; to
