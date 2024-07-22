@@ -3827,7 +3827,7 @@ checksum = "49874b5167b65d7193b8aba1567f5c7d93d001cafc34600cee003eda787e483f"
 
 [[package]]
 name = "wac-cli"
-version = "0.5.0-dev"
+version = "0.6.0-dev"
 dependencies = [
  "anyhow",
  "clap",
@@ -3854,7 +3854,7 @@ dependencies = [
 
 [[package]]
 name = "wac-graph"
-version = "0.5.0-dev"
+version = "0.6.0-dev"
 dependencies = [
  "anyhow",
  "id-arena",
@@ -3878,7 +3878,7 @@ dependencies = [
 
 [[package]]
 name = "wac-parser"
-version = "0.5.0-dev"
+version = "0.6.0-dev"
 dependencies = [
  "anyhow",
  "id-arena",
@@ -3905,7 +3905,7 @@ dependencies = [
 
 [[package]]
 name = "wac-resolver"
-version = "0.5.0-dev"
+version = "0.6.0-dev"
 dependencies = [
  "anyhow",
  "futures",
@@ -3933,7 +3933,7 @@ dependencies = [
 
 [[package]]
 name = "wac-types"
-version = "0.5.0-dev"
+version = "0.6.0-dev"
 dependencies = [
  "anyhow",
  "id-arena",
