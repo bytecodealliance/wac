@@ -61,7 +61,7 @@ impl FileSystemPackageResolver {
 
                     // If the path is not a directory, use a `.wasm` or `.wat` extension
                     if !path.is_dir() {
-                        path.set_extension("wasm");
+                        append_extension(&mut path, "wasm");
 
                         #[cfg(feature = "wat")]
                         {
@@ -174,5 +174,32 @@ impl FileSystemPackageResolver {
 impl Default for FileSystemPackageResolver {
     fn default() -> Self {
         Self::new("deps", Default::default(), true)
+    }
+}
+
+/// Similar to Path::set_extension except it always appends.
+/// For example "0.0.1" -> "0.0.1.wasm" (instead of to "0.0.wasm").
+fn append_extension(path: &mut PathBuf, extension: &str) {
+    let os_str = path.as_mut_os_string();
+    os_str.push(".");
+    os_str.push(extension)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn append_extension_if_no_existing_extension() {
+        let mut path = PathBuf::from("a/b/c");
+        append_extension(&mut path, "txt");
+        assert_eq!("a/b/c.txt", path.display().to_string());
+    }
+
+    #[test]
+    fn append_extension_if_existing_extension() {
+        let mut path = PathBuf::from("a/b/0.0.1");
+        append_extension(&mut path, "wasm");
+        assert_eq!("a/b/0.0.1.wasm", path.display().to_string());
     }
 }
