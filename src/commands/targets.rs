@@ -6,7 +6,7 @@ use std::{
 };
 use wac_types::{ExternKind, ItemKind, Package, SubtypeChecker, Types, WorldId};
 
-/// Parses a WAC source file into a JSON AST representation.
+/// Verifies that a given WebAssembly component targets a world.
 #[derive(Args)]
 #[clap(disable_version_flag = true)]
 pub struct TargetsCommand {
@@ -59,7 +59,7 @@ fn get_wit_world(
         Some(world_name) => top_level_world
             .exports
             .get(world_name)
-            .with_context(|| format!("wit package did not contain a world name '{world_name}'"))?,
+            .with_context(|| format!("wit package did not contain a world named '{world_name}'"))?,
         None if top_level_world.exports.len() == 1 => {
             top_level_world.exports.values().next().unwrap()
         }
@@ -92,14 +92,11 @@ fn encode_wit_as_component(path: &Path) -> anyhow::Result<Vec<u8>> {
             path = path.display()
         );
 
-        let (pkg, _) = resolve.push_dir(&path)?;
-        pkg
-    } else if path.extension().and_then(std::ffi::OsStr::to_str) == Some("wit") {
-        let unresolved = wit_parser::UnresolvedPackage::parse_file(&path)?;
-        let pkg = resolve.push(unresolved)?;
+        let (pkg, _) = resolve.push_dir(path)?;
         pkg
     } else {
-        bail!("expected either a wit directory or wit file")
+        let unresolved = wit_parser::UnresolvedPackage::parse_file(path)?;
+        resolve.push(unresolved)?
     };
     let encoded = wit_component::encode(Some(true), &resolve, pkg).with_context(|| {
         format!(
@@ -142,8 +139,8 @@ pub enum Error {
 }
 
 /// Validate whether the component conforms to the given world
-pub fn validate_target<'a>(
-    types: &'a Types,
+pub fn validate_target(
+    types: &Types,
     wit_world_id: WorldId,
     component_world_id: WorldId,
 ) -> Result<(), Error> {
