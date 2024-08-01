@@ -40,6 +40,8 @@ indexmap = { workspace = true }
 miette = { workspace = true, features = ["fancy"] }
 semver = { workspace = true }
 indicatif = { workspace = true, optional = true }
+wit-parser = { workspace = true }
+wit-component = { workspace = true }
 
 [features]
 default = ["wit", "registry"]
