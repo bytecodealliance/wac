@@ -10,11 +10,11 @@ use wac_types::{ExternKind, ItemKind, Package, SubtypeChecker, Types, WorldId};
 #[derive(Args)]
 #[clap(disable_version_flag = true)]
 pub struct TargetsCommand {
-    /// The path to the component
+    /// The path to the component.
     #[clap(value_name = "COMPONENT_PATH")]
     pub component: PathBuf,
-    /// The path to the WIT definition
-    #[clap(value_name = "WIT_PATH")]
+    /// The path to the WIT definition containing the world to target.
+    #[clap(long, value_name = "WIT_PATH")]
     pub wit: PathBuf,
     /// The name of the world to target
     ///
