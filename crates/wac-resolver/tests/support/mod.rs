@@ -151,7 +151,8 @@ pub async fn spawn_server(root: &Path) -> Result<(ServerInstance, warg_client::C
         keyring_backend: None,
         keys: Default::default(),
         ignore_federation_hints: false,
-        auto_accept_federation_hints: false,
+        disable_auto_accept_federation_hints: false,
+        disable_auto_package_init: false,
         disable_interactive: true,
     };
 
