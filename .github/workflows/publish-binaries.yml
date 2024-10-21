@@ -28,9 +28,10 @@ jobs:
     strategy:
       matrix:
         include:
-          - rust-target: x86_64-unknown-linux-gnu
+          - rust-target: x86_64-unknown-linux-musl
             os: ubuntu-latest
-          - rust-target: aarch64-unknown-linux-gnu
+            cross: true
+          - rust-target: aarch64-unknown-linux-musl
             os: ubuntu-latest
             cross: true
           - rust-target: x86_64-apple-darwin
@@ -70,9 +71,10 @@ jobs:
     strategy:
       matrix:
         include:
-          - rust-target: x86_64-unknown-linux-gnu
+          - rust-target: x86_64-unknown-linux-musl
             os: ubuntu-latest
-          - rust-target: aarch64-unknown-linux-gnu
+            cross: true
+          - rust-target: aarch64-unknown-linux-musl
             os: ubuntu-latest
             cross: true
           - rust-target: x86_64-apple-darwin
