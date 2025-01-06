@@ -200,10 +200,7 @@ impl Package {
 
         let mut parser = Parser::new(0);
         let mut parsers = Vec::new();
-        let mut validator = Validator::new_with_features(WasmFeatures {
-            component_model: true,
-            ..Default::default()
-        });
+        let mut validator = Validator::new_with_features(WasmFeatures::all());
         let mut imports = Vec::new();
         let mut exports = Vec::new();
 
