@@ -640,7 +640,7 @@ impl serde::Serialize for ValueType {
             Self::Primitive(ty) => ty.serialize(serializer),
             Self::Borrow(id) => format!("borrow<{id}>", id = id.0.index()).serialize(serializer),
             Self::Own(id) => format!("own<{id}>", id = id.0.index()).serialize(serializer),
-            Self::Defined { id, .. } => id.serialize(serializer),
+            Self::Defined(id) => id.serialize(serializer),
         }
     }
 }
@@ -673,6 +673,12 @@ pub enum DefinedType {
     Enum(Enum),
     /// The type is an alias to another value type.
     Alias(ValueType),
+    /// A stream type.
+    Stream(Option<ValueType>),
+    /// A futures type.
+    Future(Option<ValueType>),
+    /// A type for adding context to errors
+    ErrorContext,
 }
 
 impl DefinedType {
@@ -694,6 +700,9 @@ impl DefinedType {
             Self::Flags(_) => false,
             Self::Enum(_) => false,
             Self::Alias(ty) => ty.contains_borrow(types),
+            Self::Stream(ty) => ty.map(|ty| ty.contains_borrow(types)).unwrap_or(false),
+            Self::Future(ty) => ty.map(|ty| ty.contains_borrow(types)).unwrap_or(false),
+            Self::ErrorContext => false,
         }
     }
 
@@ -738,11 +747,21 @@ impl DefinedType {
 
                 Ok(())
             }
-            DefinedType::Flags(_) | DefinedType::Enum(_) | DefinedType::Alias(_) => Ok(()),
+            DefinedType::Flags(_)
+            | DefinedType::Enum(_)
+            | DefinedType::Alias(_)
+            | DefinedType::ErrorContext => Ok(()),
+            DefinedType::Stream(ty) | DefinedType::Future(ty) => {
+                if let Some(ty) = ty {
+                    ty._visit_defined_types(types, visitor, false)?;
+                }
+
+                Ok(())
+            }
         }
     }
 
-    /// Gets a description of the defined type.
+    /// Gets atyd | DefinedType::Future(t)escription of the defined type.
     pub fn desc(&self, types: &Types) -> &'static str {
         match self {
             Self::Tuple(_) => "tuple",
@@ -754,6 +773,9 @@ impl DefinedType {
             Self::Flags(_) => "flags",
             Self::Enum(_) => "enum",
             Self::Alias(ty) => ty.desc(types),
+            Self::Stream(_) => "stream",
+            Self::Future(_) => "future",
+            Self::ErrorContext => "error context",
         }
     }
 }
@@ -988,7 +1010,7 @@ impl World {
     pub fn implicit_imported_interfaces<'a>(
         &'a self,
         types: &'a Types,
-    ) -> IndexMap<&str, ItemKind> {
+    ) -> IndexMap<&'a str, ItemKind> {
         let mut interfaces = IndexMap::new();
         let mut add_interface_for_used_type = |used_item: &UsedType| {
             let used_interface_id = used_item.interface;

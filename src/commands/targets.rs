@@ -95,10 +95,9 @@ fn encode_wit_as_component(path: &Path) -> anyhow::Result<Vec<u8>> {
         let (pkg, _) = resolve.push_dir(path)?;
         pkg
     } else {
-        let unresolved = wit_parser::UnresolvedPackage::parse_file(path)?;
-        resolve.push(unresolved)?
+        resolve.push_path(path)?.0
     };
-    let encoded = wit_component::encode(Some(true), &resolve, pkg).with_context(|| {
+    let encoded = wit_component::encode(&resolve, pkg).with_context(|| {
         format!(
             "failed to encode WIT package from `{path}`",
             path = path.display()

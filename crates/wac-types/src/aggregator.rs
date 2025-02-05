@@ -842,6 +842,9 @@ impl TypeAggregator {
             DefinedType::Alias(ty) => {
                 DefinedType::Alias(self.remap_value_type(types, *ty, checker)?)
             }
+            DefinedType::Stream(s) => DefinedType::Stream(*s),
+            DefinedType::Future(f) => DefinedType::Future(*f),
+            DefinedType::ErrorContext => DefinedType::ErrorContext,
         };
 
         let remapped = self.types.add_defined_type(defined);

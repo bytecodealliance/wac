@@ -8,9 +8,10 @@ use wac_types::{
     Variant, WorldId,
 };
 use wasm_encoder::{
-    Alias, ComponentBuilder, ComponentExportKind, ComponentOuterAliasKind, ComponentType,
-    ComponentTypeEncoder, ComponentTypeRef, ComponentValType, CoreTypeEncoder, EntityType,
-    GlobalType, InstanceType, MemoryType, ModuleType, TableType, TagKind, TagType, TypeBounds,
+    Alias, ComponentBuilder, ComponentCoreTypeEncoder, ComponentExportKind,
+    ComponentOuterAliasKind, ComponentType, ComponentTypeEncoder, ComponentTypeRef,
+    ComponentValType, EntityType, GlobalType, InstanceType, MemoryType, ModuleType, TableType,
+    TagKind, TagType, TypeBounds,
 };
 
 /// A type used to abstract the API differences between a component builder,
@@ -55,7 +56,7 @@ impl Encodable {
         }
     }
 
-    fn core_type(&mut self) -> CoreTypeEncoder {
+    fn core_type(&mut self) -> ComponentCoreTypeEncoder {
         match self {
             Encodable::Builder(t) => t.core_type().1,
             Encodable::Instance(t) => t.core_type(),
@@ -268,6 +269,9 @@ impl<'a> TypeEncoder<'a> {
             DefinedType::Alias(ValueType::Borrow(id)) => self.borrow(state, *id),
             DefinedType::Alias(ValueType::Own(id)) => self.own(state, *id),
             DefinedType::Alias(ValueType::Defined(id)) => self.defined(state, *id),
+            DefinedType::Stream(ty) => self.stream(state, *ty),
+            DefinedType::Future(ty) => self.future(state, *ty),
+            DefinedType::ErrorContext => self.error_context(state),
         };
 
         log::debug!("defined type encoded to type index {index}");
@@ -476,25 +480,36 @@ impl<'a> TypeEncoder<'a> {
                 element_type,
                 initial,
                 maximum,
+                table64,
+                shared,
             } => EntityType::Table(TableType {
                 element_type: (*element_type).into(),
                 minimum: *initial,
                 maximum: *maximum,
+                table64: *table64,
+                shared: *shared,
             }),
             CoreExtern::Memory {
                 memory64,
                 shared,
                 initial,
                 maximum,
+                page_size_log2,
             } => EntityType::Memory(MemoryType {
                 minimum: *initial,
                 maximum: *maximum,
                 memory64: *memory64,
                 shared: *shared,
+                page_size_log2: *page_size_log2,
             }),
-            CoreExtern::Global { val_type, mutable } => EntityType::Global(GlobalType {
+            CoreExtern::Global {
+                val_type,
+                mutable,
+                shared,
+            } => EntityType::Global(GlobalType {
                 val_type: (*val_type).into(),
                 mutable: *mutable,
+                shared: *shared,
             }),
             CoreExtern::Tag(func) => {
                 let index = encodable.type_count();
@@ -551,6 +566,26 @@ impl<'a> TypeEncoder<'a> {
         let ty = self.value_type(state, ty);
         let index = state.current.encodable.type_count();
         state.current.encodable.ty().defined_type().list(ty);
+        index
+    }
+
+    fn stream(&self, state: &mut State, ty: Option<ValueType>) -> u32 {
+        let ty = ty.map(|ty| self.value_type(state, ty));
+        let index = state.current.encodable.type_count();
+        state.current.encodable.ty().defined_type().stream(ty);
+        index
+    }
+
+    fn future(&self, state: &mut State, ty: Option<ValueType>) -> u32 {
+        let ty = ty.map(|ty| self.value_type(state, ty));
+        let index = state.current.encodable.type_count();
+        state.current.encodable.ty().defined_type().future(ty);
+        index
+    }
+
+    fn error_context(&self, state: &mut State) -> u32 {
+        let index = state.current.encodable.type_count();
+        state.current.encodable.ty().defined_type().error_context();
         index
     }
 

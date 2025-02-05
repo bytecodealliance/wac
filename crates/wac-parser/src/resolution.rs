@@ -664,7 +664,7 @@ pub struct Resolution<'a> {
     instantiation_spans: HashMap<NodeId, SourceSpan>,
 }
 
-impl<'a> Resolution<'a> {
+impl Resolution<'_> {
     /// Gets the document that was resolved.
     pub fn document(&self) -> &Document {
         self.document

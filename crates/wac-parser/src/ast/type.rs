@@ -672,7 +672,7 @@ pub enum Type<'a> {
     Ident(Ident<'a>),
 }
 
-impl<'a> Type<'a> {
+impl Type<'_> {
     /// Gets the span of the type.
     pub fn span(&self) -> SourceSpan {
         match self {
