@@ -95,9 +95,7 @@ impl FileSystemPackageResolver {
                     let (pkg, _) = resolve.push_dir(&path).map_err(pkg_res_failure)?;
                     Some(pkg)
                 } else if path.extension().and_then(std::ffi::OsStr::to_str) == Some("wit") {
-                    let unresolved = wit_parser::UnresolvedPackage::parse_file(&path)
-                        .map_err(pkg_res_failure)?;
-                    let pkg = resolve.push(unresolved).map_err(pkg_res_failure)?;
+                    let pkg = resolve.push_file(&path).map_err(pkg_res_failure)?;
                     Some(pkg)
                 } else {
                     None
@@ -105,7 +103,7 @@ impl FileSystemPackageResolver {
                 if let Some(pkg) = pkg {
                     packages.insert(
                         *key,
-                        wit_component::encode(Some(true), &resolve, pkg)
+                        wit_component::encode(&resolve, pkg)
                             .with_context(|| {
                                 format!(
                                     "failed to encode WIT package from `{path}`",

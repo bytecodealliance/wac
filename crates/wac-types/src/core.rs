@@ -27,9 +27,20 @@ pub enum CoreExtern {
         /// The table's element type.
         element_type: CoreRefType,
         /// Initial size of this table, in elements.
-        initial: u32,
+        initial: u64,
         /// Optional maximum size of the table, in elements.
-        maximum: Option<u32>,
+        maximum: Option<u64>,
+        /// Whether or not this is a 64-bit table, using i64 as an index. If this
+        /// is false it's a 32-bit memory using i32 as an index.
+        ///
+        /// This is part of the memory64 proposal in WebAssembly.
+        table64: bool,
+        /// Whether or not this is a "shared" memory, indicating that it should be
+        /// send-able across threads and the `maximum` field is always present for
+        /// valid types.
+        ///
+        /// This is part of the threads proposal in WebAssembly.
+        shared: bool,
     },
     /// The item is a memory.
     #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
@@ -59,6 +70,16 @@ pub enum CoreExtern {
         /// be at most `u32::MAX` for valid types. This field is always present for
         /// valid wasm memories when `shared` is `true`.
         maximum: Option<u64>,
+
+        /// The log base 2 of the memory's custom page size.
+        ///
+        /// Memory pages are, by default, 64KiB large (i.e. 2<sup>16</sup> or
+        /// `65536`).
+        ///
+        /// [The custom-page-sizes proposal] allows changing it to other values.
+        ///
+        /// [The custom-page-sizes proposal]: https://github.com/WebAssembly/custom-page-sizes
+        page_size_log2: Option<u32>,
     },
     /// The item is a global.
     #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
@@ -67,6 +88,12 @@ pub enum CoreExtern {
         val_type: CoreType,
         /// Whether or not the global is mutable.
         mutable: bool,
+        /// Whether or not this is a "shared" memory, indicating that it should be
+        /// send-able across threads and the `maximum` field is always present for
+        /// valid types.
+        ///
+        /// This is part of the threads proposal in WebAssembly.
+        shared: bool,
     },
     /// The item is a tag.
     Tag(CoreFuncType),
@@ -90,6 +117,8 @@ impl From<wasmparser::TableType> for CoreExtern {
             element_type: ty.element_type.into(),
             initial: ty.initial,
             maximum: ty.maximum,
+            table64: ty.table64,
+            shared: ty.shared,
         }
     }
 }
@@ -101,6 +130,7 @@ impl From<wasmparser::MemoryType> for CoreExtern {
             shared: ty.shared,
             initial: ty.initial,
             maximum: ty.maximum,
+            page_size_log2: ty.page_size_log2,
         }
     }
 }
@@ -110,6 +140,7 @@ impl From<wasmparser::GlobalType> for CoreExtern {
         Self::Global {
             val_type: ty.content_type.into(),
             mutable: ty.mutable,
+            shared: ty.shared,
         }
     }
 }
@@ -198,6 +229,9 @@ impl fmt::Display for CoreRefType {
             (true, HeapType::Array) => "arrayref",
             (true, HeapType::I31) => "i31ref",
             (true, HeapType::Exn) => "exnref",
+            (true, HeapType::NoExn) => "nullexnref",
+            (true, HeapType::Cont) => "contref",
+            (true, HeapType::NoCont) => "nullcontref",
             (false, HeapType::Func) => "(ref func)",
             (false, HeapType::Extern) => "(ref extern)",
             (false, HeapType::Concrete(i)) => return write!(f, "(ref {i})"),
@@ -210,6 +244,9 @@ impl fmt::Display for CoreRefType {
             (false, HeapType::Array) => "(ref array)",
             (false, HeapType::I31) => "(ref i31)",
             (false, HeapType::Exn) => "(ref exn)",
+            (false, HeapType::NoExn) => "(ref noexn)",
+            (false, HeapType::Cont) => "(ref cont)",
+            (false, HeapType::NoCont) => "(ref nocont)",
         };
 
         f.write_str(s)
@@ -265,22 +302,42 @@ pub enum HeapType {
     ///
     /// Introduced in the exception-handling proposal.
     Exn,
+    /// The common subtype (a.k.a. bottom) of all exception types.
+    ///
+    /// Introduced in the exception-handling proposal.
+    NoExn,
+    /// The abstract `continuation` heap type.
+    ///
+    /// Introduced in the stack-switching proposal.
+    Cont,
+    /// The common subtype (a.k.a. bottom) of all continuation types.
+    ///
+    /// Introduced in the stack-switching proposal.
+    NoCont,
 }
 
 impl From<wasmparser::HeapType> for HeapType {
     fn from(ty: wasmparser::HeapType) -> Self {
         match ty {
-            wasmparser::HeapType::Any => Self::Any,
-            wasmparser::HeapType::Func => Self::Func,
-            wasmparser::HeapType::Extern => Self::Extern,
-            wasmparser::HeapType::Eq => Self::Eq,
-            wasmparser::HeapType::I31 => Self::I31,
-            wasmparser::HeapType::None => Self::None,
-            wasmparser::HeapType::NoExtern => Self::NoExtern,
-            wasmparser::HeapType::NoFunc => Self::NoFunc,
-            wasmparser::HeapType::Struct => Self::Struct,
-            wasmparser::HeapType::Array => Self::Array,
-            wasmparser::HeapType::Exn => Self::Exn,
+            wasmparser::HeapType::Abstract { shared: false, ty } => match ty {
+                wasmparser::AbstractHeapType::Any => Self::Any,
+                wasmparser::AbstractHeapType::Func => Self::Func,
+                wasmparser::AbstractHeapType::Extern => Self::Extern,
+                wasmparser::AbstractHeapType::Eq => Self::Eq,
+                wasmparser::AbstractHeapType::I31 => Self::I31,
+                wasmparser::AbstractHeapType::None => Self::None,
+                wasmparser::AbstractHeapType::NoExtern => Self::NoExtern,
+                wasmparser::AbstractHeapType::NoFunc => Self::NoFunc,
+                wasmparser::AbstractHeapType::Struct => Self::Struct,
+                wasmparser::AbstractHeapType::Array => Self::Array,
+                wasmparser::AbstractHeapType::Exn => Self::Exn,
+                wasmparser::AbstractHeapType::NoExn => Self::NoExn,
+                wasmparser::AbstractHeapType::Cont => Self::Cont,
+                wasmparser::AbstractHeapType::NoCont => Self::NoCont,
+            },
+            wasmparser::HeapType::Abstract { shared: true, ty } => {
+                panic!("shared heap types are not supported: {:?}", ty)
+            }
             wasmparser::HeapType::Concrete(index) => {
                 Self::Concrete(index.as_module_index().unwrap())
             }
@@ -289,20 +346,68 @@ impl From<wasmparser::HeapType> for HeapType {
 }
 
 impl From<HeapType> for wasm_encoder::HeapType {
+    /// Converts a `HeapType` into a `wasm_encoder::HeapType`.
+    /// Shared types are not supported, so defaults to `false`
+    /// for Abstract types.
     fn from(value: HeapType) -> Self {
         match value {
             HeapType::Concrete(index) => Self::Concrete(index),
-            HeapType::Func => Self::Func,
-            HeapType::Extern => Self::Extern,
-            HeapType::Any => Self::Any,
-            HeapType::None => Self::None,
-            HeapType::NoExtern => Self::NoExtern,
-            HeapType::NoFunc => Self::NoFunc,
-            HeapType::Eq => Self::Eq,
-            HeapType::Struct => Self::Struct,
-            HeapType::Array => Self::Array,
-            HeapType::I31 => Self::I31,
-            HeapType::Exn => Self::Exn,
+            HeapType::Func => Self::Abstract {
+                shared: false,
+                ty: wasm_encoder::AbstractHeapType::Func,
+            },
+            HeapType::Extern => Self::Abstract {
+                shared: false,
+                ty: wasm_encoder::AbstractHeapType::Extern,
+            },
+            HeapType::Any => Self::Abstract {
+                shared: false,
+                ty: wasm_encoder::AbstractHeapType::Any,
+            },
+            HeapType::None => Self::Abstract {
+                shared: false,
+                ty: wasm_encoder::AbstractHeapType::None,
+            },
+            HeapType::NoExtern => Self::Abstract {
+                shared: false,
+                ty: wasm_encoder::AbstractHeapType::NoExtern,
+            },
+            HeapType::NoFunc => Self::Abstract {
+                shared: false,
+                ty: wasm_encoder::AbstractHeapType::NoFunc,
+            },
+            HeapType::Eq => Self::Abstract {
+                shared: false,
+                ty: wasm_encoder::AbstractHeapType::Eq,
+            },
+            HeapType::Struct => Self::Abstract {
+                shared: false,
+                ty: wasm_encoder::AbstractHeapType::Struct,
+            },
+            HeapType::Array => Self::Abstract {
+                shared: false,
+                ty: wasm_encoder::AbstractHeapType::Array,
+            },
+            HeapType::I31 => Self::Abstract {
+                shared: false,
+                ty: wasm_encoder::AbstractHeapType::I31,
+            },
+            HeapType::Exn => Self::Abstract {
+                shared: false,
+                ty: wasm_encoder::AbstractHeapType::Exn,
+            },
+            HeapType::NoExn => Self::Abstract {
+                shared: false,
+                ty: wasm_encoder::AbstractHeapType::NoExn,
+            },
+            HeapType::Cont => Self::Abstract {
+                shared: false,
+                ty: wasm_encoder::AbstractHeapType::Cont,
+            },
+            HeapType::NoCont => Self::Abstract {
+                shared: false,
+                ty: wasm_encoder::AbstractHeapType::NoCont,
+            },
         }
     }
 }

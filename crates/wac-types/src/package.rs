@@ -10,8 +10,8 @@ use std::borrow::Borrow;
 use std::fmt;
 use std::{collections::HashMap, path::Path, rc::Rc};
 use wasmparser::{
+    component_types::{self as wasm},
     names::{ComponentName, ComponentNameKind},
-    types::{self as wasm, ComponentAnyTypeId},
     Chunk, Encoding, Parser, Payload, ValidPayload, Validator, WasmFeatures,
 };
 
@@ -133,7 +133,7 @@ impl PartialEq for (dyn BorrowedKey + '_) {
     }
 }
 
-impl<'a> std::hash::Hash for (dyn BorrowedKey + 'a) {
+impl std::hash::Hash for (dyn BorrowedKey + '_) {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         self.borrowed_key().hash(state)
     }
@@ -388,14 +388,14 @@ enum Entity {
 /// representations.
 struct TypeConverter<'a> {
     types: &'a mut Types,
-    wasm_types: Rc<wasm::Types>,
+    wasm_types: Rc<wasmparser::types::Types>,
     cache: HashMap<wasm::AnyTypeId, Entity>,
     resource_map: HashMap<wasm::ResourceId, ResourceId>,
     owners: HashMap<wasm::ComponentAnyTypeId, (Owner, String)>,
 }
 
 impl<'a> TypeConverter<'a> {
-    fn new(types: &'a mut Types, wasm_types: wasm::Types) -> Self {
+    fn new(types: &'a mut Types, wasm_types: wasmparser::types::Types) -> Self {
         Self {
             types,
             wasm_types: Rc::new(wasm_types),
@@ -594,8 +594,8 @@ impl<'a> TypeConverter<'a> {
         &mut self,
         owner: Owner,
         name: &str,
-        referenced: ComponentAnyTypeId,
-        created: ComponentAnyTypeId,
+        referenced: wasm::ComponentAnyTypeId,
+        created: wasm::ComponentAnyTypeId,
     ) {
         if let Some((other, orig)) = self.find_owner(referenced) {
             match *other {
@@ -762,6 +762,17 @@ impl<'a> TypeConverter<'a> {
                     _ => panic!("expected a resource"),
                 },
             ),
+            wasm::ComponentDefinedType::Stream(ty) => {
+                let stream = ty.map(|ty| self.component_val_type(ty)).transpose()?;
+                ValueType::Defined(self.types.add_defined_type(DefinedType::Stream(stream)))
+            }
+            wasm::ComponentDefinedType::Future(ty) => {
+                let option = ty.map(|ty| self.component_val_type(ty)).transpose()?;
+                ValueType::Defined(self.types.add_defined_type(DefinedType::Future(option)))
+            }
+            wasm::ComponentDefinedType::ErrorContext => {
+                ValueType::Defined(self.types.add_defined_type(DefinedType::ErrorContext))
+            }
         };
 
         self.cache.insert(key, Entity::Type(Type::Value(ty)));
@@ -782,7 +793,7 @@ impl<'a> TypeConverter<'a> {
             let alias_id = self.types.add_resource(Resource {
                 name: name.to_owned(),
                 alias: Some(ResourceAlias {
-                    owner: match self.find_owner(ComponentAnyTypeId::Resource(id)) {
+                    owner: match self.find_owner(wasm::ComponentAnyTypeId::Resource(id)) {
                         Some((Owner::Interface(id), _)) => Some(*id),
                         _ => None,
                     },
@@ -804,17 +815,17 @@ impl<'a> TypeConverter<'a> {
         resource_id
     }
 
-    fn entity_type(&self, ty: wasm::EntityType) -> CoreExtern {
+    fn entity_type(&self, ty: wasmparser::types::EntityType) -> CoreExtern {
         match ty {
-            wasm::EntityType::Func(ty) => CoreExtern::Func(self.func_type(ty)),
-            wasm::EntityType::Table(ty) => ty.into(),
-            wasm::EntityType::Memory(ty) => ty.into(),
-            wasm::EntityType::Global(ty) => ty.into(),
-            wasm::EntityType::Tag(ty) => CoreExtern::Tag(self.func_type(ty)),
+            wasmparser::types::EntityType::Func(ty) => CoreExtern::Func(self.func_type(ty)),
+            wasmparser::types::EntityType::Table(ty) => ty.into(),
+            wasmparser::types::EntityType::Memory(ty) => ty.into(),
+            wasmparser::types::EntityType::Global(ty) => ty.into(),
+            wasmparser::types::EntityType::Tag(ty) => CoreExtern::Tag(self.func_type(ty)),
         }
     }
 
-    fn func_type(&self, ty: wasm::CoreTypeId) -> CoreFuncType {
+    fn func_type(&self, ty: wasmparser::types::CoreTypeId) -> CoreFuncType {
         let func_ty = self.wasm_types[ty].unwrap_func();
         CoreFuncType {
             params: func_ty.params().iter().copied().map(Into::into).collect(),

@@ -237,7 +237,7 @@ impl Peek for InstantiationArgumentName<'_> {
     }
 }
 
-impl<'a> InstantiationArgumentName<'a> {
+impl InstantiationArgumentName<'_> {
     /// Gets the span of the instantiation argument name.
     pub fn span(&self) -> SourceSpan {
         match self {
@@ -288,7 +288,7 @@ pub enum PostfixExpr<'a> {
     NamedAccess(NamedAccessExpr<'a>),
 }
 
-impl<'a> PostfixExpr<'a> {
+impl PostfixExpr<'_> {
     /// Gets the span of the postfix expression.
     pub fn span(&self) -> SourceSpan {
         match self {

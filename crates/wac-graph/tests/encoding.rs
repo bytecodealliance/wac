@@ -133,7 +133,11 @@ impl GraphFile {
             )
         })?;
 
-        let mut module = wit_component::dummy_module(&resolve, world);
+        let mut module = wit_component::dummy_module(
+            &resolve,
+            world,
+            wit_parser::ManglingAndAbi::Legacy(wit_parser::LiftLowerAbi::Sync),
+        );
         wit_component::embed_component_metadata(
             &mut module,
             &resolve,
@@ -147,7 +151,7 @@ impl GraphFile {
         )
         })?;
 
-        let encoder = ComponentEncoder::default().validate(true).module(&module)?;
+        let mut encoder = ComponentEncoder::default().validate(true).module(&module)?;
         encoder
             .encode()
             .with_context(|| format!("failed to encode a component from module derived from package `{path}` for test case `{test_case}`", path = path.display()))
