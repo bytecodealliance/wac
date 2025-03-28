@@ -78,7 +78,7 @@ record r {
     x: u32,
     y: string,
     z: v,
-} 
+}
 
 /// Defining flags
 flags %flags {
@@ -98,4 +98,3 @@ enum e {
 type t = e;
 type t2 = string;
 type t3 = func(a: u32, b: r) -> u32;
-type t4 = func() -> (a: u32, b: string);

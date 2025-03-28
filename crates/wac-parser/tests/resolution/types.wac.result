@@ -13,7 +13,6 @@ digraph {
     11 [ label = "type definition \"t\""; kind = "enum"; export = "t"]
     12 [ label = "type definition \"t2\""; kind = "string"; export = "t2"]
     13 [ label = "type definition \"t3\""; kind = "function type"; export = "t3"]
-    14 [ label = "type definition \"t4\""; kind = "function type"; export = "t4"]
     6 -> 7 [ label = "dependency of" ]
     7 -> 8 [ label = "dependency of" ]
     8 -> 13 [ label = "dependency of" ]

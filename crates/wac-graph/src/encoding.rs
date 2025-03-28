@@ -3,9 +3,9 @@ use indexmap::IndexMap;
 use petgraph::graph::NodeIndex;
 use std::collections::HashMap;
 use wac_types::{
-    CoreExtern, DefinedType, DefinedTypeId, Enum, Flags, FuncResult, FuncTypeId, InterfaceId,
-    ItemKind, ModuleTypeId, PrimitiveType, Record, ResourceId, Type, Types, UsedType, ValueType,
-    Variant, WorldId,
+    CoreExtern, DefinedType, DefinedTypeId, Enum, Flags, FuncTypeId, InterfaceId, ItemKind,
+    ModuleTypeId, PrimitiveType, Record, ResourceId, Type, Types, UsedType, ValueType, Variant,
+    WorldId,
 };
 use wasm_encoder::{
     Alias, ComponentBuilder, ComponentCoreTypeEncoder, ComponentExportKind,
@@ -227,27 +227,11 @@ impl<'a> TypeEncoder<'a> {
             .map(|(n, ty)| (n.as_str(), self.value_type(state, *ty)))
             .collect::<Vec<_>>();
 
-        let results = match &ty.results {
-            Some(FuncResult::Scalar(ty)) => vec![("", self.value_type(state, *ty))],
-            Some(FuncResult::List(results)) => results
-                .iter()
-                .map(|(n, ty)| (n.as_str(), self.value_type(state, *ty)))
-                .collect(),
-            None => Vec::new(),
-        };
-
+        let result = ty.result.map(|ty| self.value_type(state, ty));
         let index = state.current.encodable.type_count();
         let mut encoder = state.current.encodable.ty().function();
         encoder.params(params);
-
-        match &ty.results {
-            Some(FuncResult::Scalar(_)) => {
-                encoder.result(results[0].1);
-            }
-            _ => {
-                encoder.results(results);
-            }
-        }
+        encoder.result(result);
 
         log::debug!("function type encoded to type index {index}");
         index
@@ -271,7 +255,6 @@ impl<'a> TypeEncoder<'a> {
             DefinedType::Alias(ValueType::Defined(id)) => self.defined(state, *id),
             DefinedType::Stream(ty) => self.stream(state, *ty),
             DefinedType::Future(ty) => self.future(state, *ty),
-            DefinedType::ErrorContext => self.error_context(state),
         };
 
         log::debug!("defined type encoded to type index {index}");
@@ -580,12 +563,6 @@ impl<'a> TypeEncoder<'a> {
         let ty = ty.map(|ty| self.value_type(state, ty));
         let index = state.current.encodable.type_count();
         state.current.encodable.ty().defined_type().future(ty);
-        index
-    }
-
-    fn error_context(&self, state: &mut State) -> u32 {
-        let index = state.current.encodable.type_count();
-        state.current.encodable.ty().defined_type().error_context();
         index
     }
 

@@ -1,3 +1,0 @@
-package test:comp;
-
-type f = func() -> (a: u32, a: s8);

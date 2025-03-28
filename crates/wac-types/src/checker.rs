@@ -1,7 +1,7 @@
 use crate::{
-    CoreExtern, CoreFuncType, DefinedType, DefinedTypeId, Enum, Flags, FuncResult, FuncTypeId,
-    InterfaceId, ItemKind, ModuleTypeId, PrimitiveType, Record, ResourceId, Type, Types, ValueType,
-    Variant, WorldId,
+    CoreExtern, CoreFuncType, DefinedType, DefinedTypeId, Enum, Flags, FuncTypeId, InterfaceId,
+    ItemKind, ModuleTypeId, PrimitiveType, Record, ResourceId, Type, Types, ValueType, Variant,
+    WorldId,
 };
 use anyhow::{bail, Context, Result};
 use indexmap::IndexMap;
@@ -177,51 +177,27 @@ impl<'a> SubtypeChecker<'a> {
                 .with_context(|| format!("mismatched type for function parameter `{bn}`"))?;
         }
 
-        match (&a.results, &b.results) {
+        match (&a.result, &b.result) {
             (None, None) => return Ok(()),
-            (Some(FuncResult::Scalar(a)), Some(FuncResult::Scalar(b))) => {
+            (Some(a), Some(b)) => {
                 return self
                     .value_type(*a, at, *b, bt)
                     .context("mismatched type for function result");
             }
-            (Some(FuncResult::List(a)), Some(FuncResult::List(b))) => {
-                for (i, ((an, a), (bn, b))) in a.iter().zip(b.iter()).enumerate() {
-                    if an != bn {
-                        let (expected, _, found, _) = self.expected_found(an, at, bn, bt);
-                        bail!("expected function result {i} to be named `{expected}`, found name `{found}`");
-                    }
-
-                    self.value_type(*a, at, *b, bt)
-                        .with_context(|| format!("mismatched type for function result `{bn}`"))?;
-                }
-
-                return Ok(());
-            }
-            (Some(FuncResult::List(_)), Some(FuncResult::Scalar(_)))
-            | (Some(FuncResult::Scalar(_)), Some(FuncResult::List(_)))
-            | (Some(_), None)
-            | (None, Some(_)) => {
+            (None, _) | (Some(_), _) => {
                 // Handle the mismatch below
             }
         }
 
         let (expected, _, found, _) = self.expected_found(a, at, b, bt);
-        match (&expected.results, &found.results) {
-            (Some(FuncResult::List(_)), Some(FuncResult::Scalar(_))) => {
-                bail!("expected function that returns a named result, found function with a single result type")
-            }
-            (Some(FuncResult::Scalar(_)), Some(FuncResult::List(_))) => {
-                bail!("expected function that returns a single result type, found function that returns a named result")
-            }
+        match (&expected.result, &found.result) {
             (Some(_), None) => {
                 bail!("expected function with a result, found function without a result")
             }
             (None, Some(_)) => {
                 bail!("expected function without a result, found function with a result")
             }
-            (Some(FuncResult::Scalar(_)), Some(FuncResult::Scalar(_)))
-            | (Some(FuncResult::List(_)), Some(FuncResult::List(_)))
-            | (None, None) => panic!("should already be handled"),
+            (Some(_), Some(_)) | (None, None) => panic!("should already be handled"),
         }
     }
 

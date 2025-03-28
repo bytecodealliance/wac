@@ -1,5 +1,5 @@
 use crate::{
-    DefinedType, DefinedTypeId, FuncResult, FuncType, FuncTypeId, Interface, InterfaceId, ItemKind,
+    DefinedType, DefinedTypeId, FuncType, FuncTypeId, Interface, InterfaceId, ItemKind,
     ModuleTypeId, Record, Resource, ResourceAlias, ResourceId, SubtypeChecker, Type, Types,
     UsedType, ValueType, Variant, World, WorldId,
 };
@@ -604,23 +604,9 @@ impl TypeAggregator {
                 .iter()
                 .map(|(n, ty)| Ok((n.clone(), self.remap_value_type(types, *ty, checker)?)))
                 .collect::<Result<_>>()?,
-            results: ty
-                .results
-                .as_ref()
-                .map(|r| -> Result<_> {
-                    match r {
-                        FuncResult::Scalar(ty) => Ok(FuncResult::Scalar(
-                            self.remap_value_type(types, *ty, checker)?,
-                        )),
-                        FuncResult::List(tys) => Ok(FuncResult::List(
-                            tys.iter()
-                                .map(|(n, ty)| {
-                                    Ok((n.clone(), self.remap_value_type(types, *ty, checker)?))
-                                })
-                                .collect::<Result<_>>()?,
-                        )),
-                    }
-                })
+            result: ty
+                .result
+                .map(|ty| self.remap_value_type(types, ty, checker))
                 .transpose()?,
         };
 
@@ -844,7 +830,6 @@ impl TypeAggregator {
             }
             DefinedType::Stream(s) => DefinedType::Stream(*s),
             DefinedType::Future(f) => DefinedType::Future(*f),
-            DefinedType::ErrorContext => DefinedType::ErrorContext,
         };
 
         let remapped = self.types.add_defined_type(defined);

@@ -1,7 +1,7 @@
 use crate::{
-    CoreExtern, CoreFuncType, DefinedType, Enum, Flags, FuncResult, FuncType, FuncTypeId,
-    Interface, InterfaceId, ItemKind, ModuleType, ModuleTypeId, Record, Resource, ResourceAlias,
-    ResourceId, Type, Types, UsedType, ValueType, Variant, World, WorldId,
+    CoreExtern, CoreFuncType, DefinedType, Enum, Flags, FuncType, FuncTypeId, Interface,
+    InterfaceId, ItemKind, ModuleType, ModuleTypeId, Record, Resource, ResourceAlias, ResourceId,
+    Type, Types, UsedType, ValueType, Variant, World, WorldId,
 };
 use anyhow::{bail, Context, Result};
 use indexmap::IndexMap;
@@ -438,28 +438,12 @@ impl<'a> TypeConverter<'a> {
             .map(|(name, ty)| Ok((name.to_string(), self.component_val_type(*ty)?)))
             .collect::<Result<_>>()?;
 
-        let results = if func_ty.results.len() == 0 {
-            None
-        } else if func_ty.results.len() == 1 && func_ty.results[0].0.is_none() {
-            Some(FuncResult::Scalar(
-                self.component_val_type(func_ty.results[0].1)?,
-            ))
-        } else {
-            Some(FuncResult::List(
-                func_ty
-                    .results
-                    .iter()
-                    .map(|(name, ty)| {
-                        Ok((
-                            name.as_ref().unwrap().to_string(),
-                            self.component_val_type(*ty)?,
-                        ))
-                    })
-                    .collect::<Result<_>>()?,
-            ))
+        let result = match func_ty.result {
+            Some(ty) => Some(self.component_val_type(ty)?),
+            None => None,
         };
 
-        let id = self.types.add_func_type(FuncType { params, results });
+        let id = self.types.add_func_type(FuncType { params, result });
         self.cache.insert(key, Entity::Type(Type::Func(id)));
         Ok(id)
     }
@@ -769,9 +753,6 @@ impl<'a> TypeConverter<'a> {
             wasm::ComponentDefinedType::Future(ty) => {
                 let option = ty.map(|ty| self.component_val_type(ty)).transpose()?;
                 ValueType::Defined(self.types.add_defined_type(DefinedType::Future(option)))
-            }
-            wasm::ComponentDefinedType::ErrorContext => {
-                ValueType::Defined(self.types.add_defined_type(DefinedType::ErrorContext))
             }
         };
 

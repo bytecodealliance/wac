@@ -515,6 +515,8 @@ pub enum PrimitiveType {
     Bool,
     /// A `string` type.
     String,
+    /// An `error-context` type.
+    ErrorContext,
 }
 
 impl PrimitiveType {
@@ -534,6 +536,7 @@ impl PrimitiveType {
             Self::Char => "char",
             Self::Bool => "bool",
             Self::String => "string",
+            Self::ErrorContext => "error-context",
         }
     }
 }
@@ -554,6 +557,7 @@ impl From<wasmparser::PrimitiveValType> for PrimitiveType {
             wasmparser::PrimitiveValType::F64 => Self::F64,
             wasmparser::PrimitiveValType::Char => Self::Char,
             wasmparser::PrimitiveValType::String => Self::String,
+            wasmparser::PrimitiveValType::ErrorContext => Self::ErrorContext,
         }
     }
 }
@@ -574,6 +578,7 @@ impl From<PrimitiveType> for wasm_encoder::PrimitiveValType {
             PrimitiveType::Char => Self::Char,
             PrimitiveType::Bool => Self::Bool,
             PrimitiveType::String => Self::String,
+            PrimitiveType::ErrorContext => Self::ErrorContext,
         }
     }
 }
@@ -677,8 +682,6 @@ pub enum DefinedType {
     Stream(Option<ValueType>),
     /// A futures type.
     Future(Option<ValueType>),
-    /// A type for adding context to errors
-    ErrorContext,
 }
 
 impl DefinedType {
@@ -702,7 +705,6 @@ impl DefinedType {
             Self::Alias(ty) => ty.contains_borrow(types),
             Self::Stream(ty) => ty.map(|ty| ty.contains_borrow(types)).unwrap_or(false),
             Self::Future(ty) => ty.map(|ty| ty.contains_borrow(types)).unwrap_or(false),
-            Self::ErrorContext => false,
         }
     }
 
@@ -747,10 +749,7 @@ impl DefinedType {
 
                 Ok(())
             }
-            DefinedType::Flags(_)
-            | DefinedType::Enum(_)
-            | DefinedType::Alias(_)
-            | DefinedType::ErrorContext => Ok(()),
+            DefinedType::Flags(_) | DefinedType::Enum(_) | DefinedType::Alias(_) => Ok(()),
             DefinedType::Stream(ty) | DefinedType::Future(ty) => {
                 if let Some(ty) = ty {
                     ty._visit_defined_types(types, visitor, false)?;
@@ -775,7 +774,6 @@ impl DefinedType {
             Self::Alias(ty) => ty.desc(types),
             Self::Stream(_) => "stream",
             Self::Future(_) => "future",
-            Self::ErrorContext => "error context",
         }
     }
 }
@@ -870,8 +868,8 @@ pub struct Enum(pub IndexSet<String>);
 pub struct FuncType {
     /// The parameters of the function.
     pub params: IndexMap<String, ValueType>,
-    /// The results of the function.
-    pub results: Option<FuncResult>,
+    /// The result of the function.
+    pub result: Option<ValueType>,
 }
 
 impl FuncType {
@@ -884,41 +882,11 @@ impl FuncType {
             ty._visit_defined_types(types, visitor, false)?;
         }
 
-        if let Some(results) = self.results.as_ref() {
-            results._visit_defined_types(types, visitor)?;
+        if let Some(ty) = &self.result {
+            ty._visit_defined_types(types, visitor, false)?;
         }
 
         Ok(())
-    }
-}
-
-/// Represents a function result.
-#[derive(Debug, Clone)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize))]
-#[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
-pub enum FuncResult {
-    /// A scalar result.
-    Scalar(ValueType),
-    /// A list of named results.
-    List(IndexMap<String, ValueType>),
-}
-
-impl FuncResult {
-    fn _visit_defined_types<'a, E>(
-        &self,
-        types: &'a Types,
-        visitor: &mut impl FnMut(&'a Types, DefinedTypeId) -> Result<(), E>,
-    ) -> Result<(), E> {
-        match self {
-            FuncResult::Scalar(ty) => ty._visit_defined_types(types, visitor, false),
-            FuncResult::List(tys) => {
-                for ty in tys.values() {
-                    ty._visit_defined_types(types, visitor, false)?;
-                }
-
-                Ok(())
-            }
-        }
     }
 }
 

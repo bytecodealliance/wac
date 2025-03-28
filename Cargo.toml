@@ -63,12 +63,12 @@ wac-parser = { path = "crates/wac-parser", version = "0.7.0-dev", default-featur
 wac-resolver = { path = "crates/wac-resolver", version = "0.7.0-dev", default-features = false }
 wac-graph = { path = "crates/wac-graph", version = "0.7.0-dev" }
 wac-types = { path = "crates/wac-types", version = "0.7.0-dev" }
-wit-parser = "0.224.0"
-wasmparser = "0.224.0"
-wit-component = "0.224.0"
-wasm-encoder = "0.224.0"
-wasmprinter = "0.224.0"
-wasm-metadata = "0.224.0"
+wit-parser = "0.227.0"
+wasmparser = "0.227.0"
+wit-component = "0.227.0"
+wasm-encoder = "0.227.0"
+wasmprinter = "0.227.0"
+wasm-metadata = "0.227.0"
 anyhow = "1.0.81"
 clap = { version = "4.5.4", features = ["derive"] }
 semver = { version = "1.0.22", features = ["serde"] }

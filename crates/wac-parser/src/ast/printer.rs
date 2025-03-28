@@ -135,11 +135,6 @@ impl<'a, W: Write> DocumentPrinter<'a, W> {
                 write!(self.writer, " -> ")?;
                 self.ty(ty)
             }
-            ResultList::Named(results) => {
-                write!(self.writer, " -> (")?;
-                self.named_types(results)?;
-                write!(self.writer, ")")
-            }
         }
     }
 
