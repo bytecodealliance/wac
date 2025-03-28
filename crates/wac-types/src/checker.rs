@@ -79,7 +79,13 @@ impl<'a> SubtypeChecker<'a> {
             (ItemKind::Component(a), ItemKind::Component(b)) => self.world(a, at, b, bt),
             (ItemKind::Module(a), ItemKind::Module(b)) => self.module(a, at, b, bt),
             (ItemKind::Value(a), ItemKind::Value(b)) => self.value_type(a, at, b, bt),
-            _ => {
+
+            (ItemKind::Type(_), _)
+            | (ItemKind::Func(_), _)
+            | (ItemKind::Instance(_), _)
+            | (ItemKind::Component(_), _)
+            | (ItemKind::Module(_), _)
+            | (ItemKind::Value(_), _) => {
                 let (expected, expected_types, found, found_types) =
                     self.expected_found(&a, at, &b, bt);
                 bail!(
@@ -128,22 +134,29 @@ impl<'a> SubtypeChecker<'a> {
 
     fn ty(&mut self, a: Type, at: &Types, b: Type, bt: &Types) -> Result<()> {
         match (a, b) {
-            (Type::Resource(a), Type::Resource(b)) => return self.resource(a, at, b, bt),
-            (Type::Func(a), Type::Func(b)) => return self.func(a, at, b, bt),
-            (Type::Value(a), Type::Value(b)) => return self.value_type(a, at, b, bt),
-            (Type::Interface(a), Type::Interface(b)) => return self.interface(a, at, b, bt),
-            (Type::World(a), Type::World(b)) => return self.world(a, at, b, bt),
-            (Type::Module(a), Type::Module(b)) => return self.module(a, at, b, bt),
-            _ => {}
+            (Type::Resource(a), Type::Resource(b)) => self.resource(a, at, b, bt),
+            (Type::Func(a), Type::Func(b)) => self.func(a, at, b, bt),
+            (Type::Value(a), Type::Value(b)) => self.value_type(a, at, b, bt),
+            (Type::Interface(a), Type::Interface(b)) => self.interface(a, at, b, bt),
+            (Type::World(a), Type::World(b)) => self.world(a, at, b, bt),
+            (Type::Module(a), Type::Module(b)) => self.module(a, at, b, bt),
+
+            (Type::Func(_), _)
+            | (Type::Resource(_), _)
+            | (Type::Value(_), _)
+            | (Type::Interface(_), _)
+            | (Type::World(_), _)
+            | (Type::Module(_), _) => {
+                let (expected, expected_types, found, found_types) =
+                    self.expected_found(&a, at, &b, bt);
+
+                bail!(
+                    "expected {expected}, found {found}",
+                    expected = expected.desc(expected_types),
+                    found = found.desc(found_types)
+                )
+            }
         }
-
-        let (expected, expected_types, found, found_types) = self.expected_found(&a, at, &b, bt);
-
-        bail!(
-            "expected {expected}, found {found}",
-            expected = expected.desc(expected_types),
-            found = found.desc(found_types)
-        )
     }
 
     fn func(&self, a: FuncTypeId, at: &Types, b: FuncTypeId, bt: &Types) -> Result<()> {
@@ -392,7 +405,7 @@ impl<'a> SubtypeChecker<'a> {
         }
 
         match (a, b) {
-            (CoreExtern::Func(a), CoreExtern::Func(b)) => return self.core_func(a, at, b, bt),
+            (CoreExtern::Func(a), CoreExtern::Func(b)) => self.core_func(a, at, b, bt),
             (
                 CoreExtern::Table {
                     element_type: ae,
@@ -418,7 +431,7 @@ impl<'a> SubtypeChecker<'a> {
                     bail!("mismatched table limits");
                 }
 
-                return Ok(());
+                Ok(())
             }
             (
                 CoreExtern::Memory {
@@ -448,7 +461,7 @@ impl<'a> SubtypeChecker<'a> {
                     bail!("mismatched memory limits");
                 }
 
-                return Ok(());
+                Ok(())
             }
             (
                 CoreExtern::Global {
@@ -471,14 +484,19 @@ impl<'a> SubtypeChecker<'a> {
                     bail!("expected global type {expected}, found {found}");
                 }
 
-                return Ok(());
+                Ok(())
             }
-            (CoreExtern::Tag(a), CoreExtern::Tag(b)) => return self.core_func(a, at, b, bt),
-            _ => {}
-        }
+            (CoreExtern::Tag(a), CoreExtern::Tag(b)) => self.core_func(a, at, b, bt),
 
-        let (expected, _, found, _) = self.expected_found(a, at, b, bt);
-        bail!("expected {expected}, found {found}");
+            (CoreExtern::Func(_), _)
+            | (CoreExtern::Table { .. }, _)
+            | (CoreExtern::Memory { .. }, _)
+            | (CoreExtern::Global { .. }, _)
+            | (CoreExtern::Tag(_), _) => {
+                let (expected, _, found, _) = self.expected_found(a, at, b, bt);
+                bail!("expected {expected}, found {found}");
+            }
+        }
     }
 
     fn core_func(&self, a: &CoreFuncType, at: &Types, b: &CoreFuncType, bt: &Types) -> Result<()> {
@@ -499,7 +517,11 @@ impl<'a> SubtypeChecker<'a> {
             (ValueType::Defined(a), ValueType::Defined(b)) => self.defined_type(a, at, b, bt),
             (ValueType::Borrow(a), ValueType::Borrow(b))
             | (ValueType::Own(a), ValueType::Own(b)) => self.resource(a, at, b, bt),
-            _ => {
+
+            (ValueType::Primitive(_), _)
+            | (ValueType::Defined(_), _)
+            | (ValueType::Borrow(_), _)
+            | (ValueType::Own(_), _) => {
                 let (expected, expected_types, found, found_types) =
                     self.expected_found(&a, at, &b, bt);
                 bail!(
@@ -529,6 +551,12 @@ impl<'a> SubtypeChecker<'a> {
             (DefinedType::List(a), DefinedType::List(b)) => self
                 .value_type(*a, at, *b, bt)
                 .context("mismatched type for list element"),
+            (DefinedType::Future(a), DefinedType::Future(b)) => self
+                .payload(*a, at, *b, bt)
+                .context("mismatched type for future payload"),
+            (DefinedType::Stream(a), DefinedType::Stream(b)) => self
+                .payload(*a, at, *b, bt)
+                .context("mismatched type for stream payload"),
             (DefinedType::Option(a), DefinedType::Option(b)) => self
                 .value_type(*a, at, *b, bt)
                 .context("mismatched type for option"),
@@ -552,7 +580,17 @@ impl<'a> SubtypeChecker<'a> {
             (DefinedType::Alias(_), _) | (_, DefinedType::Alias(_)) => {
                 panic!("aliases should have been resolved")
             }
-            _ => {
+
+            (DefinedType::Tuple(_), _)
+            | (DefinedType::List(_), _)
+            | (DefinedType::Option(_), _)
+            | (DefinedType::Result { .. }, _)
+            | (DefinedType::Variant(_), _)
+            | (DefinedType::Record(_), _)
+            | (DefinedType::Flags(_), _)
+            | (DefinedType::Enum(_), _)
+            | (DefinedType::Stream(_), _)
+            | (DefinedType::Future(_), _) => {
                 let (expected, expected_types, found, found_types) =
                     self.expected_found(a, at, b, bt);
                 bail!(
@@ -716,6 +754,21 @@ impl<'a> SubtypeChecker<'a> {
         }
 
         Ok(())
+    }
+
+    fn payload(
+        &self,
+        a: Option<ValueType>,
+        at: &Types,
+        b: Option<ValueType>,
+        bt: &Types,
+    ) -> Result<()> {
+        match (a, b) {
+            (Some(a), Some(b)) => self.value_type(a, at, b, bt),
+            (None, None) => Ok(()),
+            (Some(_), None) => bail!("expected a type payload, found none"),
+            (None, Some(_)) => bail!("expected no type payload, found one"),
+        }
     }
 
     fn primitive(&self, a: PrimitiveType, at: &Types, b: PrimitiveType, bt: &Types) -> Result<()> {
