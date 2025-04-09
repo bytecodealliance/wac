@@ -786,7 +786,7 @@
               {
                 "comment": "Defining flags",
                 "span": {
-                  "offset": 1190,
+                  "offset": 1189,
                   "length": 18
                 }
               }
@@ -794,7 +794,7 @@
             "id": {
               "string": "f",
               "span": {
-                "offset": 1215,
+                "offset": 1214,
                 "length": 1
               }
             },
@@ -804,7 +804,7 @@
                 "id": {
                   "string": "a",
                   "span": {
-                    "offset": 1223,
+                    "offset": 1222,
                     "length": 1
                   }
                 }
@@ -814,7 +814,7 @@
                 "id": {
                   "string": "b",
                   "span": {
-                    "offset": 1230,
+                    "offset": 1229,
                     "length": 1
                   }
                 }
@@ -824,7 +824,7 @@
                 "id": {
                   "string": "c",
                   "span": {
-                    "offset": 1237,
+                    "offset": 1236,
                     "length": 1
                   }
                 }
@@ -842,7 +842,7 @@
               {
                 "comment": "Defining an enum",
                 "span": {
-                  "offset": 1243,
+                  "offset": 1242,
                   "length": 20
                 }
               }
@@ -850,7 +850,7 @@
             "id": {
               "string": "e",
               "span": {
-                "offset": 1269,
+                "offset": 1268,
                 "length": 1
               }
             },
@@ -860,7 +860,7 @@
                 "id": {
                   "string": "a",
                   "span": {
-                    "offset": 1277,
+                    "offset": 1276,
                     "length": 1
                   }
                 }
@@ -870,7 +870,7 @@
                 "id": {
                   "string": "b",
                   "span": {
-                    "offset": 1284,
+                    "offset": 1283,
                     "length": 1
                   }
                 }
@@ -880,7 +880,7 @@
                 "id": {
                   "string": "c",
                   "span": {
-                    "offset": 1291,
+                    "offset": 1290,
                     "length": 1
                   }
                 }
@@ -898,7 +898,7 @@
               {
                 "comment": "Type aliases",
                 "span": {
-                  "offset": 1297,
+                  "offset": 1296,
                   "length": 16
                 }
               }
@@ -906,7 +906,7 @@
             "id": {
               "string": "t",
               "span": {
-                "offset": 1319,
+                "offset": 1318,
                 "length": 1
               }
             },
@@ -915,7 +915,7 @@
                 "ident": {
                   "string": "e",
                   "span": {
-                    "offset": 1323,
+                    "offset": 1322,
                     "length": 1
                   }
                 }
@@ -933,14 +933,14 @@
             "id": {
               "string": "t2",
               "span": {
-                "offset": 1331,
+                "offset": 1330,
                 "length": 2
               }
             },
             "kind": {
               "type": {
                 "string": {
-                  "offset": 1336,
+                  "offset": 1335,
                   "length": 6
                 }
               }
@@ -957,7 +957,7 @@
             "id": {
               "string": "t3",
               "span": {
-                "offset": 1349,
+                "offset": 1348,
                 "length": 2
               }
             },
@@ -968,13 +968,13 @@
                     "id": {
                       "string": "a",
                       "span": {
-                        "offset": 1359,
+                        "offset": 1358,
                         "length": 1
                       }
                     },
                     "ty": {
                       "u32": {
-                        "offset": 1362,
+                        "offset": 1361,
                         "length": 3
                       }
                     }
@@ -983,7 +983,7 @@
                     "id": {
                       "string": "b",
                       "span": {
-                        "offset": 1367,
+                        "offset": 1366,
                         "length": 1
                       }
                     },
@@ -991,7 +991,7 @@
                       "ident": {
                         "string": "r",
                         "span": {
-                          "offset": 1370,
+                          "offset": 1369,
                           "length": 1
                         }
                       }
@@ -1001,65 +1001,10 @@
                 "results": {
                   "scalar": {
                     "u32": {
-                      "offset": 1376,
+                      "offset": 1375,
                       "length": 3
                     }
                   }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    {
-      "Type": {
-        "type": {
-          "alias": {
-            "docs": [],
-            "id": {
-              "string": "t4",
-              "span": {
-                "offset": 1386,
-                "length": 2
-              }
-            },
-            "kind": {
-              "func": {
-                "params": [],
-                "results": {
-                  "named": [
-                    {
-                      "id": {
-                        "string": "a",
-                        "span": {
-                          "offset": 1402,
-                          "length": 1
-                        }
-                      },
-                      "ty": {
-                        "u32": {
-                          "offset": 1405,
-                          "length": 3
-                        }
-                      }
-                    },
-                    {
-                      "id": {
-                        "string": "b",
-                        "span": {
-                          "offset": 1410,
-                          "length": 1
-                        }
-                      },
-                      "ty": {
-                        "string": {
-                          "offset": 1413,
-                          "length": 6
-                        }
-                      }
-                    }
-                  ]
                 }
               }
             }

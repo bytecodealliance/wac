@@ -1,7 +1,0 @@
-package test:comp;
-
-import x: interface {
-    f: func() -> (a: string, c: u32);
-};
-
-let i = new foo:bar { x };

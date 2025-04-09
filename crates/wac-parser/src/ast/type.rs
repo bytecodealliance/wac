@@ -529,19 +529,12 @@ pub enum ResultList<'a> {
     Empty,
     /// The function returns a scalar value.
     Scalar(Type<'a>),
-    /// The function has named results.
-    Named(Vec<NamedType<'a>>),
 }
 
 impl<'a> Parse<'a> for ResultList<'a> {
     fn parse(lexer: &mut Lexer<'a>) -> ParseResult<Self> {
         let mut lookahead = Lookahead::new(lexer);
-        if lookahead.peek(Token::OpenParen) {
-            parse_token(lexer, Token::OpenParen)?;
-            let results = parse_delimited(lexer, Token::CloseParen, true)?;
-            parse_token(lexer, Token::CloseParen)?;
-            Ok(Self::Named(results))
-        } else if Type::peek(&mut lookahead) {
+        if Type::peek(&mut lookahead) {
             Ok(Self::Scalar(Parse::parse(lexer)?))
         } else {
             Ok(Self::Empty)
@@ -672,7 +665,7 @@ pub enum Type<'a> {
     Ident(Ident<'a>),
 }
 
-impl<'a> Type<'a> {
+impl Type<'_> {
     /// Gets the span of the type.
     pub fn span(&self) -> SourceSpan {
         match self {

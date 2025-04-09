@@ -1,9 +1,0 @@
-failed to resolve document
-
-  × duplicate function result `a`
-   ╭─[tests/resolution/fail/duplicate-func-result.wac:3:29]
- 2 │ 
- 3 │ type f = func() -> (a: u32, a: s8);
-   ·                             ┬
-   ·                             ╰── duplicate result `a`
-   ╰────

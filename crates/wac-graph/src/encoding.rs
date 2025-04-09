@@ -3,14 +3,15 @@ use indexmap::IndexMap;
 use petgraph::graph::NodeIndex;
 use std::collections::HashMap;
 use wac_types::{
-    CoreExtern, DefinedType, DefinedTypeId, Enum, Flags, FuncResult, FuncTypeId, InterfaceId,
-    ItemKind, ModuleTypeId, PrimitiveType, Record, ResourceId, Type, Types, UsedType, ValueType,
-    Variant, WorldId,
+    CoreExtern, DefinedType, DefinedTypeId, Enum, Flags, FuncTypeId, InterfaceId, ItemKind,
+    ModuleTypeId, PrimitiveType, Record, ResourceId, Type, Types, UsedType, ValueType, Variant,
+    WorldId,
 };
 use wasm_encoder::{
-    Alias, ComponentBuilder, ComponentExportKind, ComponentOuterAliasKind, ComponentType,
-    ComponentTypeEncoder, ComponentTypeRef, ComponentValType, CoreTypeEncoder, EntityType,
-    GlobalType, InstanceType, MemoryType, ModuleType, TableType, TagKind, TagType, TypeBounds,
+    Alias, ComponentBuilder, ComponentCoreTypeEncoder, ComponentExportKind,
+    ComponentOuterAliasKind, ComponentType, ComponentTypeEncoder, ComponentTypeRef,
+    ComponentValType, EntityType, GlobalType, InstanceType, MemoryType, ModuleType, TableType,
+    TagKind, TagType, TypeBounds,
 };
 
 /// A type used to abstract the API differences between a component builder,
@@ -55,7 +56,7 @@ impl Encodable {
         }
     }
 
-    fn core_type(&mut self) -> CoreTypeEncoder {
+    fn core_type(&mut self) -> ComponentCoreTypeEncoder {
         match self {
             Encodable::Builder(t) => t.core_type().1,
             Encodable::Instance(t) => t.core_type(),
@@ -226,27 +227,11 @@ impl<'a> TypeEncoder<'a> {
             .map(|(n, ty)| (n.as_str(), self.value_type(state, *ty)))
             .collect::<Vec<_>>();
 
-        let results = match &ty.results {
-            Some(FuncResult::Scalar(ty)) => vec![("", self.value_type(state, *ty))],
-            Some(FuncResult::List(results)) => results
-                .iter()
-                .map(|(n, ty)| (n.as_str(), self.value_type(state, *ty)))
-                .collect(),
-            None => Vec::new(),
-        };
-
+        let result = ty.result.map(|ty| self.value_type(state, ty));
         let index = state.current.encodable.type_count();
         let mut encoder = state.current.encodable.ty().function();
         encoder.params(params);
-
-        match &ty.results {
-            Some(FuncResult::Scalar(_)) => {
-                encoder.result(results[0].1);
-            }
-            _ => {
-                encoder.results(results);
-            }
-        }
+        encoder.result(result);
 
         log::debug!("function type encoded to type index {index}");
         index
@@ -268,6 +253,8 @@ impl<'a> TypeEncoder<'a> {
             DefinedType::Alias(ValueType::Borrow(id)) => self.borrow(state, *id),
             DefinedType::Alias(ValueType::Own(id)) => self.own(state, *id),
             DefinedType::Alias(ValueType::Defined(id)) => self.defined(state, *id),
+            DefinedType::Stream(ty) => self.stream(state, *ty),
+            DefinedType::Future(ty) => self.future(state, *ty),
         };
 
         log::debug!("defined type encoded to type index {index}");
@@ -476,25 +463,36 @@ impl<'a> TypeEncoder<'a> {
                 element_type,
                 initial,
                 maximum,
+                table64,
+                shared,
             } => EntityType::Table(TableType {
                 element_type: (*element_type).into(),
                 minimum: *initial,
                 maximum: *maximum,
+                table64: *table64,
+                shared: *shared,
             }),
             CoreExtern::Memory {
                 memory64,
                 shared,
                 initial,
                 maximum,
+                page_size_log2,
             } => EntityType::Memory(MemoryType {
                 minimum: *initial,
                 maximum: *maximum,
                 memory64: *memory64,
                 shared: *shared,
+                page_size_log2: *page_size_log2,
             }),
-            CoreExtern::Global { val_type, mutable } => EntityType::Global(GlobalType {
+            CoreExtern::Global {
+                val_type,
+                mutable,
+                shared,
+            } => EntityType::Global(GlobalType {
                 val_type: (*val_type).into(),
                 mutable: *mutable,
+                shared: *shared,
             }),
             CoreExtern::Tag(func) => {
                 let index = encodable.type_count();
@@ -551,6 +549,20 @@ impl<'a> TypeEncoder<'a> {
         let ty = self.value_type(state, ty);
         let index = state.current.encodable.type_count();
         state.current.encodable.ty().defined_type().list(ty);
+        index
+    }
+
+    fn stream(&self, state: &mut State, ty: Option<ValueType>) -> u32 {
+        let ty = ty.map(|ty| self.value_type(state, ty));
+        let index = state.current.encodable.type_count();
+        state.current.encodable.ty().defined_type().stream(ty);
+        index
+    }
+
+    fn future(&self, state: &mut State, ty: Option<ValueType>) -> u32 {
+        let ty = ty.map(|ty| self.value_type(state, ty));
+        let index = state.current.encodable.type_count();
+        state.current.encodable.ty().defined_type().future(ty);
         index
     }
 

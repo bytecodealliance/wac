@@ -1,11 +1,14 @@
 failed to resolve document
 
-  × mismatched instantiation argument `x`
-  ├─▶ mismatched type for export `f`
-  ╰─▶ expected function that returns a named result, found function with a single result type
-   ╭─[tests/resolution/fail/expected-result-named.wac:7:23]
+  × failed to resolve package `foo:bar`
+  ╰─▶ unexpected token, expected one of: `bool`, `s8`, `u8`, `s16`, `u16`, `s32`, `u32`, `s64`, `u64`, `f32`, `f64`, `float32`, `float64`, `char`, `string`, `error-context`
+           --> tests/resolution/fail/expected-result-named/foo/bar.wat:3:31
+            |
+          3 |     (export "f" (func (result "a" string)))
+            |                               ^
+   ╭─[tests/resolution/fail/expected-result-named.wac:7:13]
  6 │ 
  7 │ let i = new foo:bar { x };
-   ·                       ┬
-   ·                       ╰── mismatched argument `x`
+   ·             ───┬───
+   ·                ╰── package `foo:bar` failed to resolve
    ╰────

@@ -47,7 +47,12 @@ wit-component = { workspace = true }
 default = ["wit", "registry"]
 wat = ["wac-resolver/wat"]
 wit = ["wac-resolver/wit"]
-registry = ["wac-resolver/registry", "dep:indicatif", "dep:warg-client", "dep:warg-protocol"]
+registry = [
+    "wac-resolver/registry",
+    "dep:indicatif",
+    "dep:warg-client",
+    "dep:warg-protocol",
+]
 native-tls-vendored = ["warg-client?/native-tls-vendored"]
 
 [workspace]
@@ -58,12 +63,13 @@ wac-parser = { path = "crates/wac-parser", version = "0.7.0-dev", default-featur
 wac-resolver = { path = "crates/wac-resolver", version = "0.7.0-dev", default-features = false }
 wac-graph = { path = "crates/wac-graph", version = "0.7.0-dev" }
 wac-types = { path = "crates/wac-types", version = "0.7.0-dev" }
-wit-parser = "0.202.0"
-wasmparser = "0.202.0"
-wit-component = "0.202.0"
-wasm-encoder = "0.202.0"
-wasmprinter = "0.202.0"
-wasm-metadata = "0.202.0"
+wit-parser = "0.227.0"
+wasmparser = "0.227.0"
+wit-component = "0.227.0"
+wasm-encoder = "0.227.0"
+wasmprinter = "0.227.0"
+wasm-metadata = "0.227.0"
+wat = "1.227.0"
 anyhow = "1.0.81"
 clap = { version = "4.5.4", features = ["derive"] }
 semver = { version = "1.0.22", features = ["serde"] }
@@ -78,7 +84,6 @@ indexmap = { version = "2.2.6", features = ["serde"] }
 id-arena = "2.2.1"
 serde = { version = "1.0.197", features = ["derive"] }
 serde_json = "1.0.115"
-wat = "1.202.0"
 logos = "0.14.0"
 miette = "7.2.0"
 thiserror = "1.0.58"

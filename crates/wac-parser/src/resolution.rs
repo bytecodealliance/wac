@@ -10,10 +10,10 @@ use std::{
 };
 use wac_graph::{
     types::{
-        BorrowedPackageKey, DefinedType, Enum, ExternKind, Flags, FuncKind, FuncResult, FuncType,
-        FuncTypeId, Interface, InterfaceId, ItemKind, Package, PackageKey, PrimitiveType, Record,
-        Resource, ResourceAlias, ResourceId, SubtypeChecker, Type, UsedType, ValueType, Variant,
-        World, WorldId,
+        BorrowedPackageKey, DefinedType, Enum, ExternKind, Flags, FuncKind, FuncType, FuncTypeId,
+        Interface, InterfaceId, ItemKind, Package, PackageKey, PrimitiveType, Record, Resource,
+        ResourceAlias, ResourceId, SubtypeChecker, Type, UsedType, ValueType, Variant, World,
+        WorldId,
     },
     CompositionGraph, DefineTypeError, EncodeError, EncodeOptions, ExportError, ImportError,
     InstantiationArgumentError, NodeId, NodeKind, PackageId, Processor,
@@ -664,7 +664,7 @@ pub struct Resolution<'a> {
     instantiation_spans: HashMap<NodeId, SourceSpan>,
 }
 
-impl<'a> Resolution<'a> {
+impl Resolution<'_> {
     /// Gets the document that was resolved.
     pub fn document(&self) -> &Document {
         self.document
@@ -2113,50 +2113,27 @@ impl<'a> AstResolver<'a> {
             }
         }
 
-        let results = match func_results {
+        let result = match func_results {
             ast::ResultList::Empty => {
                 if kind == FuncKind::Constructor {
-                    Some(FuncResult::Scalar(ValueType::Own(resource.unwrap())))
+                    Some(ValueType::Own(resource.unwrap()))
                 } else {
                     None
                 }
-            }
-            ast::ResultList::Named(results) => {
-                let mut list = IndexMap::new();
-                for result in results {
-                    let value_type = Self::ty(state, &result.ty)?;
-                    if value_type.contains_borrow(state.graph.types()) {
-                        return Err(Error::BorrowInResult {
-                            span: result.ty.span(),
-                        });
-                    }
-
-                    if list
-                        .insert(result.id.string.to_owned(), value_type)
-                        .is_some()
-                    {
-                        return Err(Error::DuplicateResult {
-                            name: result.id.string.to_string(),
-                            kind,
-                            span: result.id.span,
-                        });
-                    }
-                }
-                Some(FuncResult::List(list))
             }
             ast::ResultList::Scalar(ty) => {
                 let value_type = Self::ty(state, ty)?;
                 if value_type.contains_borrow(state.graph.types()) {
                     return Err(Error::BorrowInResult { span: ty.span() });
                 }
-                Some(FuncResult::Scalar(value_type))
+                Some(value_type)
             }
         };
 
         Ok(state
             .graph
             .types_mut()
-            .add_func_type(FuncType { params, results }))
+            .add_func_type(FuncType { params, result }))
     }
 
     fn expr(

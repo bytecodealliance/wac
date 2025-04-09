@@ -9,7 +9,7 @@ use warg_client::{
 use warg_crypto::signing::PrivateKey;
 use warg_protocol::{operator::NamespaceState, registry::PackageName};
 use warg_server::{policy::content::WasmContentPolicy, Config, Server};
-use wit_parser::{Resolve, UnresolvedPackage};
+use wit_parser::Resolve;
 
 pub fn test_operator_key() -> &'static str {
     "ecdsa-p256:I+UlDo0HxyBBFeelhPPWmD+LnklOpqZDkrFP5VduASk="
@@ -43,16 +43,17 @@ pub async fn publish_wit(
     wit: &str,
     init: bool,
 ) -> Result<()> {
+    use std::io::Write;
     let mut resolve = Resolve::new();
+    let mut tmp = tempfile::NamedTempFile::new()?;
+    tmp.write(wit.as_bytes())?;
+    let path = tmp.path();
     let pkg = resolve
-        .push(
-            UnresolvedPackage::parse(Path::new("foo.wit"), wit)
-                .context("failed to parse wit for publishing")?,
-        )
+        .push_file(path)
         .context("failed to resolve wit for publishing")?;
 
-    let bytes = wit_component::encode(Some(true), &resolve, pkg)
-        .context("failed to encode wit for publishing")?;
+    let bytes =
+        wit_component::encode(&resolve, pkg).context("failed to encode wit for publishing")?;
 
     publish(config, &name.parse()?, version, bytes, init).await
 }

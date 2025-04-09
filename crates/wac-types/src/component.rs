@@ -515,6 +515,8 @@ pub enum PrimitiveType {
     Bool,
     /// A `string` type.
     String,
+    /// An `error-context` type.
+    ErrorContext,
 }
 
 impl PrimitiveType {
@@ -534,6 +536,7 @@ impl PrimitiveType {
             Self::Char => "char",
             Self::Bool => "bool",
             Self::String => "string",
+            Self::ErrorContext => "error-context",
         }
     }
 }
@@ -554,6 +557,7 @@ impl From<wasmparser::PrimitiveValType> for PrimitiveType {
             wasmparser::PrimitiveValType::F64 => Self::F64,
             wasmparser::PrimitiveValType::Char => Self::Char,
             wasmparser::PrimitiveValType::String => Self::String,
+            wasmparser::PrimitiveValType::ErrorContext => Self::ErrorContext,
         }
     }
 }
@@ -574,6 +578,7 @@ impl From<PrimitiveType> for wasm_encoder::PrimitiveValType {
             PrimitiveType::Char => Self::Char,
             PrimitiveType::Bool => Self::Bool,
             PrimitiveType::String => Self::String,
+            PrimitiveType::ErrorContext => Self::ErrorContext,
         }
     }
 }
@@ -640,7 +645,7 @@ impl serde::Serialize for ValueType {
             Self::Primitive(ty) => ty.serialize(serializer),
             Self::Borrow(id) => format!("borrow<{id}>", id = id.0.index()).serialize(serializer),
             Self::Own(id) => format!("own<{id}>", id = id.0.index()).serialize(serializer),
-            Self::Defined { id, .. } => id.serialize(serializer),
+            Self::Defined(id) => id.serialize(serializer),
         }
     }
 }
@@ -673,6 +678,10 @@ pub enum DefinedType {
     Enum(Enum),
     /// The type is an alias to another value type.
     Alias(ValueType),
+    /// A stream type.
+    Stream(Option<ValueType>),
+    /// A futures type.
+    Future(Option<ValueType>),
 }
 
 impl DefinedType {
@@ -694,6 +703,8 @@ impl DefinedType {
             Self::Flags(_) => false,
             Self::Enum(_) => false,
             Self::Alias(ty) => ty.contains_borrow(types),
+            Self::Stream(ty) => ty.map(|ty| ty.contains_borrow(types)).unwrap_or(false),
+            Self::Future(ty) => ty.map(|ty| ty.contains_borrow(types)).unwrap_or(false),
         }
     }
 
@@ -739,10 +750,17 @@ impl DefinedType {
                 Ok(())
             }
             DefinedType::Flags(_) | DefinedType::Enum(_) | DefinedType::Alias(_) => Ok(()),
+            DefinedType::Stream(ty) | DefinedType::Future(ty) => {
+                if let Some(ty) = ty {
+                    ty._visit_defined_types(types, visitor, false)?;
+                }
+
+                Ok(())
+            }
         }
     }
 
-    /// Gets a description of the defined type.
+    /// Gets atyd | DefinedType::Future(t)escription of the defined type.
     pub fn desc(&self, types: &Types) -> &'static str {
         match self {
             Self::Tuple(_) => "tuple",
@@ -754,6 +772,8 @@ impl DefinedType {
             Self::Flags(_) => "flags",
             Self::Enum(_) => "enum",
             Self::Alias(ty) => ty.desc(types),
+            Self::Stream(_) => "stream",
+            Self::Future(_) => "future",
         }
     }
 }
@@ -848,8 +868,8 @@ pub struct Enum(pub IndexSet<String>);
 pub struct FuncType {
     /// The parameters of the function.
     pub params: IndexMap<String, ValueType>,
-    /// The results of the function.
-    pub results: Option<FuncResult>,
+    /// The result of the function.
+    pub result: Option<ValueType>,
 }
 
 impl FuncType {
@@ -862,41 +882,11 @@ impl FuncType {
             ty._visit_defined_types(types, visitor, false)?;
         }
 
-        if let Some(results) = self.results.as_ref() {
-            results._visit_defined_types(types, visitor)?;
+        if let Some(ty) = &self.result {
+            ty._visit_defined_types(types, visitor, false)?;
         }
 
         Ok(())
-    }
-}
-
-/// Represents a function result.
-#[derive(Debug, Clone)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize))]
-#[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
-pub enum FuncResult {
-    /// A scalar result.
-    Scalar(ValueType),
-    /// A list of named results.
-    List(IndexMap<String, ValueType>),
-}
-
-impl FuncResult {
-    fn _visit_defined_types<'a, E>(
-        &self,
-        types: &'a Types,
-        visitor: &mut impl FnMut(&'a Types, DefinedTypeId) -> Result<(), E>,
-    ) -> Result<(), E> {
-        match self {
-            FuncResult::Scalar(ty) => ty._visit_defined_types(types, visitor, false),
-            FuncResult::List(tys) => {
-                for ty in tys.values() {
-                    ty._visit_defined_types(types, visitor, false)?;
-                }
-
-                Ok(())
-            }
-        }
     }
 }
 
@@ -988,7 +978,7 @@ impl World {
     pub fn implicit_imported_interfaces<'a>(
         &'a self,
         types: &'a Types,
-    ) -> IndexMap<&str, ItemKind> {
+    ) -> IndexMap<&'a str, ItemKind> {
         let mut interfaces = IndexMap::new();
         let mut add_interface_for_used_type = |used_item: &UsedType| {
             let used_interface_id = used_item.interface;

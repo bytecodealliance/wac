@@ -1,7 +1,7 @@
 use crate::{
-    CoreExtern, CoreFuncType, DefinedType, DefinedTypeId, Enum, Flags, FuncResult, FuncTypeId,
-    InterfaceId, ItemKind, ModuleTypeId, PrimitiveType, Record, ResourceId, Type, Types, ValueType,
-    Variant, WorldId,
+    CoreExtern, CoreFuncType, DefinedType, DefinedTypeId, Enum, Flags, FuncTypeId, InterfaceId,
+    ItemKind, ModuleTypeId, PrimitiveType, Record, ResourceId, Type, Types, ValueType, Variant,
+    WorldId,
 };
 use anyhow::{bail, Context, Result};
 use indexmap::IndexMap;
@@ -79,7 +79,13 @@ impl<'a> SubtypeChecker<'a> {
             (ItemKind::Component(a), ItemKind::Component(b)) => self.world(a, at, b, bt),
             (ItemKind::Module(a), ItemKind::Module(b)) => self.module(a, at, b, bt),
             (ItemKind::Value(a), ItemKind::Value(b)) => self.value_type(a, at, b, bt),
-            _ => {
+
+            (ItemKind::Type(_), _)
+            | (ItemKind::Func(_), _)
+            | (ItemKind::Instance(_), _)
+            | (ItemKind::Component(_), _)
+            | (ItemKind::Module(_), _)
+            | (ItemKind::Value(_), _) => {
                 let (expected, expected_types, found, found_types) =
                     self.expected_found(&a, at, &b, bt);
                 bail!(
@@ -128,22 +134,29 @@ impl<'a> SubtypeChecker<'a> {
 
     fn ty(&mut self, a: Type, at: &Types, b: Type, bt: &Types) -> Result<()> {
         match (a, b) {
-            (Type::Resource(a), Type::Resource(b)) => return self.resource(a, at, b, bt),
-            (Type::Func(a), Type::Func(b)) => return self.func(a, at, b, bt),
-            (Type::Value(a), Type::Value(b)) => return self.value_type(a, at, b, bt),
-            (Type::Interface(a), Type::Interface(b)) => return self.interface(a, at, b, bt),
-            (Type::World(a), Type::World(b)) => return self.world(a, at, b, bt),
-            (Type::Module(a), Type::Module(b)) => return self.module(a, at, b, bt),
-            _ => {}
+            (Type::Resource(a), Type::Resource(b)) => self.resource(a, at, b, bt),
+            (Type::Func(a), Type::Func(b)) => self.func(a, at, b, bt),
+            (Type::Value(a), Type::Value(b)) => self.value_type(a, at, b, bt),
+            (Type::Interface(a), Type::Interface(b)) => self.interface(a, at, b, bt),
+            (Type::World(a), Type::World(b)) => self.world(a, at, b, bt),
+            (Type::Module(a), Type::Module(b)) => self.module(a, at, b, bt),
+
+            (Type::Func(_), _)
+            | (Type::Resource(_), _)
+            | (Type::Value(_), _)
+            | (Type::Interface(_), _)
+            | (Type::World(_), _)
+            | (Type::Module(_), _) => {
+                let (expected, expected_types, found, found_types) =
+                    self.expected_found(&a, at, &b, bt);
+
+                bail!(
+                    "expected {expected}, found {found}",
+                    expected = expected.desc(expected_types),
+                    found = found.desc(found_types)
+                )
+            }
         }
-
-        let (expected, expected_types, found, found_types) = self.expected_found(&a, at, &b, bt);
-
-        bail!(
-            "expected {expected}, found {found}",
-            expected = expected.desc(expected_types),
-            found = found.desc(found_types)
-        )
     }
 
     fn func(&self, a: FuncTypeId, at: &Types, b: FuncTypeId, bt: &Types) -> Result<()> {
@@ -177,51 +190,27 @@ impl<'a> SubtypeChecker<'a> {
                 .with_context(|| format!("mismatched type for function parameter `{bn}`"))?;
         }
 
-        match (&a.results, &b.results) {
+        match (&a.result, &b.result) {
             (None, None) => return Ok(()),
-            (Some(FuncResult::Scalar(a)), Some(FuncResult::Scalar(b))) => {
+            (Some(a), Some(b)) => {
                 return self
                     .value_type(*a, at, *b, bt)
                     .context("mismatched type for function result");
             }
-            (Some(FuncResult::List(a)), Some(FuncResult::List(b))) => {
-                for (i, ((an, a), (bn, b))) in a.iter().zip(b.iter()).enumerate() {
-                    if an != bn {
-                        let (expected, _, found, _) = self.expected_found(an, at, bn, bt);
-                        bail!("expected function result {i} to be named `{expected}`, found name `{found}`");
-                    }
-
-                    self.value_type(*a, at, *b, bt)
-                        .with_context(|| format!("mismatched type for function result `{bn}`"))?;
-                }
-
-                return Ok(());
-            }
-            (Some(FuncResult::List(_)), Some(FuncResult::Scalar(_)))
-            | (Some(FuncResult::Scalar(_)), Some(FuncResult::List(_)))
-            | (Some(_), None)
-            | (None, Some(_)) => {
+            (None, _) | (Some(_), _) => {
                 // Handle the mismatch below
             }
         }
 
         let (expected, _, found, _) = self.expected_found(a, at, b, bt);
-        match (&expected.results, &found.results) {
-            (Some(FuncResult::List(_)), Some(FuncResult::Scalar(_))) => {
-                bail!("expected function that returns a named result, found function with a single result type")
-            }
-            (Some(FuncResult::Scalar(_)), Some(FuncResult::List(_))) => {
-                bail!("expected function that returns a single result type, found function that returns a named result")
-            }
+        match (&expected.result, &found.result) {
             (Some(_), None) => {
                 bail!("expected function with a result, found function without a result")
             }
             (None, Some(_)) => {
                 bail!("expected function without a result, found function with a result")
             }
-            (Some(FuncResult::Scalar(_)), Some(FuncResult::Scalar(_)))
-            | (Some(FuncResult::List(_)), Some(FuncResult::List(_)))
-            | (None, None) => panic!("should already be handled"),
+            (Some(_), Some(_)) | (None, None) => panic!("should already be handled"),
         }
     }
 
@@ -416,17 +405,21 @@ impl<'a> SubtypeChecker<'a> {
         }
 
         match (a, b) {
-            (CoreExtern::Func(a), CoreExtern::Func(b)) => return self.core_func(a, at, b, bt),
+            (CoreExtern::Func(a), CoreExtern::Func(b)) => self.core_func(a, at, b, bt),
             (
                 CoreExtern::Table {
                     element_type: ae,
                     initial: ai,
                     maximum: am,
+                    table64: _a64,
+                    shared: _ashared,
                 },
                 CoreExtern::Table {
                     element_type: be,
                     initial: bi,
                     maximum: bm,
+                    table64: _b64,
+                    shared: _bshared,
                 },
             ) => {
                 if ae != be {
@@ -438,7 +431,7 @@ impl<'a> SubtypeChecker<'a> {
                     bail!("mismatched table limits");
                 }
 
-                return Ok(());
+                Ok(())
             }
             (
                 CoreExtern::Memory {
@@ -446,12 +439,14 @@ impl<'a> SubtypeChecker<'a> {
                     shared: ashared,
                     initial: ai,
                     maximum: am,
+                    page_size_log2: _apsl,
                 },
                 CoreExtern::Memory {
                     memory64: b64,
                     shared: bshared,
                     initial: bi,
                     maximum: bm,
+                    page_size_log2: _bpsl,
                 },
             ) => {
                 if ashared != bshared {
@@ -466,16 +461,18 @@ impl<'a> SubtypeChecker<'a> {
                     bail!("mismatched memory limits");
                 }
 
-                return Ok(());
+                Ok(())
             }
             (
                 CoreExtern::Global {
                     val_type: avt,
                     mutable: am,
+                    shared: _ashared,
                 },
                 CoreExtern::Global {
                     val_type: bvt,
                     mutable: bm,
+                    shared: _bshared,
                 },
             ) => {
                 if am != bm {
@@ -487,14 +484,19 @@ impl<'a> SubtypeChecker<'a> {
                     bail!("expected global type {expected}, found {found}");
                 }
 
-                return Ok(());
+                Ok(())
             }
-            (CoreExtern::Tag(a), CoreExtern::Tag(b)) => return self.core_func(a, at, b, bt),
-            _ => {}
-        }
+            (CoreExtern::Tag(a), CoreExtern::Tag(b)) => self.core_func(a, at, b, bt),
 
-        let (expected, _, found, _) = self.expected_found(a, at, b, bt);
-        bail!("expected {expected}, found {found}");
+            (CoreExtern::Func(_), _)
+            | (CoreExtern::Table { .. }, _)
+            | (CoreExtern::Memory { .. }, _)
+            | (CoreExtern::Global { .. }, _)
+            | (CoreExtern::Tag(_), _) => {
+                let (expected, _, found, _) = self.expected_found(a, at, b, bt);
+                bail!("expected {expected}, found {found}");
+            }
+        }
     }
 
     fn core_func(&self, a: &CoreFuncType, at: &Types, b: &CoreFuncType, bt: &Types) -> Result<()> {
@@ -515,7 +517,11 @@ impl<'a> SubtypeChecker<'a> {
             (ValueType::Defined(a), ValueType::Defined(b)) => self.defined_type(a, at, b, bt),
             (ValueType::Borrow(a), ValueType::Borrow(b))
             | (ValueType::Own(a), ValueType::Own(b)) => self.resource(a, at, b, bt),
-            _ => {
+
+            (ValueType::Primitive(_), _)
+            | (ValueType::Defined(_), _)
+            | (ValueType::Borrow(_), _)
+            | (ValueType::Own(_), _) => {
                 let (expected, expected_types, found, found_types) =
                     self.expected_found(&a, at, &b, bt);
                 bail!(
@@ -545,6 +551,12 @@ impl<'a> SubtypeChecker<'a> {
             (DefinedType::List(a), DefinedType::List(b)) => self
                 .value_type(*a, at, *b, bt)
                 .context("mismatched type for list element"),
+            (DefinedType::Future(a), DefinedType::Future(b)) => self
+                .payload(*a, at, *b, bt)
+                .context("mismatched type for future payload"),
+            (DefinedType::Stream(a), DefinedType::Stream(b)) => self
+                .payload(*a, at, *b, bt)
+                .context("mismatched type for stream payload"),
             (DefinedType::Option(a), DefinedType::Option(b)) => self
                 .value_type(*a, at, *b, bt)
                 .context("mismatched type for option"),
@@ -568,7 +580,17 @@ impl<'a> SubtypeChecker<'a> {
             (DefinedType::Alias(_), _) | (_, DefinedType::Alias(_)) => {
                 panic!("aliases should have been resolved")
             }
-            _ => {
+
+            (DefinedType::Tuple(_), _)
+            | (DefinedType::List(_), _)
+            | (DefinedType::Option(_), _)
+            | (DefinedType::Result { .. }, _)
+            | (DefinedType::Variant(_), _)
+            | (DefinedType::Record(_), _)
+            | (DefinedType::Flags(_), _)
+            | (DefinedType::Enum(_), _)
+            | (DefinedType::Stream(_), _)
+            | (DefinedType::Future(_), _) => {
                 let (expected, expected_types, found, found_types) =
                     self.expected_found(a, at, b, bt);
                 bail!(
@@ -732,6 +754,21 @@ impl<'a> SubtypeChecker<'a> {
         }
 
         Ok(())
+    }
+
+    fn payload(
+        &self,
+        a: Option<ValueType>,
+        at: &Types,
+        b: Option<ValueType>,
+        bt: &Types,
+    ) -> Result<()> {
+        match (a, b) {
+            (Some(a), Some(b)) => self.value_type(a, at, b, bt),
+            (None, None) => Ok(()),
+            (Some(_), None) => bail!("expected a type payload, found none"),
+            (None, Some(_)) => bail!("expected no type payload, found one"),
+        }
     }
 
     fn primitive(&self, a: PrimitiveType, at: &Types, b: PrimitiveType, bt: &Types) -> Result<()> {
