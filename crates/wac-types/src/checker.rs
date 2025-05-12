@@ -551,6 +551,13 @@ impl<'a> SubtypeChecker<'a> {
             (DefinedType::List(a), DefinedType::List(b)) => self
                 .value_type(*a, at, *b, bt)
                 .context("mismatched type for list element"),
+            (DefinedType::FixedSizeList(a, asize), DefinedType::FixedSizeList(b, bsize)) => {
+                if asize != bsize {
+                    bail!("mismatched size for fixed size list element");
+                }
+                self.value_type(*a, at, *b, bt)
+                    .context("mismatched type for fixed size list element")
+            }
             (DefinedType::Future(a), DefinedType::Future(b)) => self
                 .payload(*a, at, *b, bt)
                 .context("mismatched type for future payload"),
@@ -583,6 +590,7 @@ impl<'a> SubtypeChecker<'a> {
 
             (DefinedType::Tuple(_), _)
             | (DefinedType::List(_), _)
+            | (DefinedType::FixedSizeList(_, _), _)
             | (DefinedType::Option(_), _)
             | (DefinedType::Result { .. }, _)
             | (DefinedType::Variant(_), _)
