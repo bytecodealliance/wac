@@ -23,8 +23,7 @@ wac-types = { workspace = true }
 wac-graph = { workspace = true }
 wac-resolver = { workspace = true, default-features = false }
 wac-parser = { workspace = true, default-features = false }
-warg-client = { workspace = true, optional = true }
-warg-protocol = { workspace = true, optional = true }
+wasm-pkg-client ={ workspace = true, optional = true }
 anyhow = { workspace = true }
 clap = { workspace = true }
 pretty_env_logger = { workspace = true }
@@ -50,10 +49,7 @@ wit = ["wac-resolver/wit"]
 registry = [
     "wac-resolver/registry",
     "dep:indicatif",
-    "dep:warg-client",
-    "dep:warg-protocol",
 ]
-native-tls-vendored = ["warg-client?/native-tls-vendored"]
 
 [workspace]
 members = ["examples/programmatic"]
@@ -87,10 +83,7 @@ serde_json = "1.0.115"
 logos = "0.14.0"
 miette = "7.2.0"
 thiserror = "1.0.58"
-warg-client = "0.9.0"
-warg-protocol = "0.9.0"
-warg-crypto = "0.9.0"
-warg-server = "0.9.0"
+wasm-pkg-client = "0.10.0"
 futures = "0.3.30"
 indicatif = "0.17.8"
 pretty_assertions = "1.4.0"
