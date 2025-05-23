@@ -7,9 +7,11 @@ mod checker;
 mod component;
 mod core;
 mod package;
+mod targets;
 
 pub use aggregator::*;
 pub use checker::*;
 pub use component::*;
 pub use core::*;
 pub use package::*;
+pub use targets::*;
