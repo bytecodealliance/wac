@@ -4149,6 +4149,7 @@ dependencies = [
  "wac-parser",
  "wac-types",
  "wasm-pkg-client",
+ "wasm-pkg-core",
  "wasmprinter 0.229.0",
  "wat",
  "wit-component 0.229.0",
@@ -4538,6 +4539,30 @@ dependencies = [
  "tokio",
  "toml",
  "tracing",
+]
+
+[[package]]
+name = "wasm-pkg-core"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7ae41d5d86a11b99ef3158d54d7973d5d843ae3a5fb9f9144f3c7f9cb0a5f901"
+dependencies = [
+ "anyhow",
+ "futures-util",
+ "indexmap 2.7.1",
+ "libc",
+ "semver",
+ "serde",
+ "tokio",
+ "tokio-util",
+ "toml",
+ "tracing",
+ "wasm-metadata 0.224.1",
+ "wasm-pkg-client",
+ "wasm-pkg-common",
+ "windows-sys 0.59.0",
+ "wit-component 0.224.1",
+ "wit-parser 0.224.1",
 ]
 
 [[package]]

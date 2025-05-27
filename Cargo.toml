@@ -50,6 +50,7 @@ registry = [
     "wac-resolver/registry",
     "dep:indicatif",
 ]
+wasm-pkg-client = ["dep:wasm-pkg-client"]
 
 [workspace]
 members = ["examples/programmatic"]
@@ -84,6 +85,7 @@ logos = "0.14.0"
 miette = "7.2.0"
 thiserror = "1.0.58"
 wasm-pkg-client = "0.10.0"
+wasm-pkg-core = "0.10.0"
 futures = "0.3.30"
 indicatif = "0.17.8"
 pretty_assertions = "1.4.0"
