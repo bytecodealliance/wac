@@ -21,16 +21,14 @@ indexmap = { workspace = true }
 wat = { workspace = true, optional = true }
 wit-parser = { workspace = true, optional = true }
 miette = { workspace = true }
-warg-client = { workspace = true, optional = true }
-warg-protocol = { workspace = true, optional = true }
-warg-crypto = { workspace = true, optional = true }
+wasm-pkg-client ={ workspace = true, optional = true }
+wasm-pkg-core ={ workspace = true, optional = true }
 tokio = { workspace = true, optional = true }
 futures = { workspace = true, optional = true }
 
 [dev-dependencies]
 wac-graph = { workspace = true }
 wasmprinter = { workspace = true }
-warg-server = { workspace = true }
 pretty_assertions = { workspace = true }
 tokio-util = "0.7.10"
 tempdir = "0.3.7"
@@ -41,9 +39,8 @@ default = ["registry"]
 wat = ["dep:wat"]
 wit = ["dep:wit-parser"]
 registry = [
-    "dep:warg-client",
-    "dep:warg-protocol",
-    "dep:warg-crypto",
+    "dep:wasm-pkg-client",
+    "dep:wasm-pkg-core",
     "dep:tokio",
     "dep:futures",
 ]

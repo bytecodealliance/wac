@@ -6,8 +6,7 @@ use miette::SourceSpan;
 use semver::{Version, VersionReq};
 use std::{fs, path::Path, sync::Arc};
 use wac_types::BorrowedPackageKey;
-use warg_client::{Client, ClientError, Config, FileSystemClient};
-use warg_protocol::registry::PackageName;
+use wasm_pkg_client::{Config, PackageRef, Registry};
 
 /// Implemented by progress bars.
 ///
@@ -26,12 +25,34 @@ pub trait ProgressBar {
     fn finish(&self);
 }
 
+struct Client(wasm_pkg_client::Client);
+
+impl std::ops::Deref for Client {
+    type Target = &wasm_pkg_client::Client;
+
+    fn deref(&self) -> &Self::Target {
+        self.0
+    }
+}
+
+impl Client {
+async fn unwrap_version_or_latest(&self, package: &PackageRef version: Option<Version>) -> Result<Version, Error> {
+        if let Some(version) = version {
+            return Ok(version)
+        }
+        self.list_all_versions(package)
+
+}
+}
+
+
+
 /// Used to resolve packages from a Warg registry.
 ///
 /// Note that the registry will be locked for the lifetime of
 /// the resolver.
 pub struct RegistryPackageResolver {
-    client: Arc<FileSystemClient>,
+    client: Arc<Client>,
     bar: Option<Box<dyn ProgressBar>>,
 }
 
@@ -41,25 +62,27 @@ impl RegistryPackageResolver {
     ///
     /// If `url` is `None`, the default URL will be used.
     pub async fn new(url: Option<&str>, bar: Option<Box<dyn ProgressBar>>) -> Result<Self> {
-        Ok(Self {
-            client: Arc::new(Client::new_with_default_config(url).await?),
-            bar,
-        })
+        let mut config = Config::global_defaults().await?;
+        Self::new_with_config(url, config, bar)
     }
 
     /// Creates a new registry package resolver with the given configuration.
     ///
     /// If `url` is `None`, the default URL will be used.
-    pub async fn new_with_config(
+    pub fn new_with_config(
         url: Option<&str>,
-        config: &Config,
+        mut config: Config,
         bar: Option<Box<dyn ProgressBar>>,
     ) -> Result<Self> {
+        let registry = url.map(|u| u.parse::<Registry>()).transpose()?;
+        config.set_default_registry(registry);
         Ok(Self {
-            client: Arc::new(Client::new_with_config(url, config, None).await?),
+            client: Arc::new(Client::new(config)),
             bar,
         })
     }
+
+
 
     /// Resolves the provided package keys to packages.
     ///
@@ -73,16 +96,16 @@ impl RegistryPackageResolver {
             .iter()
             .map(|(key, span)| {
                 Ok((
-                    PackageName::new(key.name.to_string()).map_err(|_| {
-                        Error::InvalidPackageName {
+                    key.name
+                        .parse::<PackageRef>()
+                        .map_err(|_| Error::InvalidPackageName {
                             name: key.name.to_string(),
                             span: *span,
-                        }
-                    })?,
+                        })?,
                     (key.version.cloned(), *span),
                 ))
             })
-            .collect::<Result<IndexMap<PackageName, (Option<Version>, SourceSpan)>, Error>>()?;
+            .collect::<Result<IndexMap<PackageRef, (Option<Version>, SourceSpan)>, Error>>()?;
 
         // fetch required package logs and return error if any not found
         if let Some(bar) = self.bar.as_ref() {
@@ -113,16 +136,29 @@ impl RegistryPackageResolver {
         }
 
         let mut tasks = FuturesUnordered::new();
-        for (index, (package_name, (version, span))) in
+        for (index, (package, (version, span))) in
             package_names_with_source_span.into_iter().enumerate()
         {
             let client = self.client.clone();
             tasks.push(tokio::spawn(async move {
+                use wasm_pkg_client::Error::*;
+                let err = match client.get_release(package, version).await {
+                    Ok(release) =>
+        Err(VersionNotFound(version)=>  {
+
+                                    Error::PackageVersionDoesNotExist {
+                                        name: name.to_string(),
+                                        version,
+                                        span,
+                                    }
+        }
+
+                }
                 Ok((
                     index,
                     if let Some(version) = version {
                         client
-                            .download_exact(&package_name, &version)
+                            .download_exact(&package, &version)
                             .await
                             .map_err(|err| match err {
                                 ClientError::PackageVersionDoesNotExist { name, version } => {
@@ -136,11 +172,11 @@ impl RegistryPackageResolver {
                             })?
                     } else {
                         client
-                            .download(&package_name, &VersionReq::STAR)
+                            .download(&package, &VersionReq::STAR)
                             .await
                             .map_err(|err| Error::RegistryDownloadFailure { source: err.into() })?
                             .ok_or_else(|| Error::PackageNoReleases {
-                                name: package_name.to_string(),
+                                name: package.to_string(),
                                 span,
                             })?
                     },
