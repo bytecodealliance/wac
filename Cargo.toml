@@ -21,8 +21,8 @@ repository = "https://github.com/bytecodealliance/wac"
 [dependencies]
 wac-types = { workspace = true }
 wac-graph = { workspace = true }
-wac-resolver = { workspace = true, default-features = false }
 wac-parser = { workspace = true, default-features = false }
+wac-resolver = { workspace = true, default-features = false }
 warg-client = { workspace = true, optional = true }
 warg-protocol = { workspace = true, optional = true }
 anyhow = { workspace = true }
