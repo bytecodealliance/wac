@@ -303,7 +303,6 @@ fn publish(krate: &Crate) -> bool {
     let status = Command::new("cargo")
         .arg("publish")
         .current_dir(krate.manifest.parent().unwrap())
-        .arg("--no-verify")
         .status()
         .expect("failed to run cargo");
     if !status.success() {
