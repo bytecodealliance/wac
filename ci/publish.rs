@@ -304,6 +304,7 @@ fn publish(krate: &Crate) -> bool {
         .arg("publish")
         .current_dir(krate.manifest.parent().unwrap())
         .arg("--no-verify")
+        .arg("--keep-going")
         .status()
         .expect("failed to run cargo");
     if !status.success() {
