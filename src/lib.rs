@@ -101,7 +101,7 @@ impl PackageResolver {
                     .map_err(Error::RegistryClientFailed)?,
                 );
             }
-            let reg_packages = self.registry.as_ref().unwrap().resolve(&keys).await?;
+            let reg_packages = self.registry.as_mut().unwrap().resolve(&keys).await?;
             keys.retain(|key, _| !reg_packages.contains_key(key));
             packages.extend(reg_packages);
         }
