@@ -659,6 +659,8 @@ pub enum DefinedType {
     Tuple(Vec<ValueType>),
     /// A list type.
     List(ValueType),
+    /// A fixed size array
+    FixedSizeList(ValueType, u32),
     /// An option type.
     Option(ValueType),
     /// A result type.
@@ -689,7 +691,7 @@ impl DefinedType {
     pub fn contains_borrow(&self, types: &Types) -> bool {
         match self {
             Self::Tuple(tys) => tys.iter().any(|ty| ty.contains_borrow(types)),
-            Self::List(ty) => ty.contains_borrow(types),
+            Self::List(ty) | Self::FixedSizeList(ty, _) => ty.contains_borrow(types),
             Self::Option(ty) => ty.contains_borrow(types),
             Self::Result { ok, err } => {
                 ok.map(|ty| ty.contains_borrow(types)).unwrap_or(false)
@@ -721,7 +723,7 @@ impl DefinedType {
 
                 Ok(())
             }
-            DefinedType::List(ty) | DefinedType::Option(ty) => {
+            DefinedType::List(ty) | DefinedType::Option(ty) | DefinedType::FixedSizeList(ty, _) => {
                 ty._visit_defined_types(types, visitor, false)
             }
             DefinedType::Result { ok, err } => {
@@ -765,6 +767,7 @@ impl DefinedType {
         match self {
             Self::Tuple(_) => "tuple",
             Self::List(_) => "list",
+            Self::FixedSizeList(_, _) => "list<,N>",
             Self::Option(_) => "option",
             Self::Result { .. } => "result",
             Self::Variant(_) => "variant",

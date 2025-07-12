@@ -243,6 +243,7 @@ impl<'a> TypeEncoder<'a> {
         let index = match ty {
             DefinedType::Tuple(types) => self.tuple(state, types),
             DefinedType::List(ty) => self.list(state, *ty),
+            DefinedType::FixedSizeList(ty, elements) => self.fixed_size_list(state, *ty, *elements),
             DefinedType::Option(ty) => self.option(state, *ty),
             DefinedType::Result { ok, err } => self.result(state, *ok, *err),
             DefinedType::Variant(v) => self.variant(state, v),
@@ -549,6 +550,18 @@ impl<'a> TypeEncoder<'a> {
         let ty = self.value_type(state, ty);
         let index = state.current.encodable.type_count();
         state.current.encodable.ty().defined_type().list(ty);
+        index
+    }
+
+    fn fixed_size_list(&self, state: &mut State, ty: ValueType, elements: u32) -> u32 {
+        let ty = self.value_type(state, ty);
+        let index = state.current.encodable.type_count();
+        state
+            .current
+            .encodable
+            .ty()
+            .defined_type()
+            .fixed_size_list(ty, elements);
         index
     }
 
