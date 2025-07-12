@@ -4,7 +4,7 @@ use std::{
     fs,
     path::{Path, PathBuf},
 };
-use wac_types::{ExternKind, ItemKind, Package, SubtypeChecker, Types, WorldId};
+use wac_types::{validate_target, ItemKind, Package, Types, WorldId};
 
 /// Verifies that a given WebAssembly component targets a world.
 #[derive(Args)]
@@ -104,90 +104,4 @@ fn encode_wit_as_component(path: &Path) -> anyhow::Result<Vec<u8>> {
         )
     })?;
     Ok(encoded)
-}
-
-/// An error in target validation
-#[derive(thiserror::Error, miette::Diagnostic, Debug)]
-#[diagnostic(code("component does not match wit world"))]
-pub enum Error {
-    #[error("the target wit does not have an import named `{import}` but the component does")]
-    /// The import is not in the target world
-    ImportNotInTarget {
-        /// The name of the missing target
-        import: String,
-    },
-    #[error("{kind} `{name}` has a mismatched type for targeted wit world")]
-    /// An import or export has a mismatched type for the target world.
-    TargetMismatch {
-        /// The name of the mismatched item
-        name: String,
-        /// The extern kind of the item
-        kind: ExternKind,
-        /// The source of the error
-        #[source]
-        source: anyhow::Error,
-    },
-    #[error("the targeted wit world requires an export named `{name}` but the component did not export one")]
-    /// Missing an export for the target world.
-    MissingTargetExport {
-        /// The export name.
-        name: String,
-        /// The expected item kind.
-        kind: ItemKind,
-    },
-}
-
-/// Validate whether the component conforms to the given world
-pub fn validate_target(
-    types: &Types,
-    wit_world_id: WorldId,
-    component_world_id: WorldId,
-) -> Result<(), Error> {
-    let component_world = &types[component_world_id];
-    let wit_world = &types[wit_world_id];
-    // The interfaces imported implicitly through uses.
-    let implicit_imported_interfaces = wit_world.implicit_imported_interfaces(types);
-    let mut cache = Default::default();
-    let mut checker = SubtypeChecker::new(&mut cache);
-
-    // The output is allowed to import a subset of the world's imports
-    checker.invert();
-    for (import, item_kind) in component_world.imports.iter() {
-        let expected = implicit_imported_interfaces
-            .get(import.as_str())
-            .or_else(|| wit_world.imports.get(import))
-            .ok_or_else(|| Error::ImportNotInTarget {
-                import: import.to_owned(),
-            })?;
-
-        checker
-            .is_subtype(expected.promote(), types, *item_kind, types)
-            .map_err(|e| Error::TargetMismatch {
-                kind: ExternKind::Import,
-                name: import.to_owned(),
-                source: e,
-            })?;
-    }
-
-    checker.revert();
-
-    // The output must export every export in the world
-    for (name, expected) in &wit_world.exports {
-        let export = component_world.exports.get(name).copied().ok_or_else(|| {
-            Error::MissingTargetExport {
-                name: name.clone(),
-                kind: *expected,
-            }
-        })?;
-
-        checker
-            .is_subtype(export, types, expected.promote(), types)
-            .map_err(|e| Error::TargetMismatch {
-                kind: ExternKind::Export,
-                name: name.clone(),
-                source: e,
-            })?;
-    }
-
-    Ok(())
 }
