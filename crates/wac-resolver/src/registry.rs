@@ -1,13 +1,10 @@
 use super::Error;
 use anyhow::Result;
-use futures::{stream::FuturesUnordered, StreamExt};
 use indexmap::IndexMap;
 use miette::SourceSpan;
-use semver::{Version, VersionReq};
-use std::{fs, path::Path, sync::Arc};
 use wac_types::BorrowedPackageKey;
-use warg_client::{Client, ClientError, Config, FileSystemClient};
-use warg_protocol::registry::PackageName;
+use wasm_pkg_client::{caching::FileCache, Config, PackageRef};
+use wasm_pkg_core::resolver::{Dependency, DependencyResolver, RegistryPackage};
 
 /// Implemented by progress bars.
 ///
@@ -31,7 +28,9 @@ pub trait ProgressBar {
 /// Note that the registry will be locked for the lifetime of
 /// the resolver.
 pub struct RegistryPackageResolver {
-    client: Arc<FileSystemClient>,
+    resolver: Option<DependencyResolver<'static>>,
+    config: Config,
+    cache_dir: std::path::PathBuf,
     bar: Option<Box<dyn ProgressBar>>,
 }
 
@@ -41,10 +40,8 @@ impl RegistryPackageResolver {
     ///
     /// If `url` is `None`, the default URL will be used.
     pub async fn new(url: Option<&str>, bar: Option<Box<dyn ProgressBar>>) -> Result<Self> {
-        Ok(Self {
-            client: Arc::new(Client::new_with_default_config(url).await?),
-            bar,
-        })
+        let config = Config::global_defaults().await?;
+        Self::new_with_config(url, config, bar).await
     }
 
     /// Creates a new registry package resolver with the given configuration.
@@ -52,138 +49,168 @@ impl RegistryPackageResolver {
     /// If `url` is `None`, the default URL will be used.
     pub async fn new_with_config(
         url: Option<&str>,
-        config: &Config,
+        mut config: Config,
         bar: Option<Box<dyn ProgressBar>>,
     ) -> Result<Self> {
+        if let Some(url) = url {
+            let registry = url.parse()?;
+            config.set_default_registry(Some(registry));
+        }
+        
+        let cache_dir = std::env::temp_dir().join("wac-cache");
+        let cache = FileCache::new(&cache_dir).await?;
+        let resolver = DependencyResolver::new(Some(config.clone()), None, cache)?;
+        
         Ok(Self {
-            client: Arc::new(Client::new_with_config(url, config, None).await?),
+            resolver: Some(resolver),
+            config,
+            cache_dir,
             bar,
         })
+    }
+
+    /// Creates a new DependencyResolver instance.
+    pub async fn resolver(&self) -> Result<DependencyResolver<'static>, Error> {
+        let cache = FileCache::new(&self.cache_dir).await
+            .map_err(|e| Error::RegistryUpdateFailure { source: e })?;
+        DependencyResolver::new(Some(self.config.clone()), None, cache)
+            .map_err(|e| Error::RegistryUpdateFailure { source: e })
     }
 
     /// Resolves the provided package keys to packages.
     ///
     /// If the package isn't found, an error is returned.
     pub async fn resolve<'a>(
-        &self,
+        &mut self,
         keys: &IndexMap<BorrowedPackageKey<'a>, SourceSpan>,
     ) -> Result<IndexMap<BorrowedPackageKey<'a>, Vec<u8>>, Error> {
-        // parses into `PackageName` and maps back to `SourceSpan`
-        let package_names_with_source_span = keys
-            .iter()
-            .map(|(key, span)| {
-                Ok((
-                    PackageName::new(key.name.to_string()).map_err(|_| {
-                        Error::InvalidPackageName {
-                            name: key.name.to_string(),
-                            span: *span,
-                        }
-                    })?,
-                    (key.version.cloned(), *span),
-                ))
-            })
-            .collect::<Result<IndexMap<PackageName, (Option<Version>, SourceSpan)>, Error>>()?;
-
-        // fetch required package logs and return error if any not found
         if let Some(bar) = self.bar.as_ref() {
-            bar.println("Updating", "package logs from the registry");
-        }
-
-        match self
-            .client
-            .fetch_packages(package_names_with_source_span.keys())
-            .await
-        {
-            Ok(_) => {}
-            Err(ClientError::PackageDoesNotExist { name, .. }) => {
-                return Err(Error::PackageDoesNotExist {
-                    name: name.to_string(),
-                    span: package_names_with_source_span.get(&name).unwrap().1,
-                });
-            }
-            Err(err) => {
-                return Err(Error::RegistryUpdateFailure { source: err.into() });
-            }
-        }
-
-        if let Some(bar) = self.bar.as_ref() {
-            // download package content if not in cache
             bar.init(keys.len());
+            bar.println("Resolving", "packages from the registry");
+        }
+
+        let mut resolver = self.resolver.take().ok_or_else(|| {
+            Error::RegistryUpdateFailure { 
+                source: anyhow::anyhow!("Resolver has already been consumed") 
+            }
+        })?;
+
+        // Convert WAC package keys to wasm-pkg-core dependencies
+        for (key, span) in keys {
+            let package_ref = key.name
+                .parse::<PackageRef>()
+                .map_err(|_| Error::InvalidPackageName {
+                    name: key.name.to_string(),
+                    span: *span,
+                })?;
+
+            let dependency = if let Some(version) = &key.version {
+                Dependency::Package(RegistryPackage {
+                    name: Some(package_ref.clone()),
+                    version: format!("={}", version).parse().map_err(|_| Error::InvalidPackageName {
+                        name: key.name.to_string(),
+                        span: *span,
+                    })?,
+                    registry: None,
+                })
+            } else {
+                Dependency::Package(RegistryPackage {
+                    name: Some(package_ref.clone()),
+                    version: "*".parse().unwrap(),
+                    registry: None,
+                })
+            };
+
+            resolver.add_dependency(&package_ref, &dependency).await
+                .map_err(|e| Error::RegistryUpdateFailure { source: e })?;
+        }
+
+        // Resolve all dependencies
+        let resolutions = resolver.resolve().await
+            .map_err(|e| Error::RegistryUpdateFailure { source: e })?;
+
+        if let Some(bar) = self.bar.as_ref() {
             bar.println("Downloading", "package content from the registry");
         }
 
-        let mut tasks = FuturesUnordered::new();
-        for (index, (package_name, (version, span))) in
-            package_names_with_source_span.into_iter().enumerate()
-        {
-            let client = self.client.clone();
-            tasks.push(tokio::spawn(async move {
-                Ok((
-                    index,
-                    if let Some(version) = version {
-                        client
-                            .download_exact(&package_name, &version)
-                            .await
-                            .map_err(|err| match err {
-                                ClientError::PackageVersionDoesNotExist { name, version } => {
-                                    Error::PackageVersionDoesNotExist {
-                                        name: name.to_string(),
-                                        version,
-                                        span,
-                                    }
-                                }
-                                err => Error::RegistryDownloadFailure { source: err.into() },
-                            })?
-                    } else {
-                        client
-                            .download(&package_name, &VersionReq::STAR)
-                            .await
-                            .map_err(|err| Error::RegistryDownloadFailure { source: err.into() })?
-                            .ok_or_else(|| Error::PackageNoReleases {
-                                name: package_name.to_string(),
-                                span,
-                            })?
-                    },
-                ))
-            }));
-        }
-
+        // Download packages and convert back to WAC format
         let mut packages = IndexMap::with_capacity(keys.len());
-        let count = tasks.len();
-        let mut finished = 0;
+        for (key, span) in keys {
+            let package_ref = key.name.parse::<PackageRef>().unwrap();
+            
+            if let Some(resolution) = resolutions.get(&package_ref) {
+                let decoded = resolution.decode().await
+                    .map_err(|e| Error::RegistryDownloadFailure { source: e })?;
 
-        while let Some(res) = tasks.next().await {
-            let (index, download) = res.unwrap()?;
+                // Get the raw bytes
+                let bytes = match &decoded {
+                    wasm_pkg_core::resolver::DecodedDependency::Wasm { resolution, .. } => {
+                        match resolution {
+                            wasm_pkg_core::resolver::DependencyResolution::Registry(reg_res) => {
+                                let mut reader = reg_res.fetch().await
+                                    .map_err(|e| Error::RegistryDownloadFailure { source: e })?;
+                                let mut buf = Vec::new();
+                                tokio::io::AsyncReadExt::read_to_end(&mut reader, &mut buf).await
+                                    .map_err(|e| Error::RegistryDownloadFailure { source: e.into() })?;
+                                buf
+                            },
+                            wasm_pkg_core::resolver::DependencyResolution::Local(local_res) => {
+                                tokio::fs::read(&local_res.path).await
+                                    .map_err(|e| Error::RegistryContentFailure {
+                                        path: local_res.path.clone(),
+                                        source: e.into(),
+                                    })?
+                            },
+                        }
+                    },
+                    wasm_pkg_core::resolver::DecodedDependency::Wit { resolution, package: _ } => {
+                        // For WIT packages, we need to serialize them back to bytes
+                        // For now, return the WIT source as bytes
+                        match resolution {
+                            wasm_pkg_core::resolver::DependencyResolution::Local(local_res) => {
+                                tokio::fs::read(&local_res.path).await
+                                    .map_err(|e| Error::RegistryContentFailure {
+                                        path: local_res.path.clone(),
+                                        source: e.into(),
+                                    })?
+                            },
+                            _ => {
+                                return Err(Error::RegistryDownloadFailure { 
+                                    source: anyhow::anyhow!("WIT packages from registry not yet supported") 
+                                });
+                            }
+                        }
+                    },
+                };
 
-            finished += 1;
-
-            let (key, _) = keys.get_index(index).unwrap();
-
-            if let Some(bar) = self.bar.as_ref() {
-                bar.inc(1);
-                let BorrowedPackageKey { name, .. } = key;
-                bar.println(
-                    "Downloaded",
-                    &format!("package `{name}` {version}", version = download.version),
-                )
+                packages.insert(*key, bytes);
+                
+                if let Some(bar) = self.bar.as_ref() {
+                    bar.inc(1);
+                    if let Some(version) = resolution.version() {
+                        bar.println(
+                            "Downloaded",
+                            &format!("package `{}` v{}", key.name, version),
+                        );
+                    } else {
+                        bar.println(
+                            "Downloaded",
+                            &format!("package `{}`", key.name),
+                        );
+                    }
+                }
+            } else {
+                return Err(Error::PackageDoesNotExist {
+                    name: key.name.to_string(),
+                    span: *span,
+                });
             }
-
-            packages.insert(*key, Self::read_contents(&download.path)?);
         }
-
-        assert_eq!(finished, count);
 
         if let Some(bar) = self.bar.as_ref() {
             bar.finish();
         }
 
         Ok(packages)
-    }
-
-    fn read_contents(path: &Path) -> Result<Vec<u8>, Error> {
-        fs::read(path).map_err(|e| Error::RegistryContentFailure {
-            path: path.to_path_buf(),
-            source: e.into(),
-        })
     }
 }
