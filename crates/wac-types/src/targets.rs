@@ -1,4 +1,6 @@
-use crate::{ExternKind, ItemKind, SubtypeChecker, Types, WorldId};
+use crate::{
+    ExternKind, ItemKind, NameMap, NameMapNoIntern, SubtypeChecker, Types, World, WorldId,
+};
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 
@@ -113,20 +115,17 @@ pub fn validate_target(
 ) -> TargetValidationResult {
     let component_world = &types[component_world_id];
     let wit_world = &types[wit_world_id];
-    // The interfaces imported implicitly through uses.
-    let implicit_imported_interfaces = wit_world.implicit_imported_interfaces(types);
     let mut cache = Default::default();
     let mut checker = SubtypeChecker::new(&mut cache);
-
     let mut report = TargetValidationReport::default();
 
     // The output is allowed to import a subset of the world's imports
     checker.invert();
+
+    let world_imports = wit_world.all_imports(types);
+
     for (import, item_kind) in component_world.imports.iter() {
-        let Some(expected) = implicit_imported_interfaces
-            .get(import.as_str())
-            .or_else(|| wit_world.imports.get(import))
-        else {
+        let Some(expected) = world_imports.get(import.as_str(), &NameMapNoIntern) else {
             report.imports_not_in_target.insert(import.to_owned());
             continue;
         };
@@ -140,9 +139,19 @@ pub fn validate_target(
 
     checker.revert();
 
+    let component_exports =
+        component_world
+            .exports
+            .iter()
+            .fold(NameMap::default(), |mut map, (name, item)| {
+                // The unwrap here is safe because we allow shaddowing
+                map.insert(name, &mut NameMapNoIntern, true, *item).unwrap();
+                map
+            });
+
     // The output must export every export in the world
     for (name, expected) in &wit_world.exports {
-        let Some(export) = component_world.exports.get(name).copied() else {
+        let Some(export) = component_exports.get(name, &NameMapNoIntern).copied() else {
             report.missing_exports.insert(name.to_owned(), *expected);
             continue;
         };
@@ -155,4 +164,25 @@ pub fn validate_target(
     }
 
     report.into()
+}
+
+impl World {
+    /// This returns all implicit and explicit imports of the world as a mapping
+    /// of names to item kinds. The `NameMap` here is used to enable
+    /// semver-compatible matching of lookups
+    fn all_imports(&self, types: &Types) -> NameMap<String, ItemKind> {
+        let mut map = NameMap::default();
+        let mut intern = NameMapNoIntern;
+        // Add implicit imports from the world
+        for (name, kind) in self.implicit_imported_interfaces(types) {
+            // The unwrap here is safe because we allow shaddowing
+            map.insert(name, &mut intern, true, kind).unwrap();
+        }
+        // Add explicit imports from the world
+        for (name, item) in &self.imports {
+            // The unwrap here is safe because we allow shaddowing.
+            map.insert(name, &mut intern, true, *item).unwrap();
+        }
+        map
+    }
 }
