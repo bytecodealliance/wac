@@ -231,20 +231,42 @@ impl<'a> SubtypeChecker<'a> {
                     self.is_subtype(*a, at, *b, bt)
                         .with_context(|| format!("mismatched type for export `{k}`"))?;
                 }
-                None => match self.kind() {
-                    SubtypeCheck::Covariant => {
-                        bail!(
-                            "instance is missing expected {kind} export `{k}`",
-                            kind = b.desc(bt)
-                        )
+                None => {
+                    // Check if any interface instance exports in the source can provide this export
+                    let mut found_in_interface = false;
+                    for (_source_name, source_kind) in a.iter() {
+                        if let ItemKind::Instance(interface_id) = source_kind {
+                            let interface = &at[*interface_id];
+
+                            if let Some(interface_export) = interface.exports.get(k) {
+                                // Check if the export type matches what's expected
+                                if self.is_subtype(*interface_export, at, *b, bt).is_ok() {
+                                    found_in_interface = true;
+                                    break;
+                                }
+                            }
+                        }
                     }
-                    SubtypeCheck::Contravariant => {
-                        bail!(
-                            "instance has unexpected {kind} export `{k}`",
-                            kind = b.desc(bt)
-                        )
+
+                    if found_in_interface {
+                        // Found a compatible export in an interface instance, continue to next export
+                        continue;
                     }
-                },
+                    match self.kind() {
+                        SubtypeCheck::Covariant => {
+                            bail!(
+                                "instance is missing expected {kind} export `{k}`",
+                                kind = b.desc(bt)
+                            )
+                        }
+                        SubtypeCheck::Contravariant => {
+                            bail!(
+                                "instance has unexpected {kind} export `{k}`",
+                                kind = b.desc(bt)
+                            )
+                        }
+                    }
+                }
             }
         }
 
