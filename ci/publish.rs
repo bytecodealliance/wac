@@ -379,6 +379,7 @@ fn verify(crates: &[Crate]) {
     fn verify_and_vendor(krate: &Crate) {
         let mut cmd = Command::new("cargo");
         cmd.arg("package")
+            .arg("--allow-dirty")
             .arg("--manifest-path")
             .arg(&krate.manifest)
             .env("CARGO_TARGET_DIR", "./target");

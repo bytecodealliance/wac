@@ -46,7 +46,7 @@ pub async fn publish_wit(
     use std::io::Write;
     let mut resolve = Resolve::new();
     let mut tmp = tempfile::NamedTempFile::new()?;
-    tmp.write(wit.as_bytes())?;
+    tmp.write_all(wit.as_bytes())?;
     let path = tmp.path();
     let pkg = resolve
         .push_file(path)
