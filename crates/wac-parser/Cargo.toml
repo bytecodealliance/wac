@@ -25,7 +25,7 @@ wasm-metadata = { workspace = true }
 miette = { workspace = true, features = ["serde"]}
 
 [dev-dependencies]
-wac-resolver = { workspace = true, default-features = false, features = ["wat", "wit"] }
+wac-resolver = { path = "../wac-resolver", default-features = false, features = ["wat", "wit"] }
 owo-colors = "4.0.0"
 pretty_assertions = { workspace = true }
 pretty_env_logger = { workspace = true }
