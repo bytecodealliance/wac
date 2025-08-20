@@ -171,6 +171,6 @@
   (export $p2 (;59;) "p2" (type $p))
   (export $q2 (;60;) "q2" (type $q))
   (@producers
-    (processed-by "wac-parser" "0.8.0")
+    (processed-by "wac-parser" "0.9.0-dev")
   )
 )
