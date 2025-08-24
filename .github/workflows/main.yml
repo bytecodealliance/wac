@@ -39,15 +39,17 @@ jobs:
         rustup default stable
       shell: bash
     - name: Build without default features
-      run: cargo check --no-default-features
+      run: cargo check --workspace --no-default-features
     - name: Build the `wat` feature
-      run: cargo check --no-default-features --features wat
+      run: cargo check --workspace --no-default-features --features wat
     - name: Build the `wit` feature
-      run: cargo check --no-default-features --features wit
+      run: cargo check --workspace --no-default-features --features wit
     - name: Build the `registry` feature
-      run: cargo check --no-default-features --features registry
+      run: cargo check --workspace --no-default-features --features registry
+    - name: Build the `serde` feature
+      run: cargo check --workspace --no-default-features --features serde
     - name: Build all features
-      run: cargo check --all-features
+      run: cargo check --workspace --all-features
 
   rustfmt:
     name: Format source code
