@@ -46,6 +46,8 @@ jobs:
       run: cargo check --no-default-features --features wit
     - name: Build the `registry` feature
       run: cargo check --no-default-features --features registry
+    - name: Build the `serde` feature
+      run: cargo check --no-default-features --features serde
     - name: Build all features
       run: cargo check --all-features
 

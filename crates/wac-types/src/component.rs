@@ -100,7 +100,7 @@ impl fmt::Display for WorldId {
 pub struct ModuleTypeId(Id<ModuleType>);
 
 #[cfg(feature = "serde")]
-impl serde::Serialize for ModuleId {
+impl serde::Serialize for ModuleTypeId {
     fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         self.0.index().serialize(serializer)
     }
