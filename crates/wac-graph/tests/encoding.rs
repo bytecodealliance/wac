@@ -126,7 +126,7 @@ impl GraphFile {
                 path = path.display()
             )
         })?;
-        let world = resolve.select_world(id, None).with_context(|| {
+        let world = resolve.select_world(&[id], None).with_context(|| {
             format!(
                 "failed to select world from `{path}` for test case `{test_case}`",
                 path = path.display()
