@@ -5,7 +5,7 @@ To cut a new release, you will need to do the following:
 1. Confirm that [CI is green](https://github.com/bytecodealliance/wac/actions) for the commit selected to be tagged and released.
 
 2. Change the workspace version number in [Cargo.toml](./Cargo.toml) and the versions for the crates in the workspace dependencies (e.g. `wac-parser`). Additionally change the version in the result `wat` files that include a `producers` section. E.g.:
-``` (@producers (processed-by "wac-parser" "0.8.0"))```
+``` (@producers (processed-by "wac-parser" "0.8.0"))```. NOTE: Running `BLESS=1 cargo test --workspace` will regenerate most of these.
 
 3. Create a pull request with these changes and merge once approved.
 
