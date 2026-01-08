@@ -341,6 +341,9 @@ impl From<wasmparser::HeapType> for HeapType {
             wasmparser::HeapType::Concrete(index) => {
                 Self::Concrete(index.as_module_index().unwrap())
             }
+            wasmparser::HeapType::Exact(_) => {
+                todo!("wasmparser::HeapType::Exact");
+            }
         }
     }
 }
