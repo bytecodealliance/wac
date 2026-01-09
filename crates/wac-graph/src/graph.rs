@@ -1754,7 +1754,7 @@ impl<'a> CompositionGraphEncoder<'a> {
             *index
         } else {
             let index = if options.define_components {
-                state.builder().component_raw(package.bytes())
+                state.builder().component_raw(None, package.bytes())
             } else {
                 let encoder = TypeEncoder::new(&self.0.types);
                 let ty = encoder.component(state, package.ty());
@@ -1798,7 +1798,9 @@ impl<'a> CompositionGraphEncoder<'a> {
             package = package.name(),
         );
 
-        let index = state.builder().instantiate(component_index, arguments);
+        let index = state
+            .builder()
+            .instantiate(None, component_index, arguments);
 
         log::debug!(
             "instantiation of package `{package}` encoded to instance index {index}",
@@ -1828,11 +1830,14 @@ impl<'a> CompositionGraphEncoder<'a> {
             kind = kind.desc(&self.0.types),
         );
 
-        let index = state.builder().alias(Alias::InstanceExport {
-            instance,
-            kind: kind.into(),
-            name: export,
-        });
+        let index = state.builder().alias(
+            None,
+            Alias::InstanceExport {
+                instance,
+                kind: kind.into(),
+                name: export,
+            },
+        );
 
         log::debug!(
             "alias of export `{export}` encoded to {kind} index {index}",

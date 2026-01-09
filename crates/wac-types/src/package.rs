@@ -758,6 +758,9 @@ impl<'a> TypeConverter<'a> {
                 let ty = self.component_val_type(*ty)?;
                 ValueType::Defined(self.types.add_defined_type(DefinedType::List(ty)))
             }
+            wasmparser::component_types::ComponentDefinedType::Map(_, _) => {
+                todo!("wasmparser::component_types::ComponentDefinedType::Map");
+            }
         };
 
         self.cache.insert(key, Entity::Type(Type::Value(ty)));
@@ -807,6 +810,9 @@ impl<'a> TypeConverter<'a> {
             wasmparser::types::EntityType::Memory(ty) => ty.into(),
             wasmparser::types::EntityType::Global(ty) => ty.into(),
             wasmparser::types::EntityType::Tag(ty) => CoreExtern::Tag(self.func_type(ty)),
+            wasmparser::types::EntityType::FuncExact(_) => {
+                todo!("wasmparser::types::EntityType::FuncExact")
+            }
         }
     }
 

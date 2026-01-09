@@ -50,7 +50,7 @@ impl Encodable {
 
     fn ty(&mut self) -> ComponentTypeEncoder {
         match self {
-            Encodable::Builder(t) => t.ty().1,
+            Encodable::Builder(t) => t.ty(None).1,
             Encodable::Instance(t) => t.ty(),
             Encodable::Component(t) => t.ty(),
         }
@@ -58,7 +58,7 @@ impl Encodable {
 
     fn core_type(&mut self) -> ComponentCoreTypeEncoder {
         match self {
-            Encodable::Builder(t) => t.core_type().1,
+            Encodable::Builder(t) => t.core_type(None).1,
             Encodable::Instance(t) => t.core_type(),
             Encodable::Component(t) => t.core_type(),
         }
@@ -79,7 +79,7 @@ impl Encodable {
     fn alias(&mut self, alias: Alias) {
         match self {
             Encodable::Builder(t) => {
-                t.alias(alias);
+                t.alias(None, alias);
             }
             Encodable::Instance(t) => {
                 t.alias(alias);
@@ -399,7 +399,7 @@ impl<'a> TypeEncoder<'a> {
 
         match state.pop() {
             Encodable::Component(ty) => {
-                let (index, encoder) = state.builder().ty();
+                let (index, encoder) = state.builder().ty(None);
                 encoder.component(&ty);
                 log::debug!("encoded interface definition of `{iid}` to type index {index}",);
                 index
@@ -420,7 +420,7 @@ impl<'a> TypeEncoder<'a> {
 
         match state.pop() {
             Encodable::Component(ty) => {
-                let (index, encoder) = state.builder().ty();
+                let (index, encoder) = state.builder().ty(None);
                 encoder.component(&ty);
                 log::debug!("encoded world definition of `{world_id}` to type index {index}");
                 index
