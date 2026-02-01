@@ -561,7 +561,7 @@ impl<'a> TypeEncoder<'a> {
             .encodable
             .ty()
             .defined_type()
-            .fixed_size_list(ty, elements);
+            .fixed_length_list(ty, elements);
         index
     }
 
