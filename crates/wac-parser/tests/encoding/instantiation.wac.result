@@ -84,6 +84,6 @@
   (alias export $x4 "foo" (func (;3;)))
   (export (;4;) "foo" (func 3))
   (@producers
-    (processed-by "wac-parser" "0.9.0-dev")
+    (processed-by "wac-parser" "0.9.0")
   )
 )
