@@ -113,7 +113,7 @@ export i2.foo as "bar";
   (export (;6;) "test:wit/foo" (instance 4))
   (export (;7;) "bar" (instance 5))
   (@producers
-    (processed-by "wac-parser" "0.9.0")
+    (processed-by "wac-parser" "0.10.0-dev")
   )
 )
 "#
