@@ -462,7 +462,9 @@ impl<'a> TypeConverter<'a> {
         let imports = module_ty
             .imports
             .iter()
-            .map(|((module, name), ty)| Ok(((module.clone(), name.clone()), self.entity_type(*ty)?)))
+            .map(|((module, name), ty)| {
+                Ok(((module.clone(), name.clone()), self.entity_type(*ty)?))
+            })
             .collect::<Result<_>>()?;
 
         let exports = module_ty
