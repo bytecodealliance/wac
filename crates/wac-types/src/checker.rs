@@ -411,15 +411,15 @@ impl<'a> SubtypeChecker<'a> {
                     element_type: ae,
                     initial: ai,
                     maximum: am,
-                    table64: _a64,
-                    shared: _ashared,
+                    table64: a64,
+                    shared: ashared,
                 },
                 CoreExtern::Table {
                     element_type: be,
                     initial: bi,
                     maximum: bm,
-                    table64: _b64,
-                    shared: _bshared,
+                    table64: b64,
+                    shared: bshared,
                 },
             ) => {
                 if ae != be {
@@ -431,6 +431,14 @@ impl<'a> SubtypeChecker<'a> {
                     bail!("mismatched table limits");
                 }
 
+                if a64 != b64 {
+                    bail!("mismatched table64 flag for tables");
+                }
+
+                if ashared != bshared {
+                    bail!("mismatched shared flag for tables");
+                }
+
                 Ok(())
             }
             (
@@ -439,14 +447,14 @@ impl<'a> SubtypeChecker<'a> {
                     shared: ashared,
                     initial: ai,
                     maximum: am,
-                    page_size_log2: _apsl,
+                    page_size_log2: apsl,
                 },
                 CoreExtern::Memory {
                     memory64: b64,
                     shared: bshared,
                     initial: bi,
                     maximum: bm,
-                    page_size_log2: _bpsl,
+                    page_size_log2: bpsl,
                 },
             ) => {
                 if ashared != bshared {
@@ -461,18 +469,22 @@ impl<'a> SubtypeChecker<'a> {
                     bail!("mismatched memory limits");
                 }
 
+                if apsl != bpsl {
+                    bail!("mismatched page_size_log2 for memories");
+                }
+
                 Ok(())
             }
             (
                 CoreExtern::Global {
                     val_type: avt,
                     mutable: am,
-                    shared: _ashared,
+                    shared: ashared,
                 },
                 CoreExtern::Global {
                     val_type: bvt,
                     mutable: bm,
-                    shared: _bshared,
+                    shared: bshared,
                 },
             ) => {
                 if am != bm {
@@ -482,6 +494,10 @@ impl<'a> SubtypeChecker<'a> {
                 if avt != bvt {
                     let (expected, _, found, _) = self.expected_found(avt, at, bvt, bt);
                     bail!("expected global type {expected}, found {found}");
+                }
+
+                if ashared != bshared {
+                    bail!("mismatched shared flag for globals");
                 }
 
                 Ok(())
@@ -793,5 +809,97 @@ impl<'a> SubtypeChecker<'a> {
         }
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{CoreRefType, CoreType, HeapType};
+
+    fn check_core_extern(a: &CoreExtern, b: &CoreExtern) -> Result<()> {
+        let types = Types::default();
+        let mut cache = HashSet::new();
+        let checker = SubtypeChecker::new(&mut cache);
+        checker.core_extern(a, &types, b, &types)
+    }
+
+    fn base_table() -> CoreExtern {
+        CoreExtern::Table {
+            element_type: CoreRefType {
+                nullable: true,
+                heap_type: HeapType::Func,
+            },
+            initial: 1,
+            maximum: None,
+            table64: false,
+            shared: false,
+        }
+    }
+
+    #[test]
+    fn mismatched_table64_is_rejected() {
+        let a = base_table();
+        let mut b = base_table();
+        if let CoreExtern::Table { table64, .. } = &mut b {
+            *table64 = true;
+        }
+        assert!(
+            check_core_extern(&a, &b).is_err(),
+            "mismatched table64 should be rejected"
+        );
+    }
+
+    #[test]
+    fn mismatched_table_shared_is_rejected() {
+        let a = base_table();
+        let mut b = base_table();
+        if let CoreExtern::Table { shared, .. } = &mut b {
+            *shared = true;
+        }
+        assert!(
+            check_core_extern(&a, &b).is_err(),
+            "mismatched table shared should be rejected"
+        );
+    }
+
+    #[test]
+    fn mismatched_memory_page_size_log2_is_rejected() {
+        let a = CoreExtern::Memory {
+            memory64: false,
+            shared: false,
+            initial: 1,
+            maximum: None,
+            page_size_log2: Some(16),
+        };
+        let b = CoreExtern::Memory {
+            memory64: false,
+            shared: false,
+            initial: 1,
+            maximum: None,
+            page_size_log2: Some(14),
+        };
+        assert!(
+            check_core_extern(&a, &b).is_err(),
+            "mismatched page_size_log2 should be rejected"
+        );
+    }
+
+    #[test]
+    fn mismatched_global_shared_is_rejected() {
+        let a = CoreExtern::Global {
+            val_type: CoreType::I32,
+            mutable: false,
+            shared: false,
+        };
+        let b = CoreExtern::Global {
+            val_type: CoreType::I32,
+            mutable: false,
+            shared: true,
+        };
+        assert!(
+            check_core_extern(&a, &b).is_err(),
+            "mismatched global shared should be rejected"
+        );
     }
 }
