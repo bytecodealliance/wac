@@ -1,0 +1,10 @@
+failed to resolve document
+
+  × package `foo:bar` has no export named `nonexistent`
+   ╭─[tests/resolution/fail/missing-package-definition.wac:4:17]
+ 3 │ interface i {
+ 4 │     use foo:bar/nonexistent.{a};
+   ·                 ─────┬─────
+   ·                      ╰── unknown export `nonexistent`
+ 5 │ }
+   ╰────
