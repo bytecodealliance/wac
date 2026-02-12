@@ -1029,7 +1029,7 @@ impl CompositionGraph {
         if let NodeKind::Definition = node.kind {
             log::debug!(
                 "removing type definition `{name}`",
-                name = node.name.as_ref().unwrap()
+                name = node.export.as_ref().unwrap()
             );
             let removed = self.defined.remove(&node.item_kind.ty());
             assert!(removed.is_some());
@@ -1958,5 +1958,23 @@ mod test {
             graph.unexport(id).unwrap_err(),
             UnexportError::MustExportDefinition
         ));
+    }
+
+    #[test]
+    fn it_can_remove_a_type_definition() {
+        let mut graph = CompositionGraph::new();
+        let ty_id = graph
+            .types_mut()
+            .add_defined_type(DefinedType::Alias(ValueType::Primitive(PrimitiveType::S32)));
+        let node_id = graph
+            .define_type("foo", Type::Value(ValueType::Defined(ty_id)))
+            .unwrap();
+
+        // Definition nodes store their name in `export`, not `name`.
+        // Removing a definition node should not panic.
+        graph.remove_node(node_id);
+
+        // Verify the definition and export were cleaned up
+        assert!(graph.get_export("foo").is_none());
     }
 }
