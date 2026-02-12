@@ -543,6 +543,15 @@ impl CompositionGraph {
             "invalid package id"
         );
 
+        // Remove exports and definitions associated with the package before
+        // removing nodes, as retain_nodes invalidates the node indices.
+        self.exports
+            .retain(|_, n| self.graph[*n].package != Some(package));
+        self.defined
+            .retain(|_, n| self.graph[*n].package != Some(package));
+        self.imports
+            .retain(|_, n| self.graph[*n].package != Some(package));
+
         // Remove all nodes associated with the package
         self.graph
             .retain_nodes(|g, i| g[i].package != Some(package));
@@ -1958,5 +1967,40 @@ mod test {
             graph.unexport(id).unwrap_err(),
             UnexportError::MustExportDefinition
         ));
+    }
+
+    #[test]
+    fn it_cleans_up_exports_on_unregister_package() {
+        let mut graph = CompositionGraph::new();
+        let bytes = wat::parse_str(
+            r#"(component
+                (import "f" (func))
+                (export "g" (func 0))
+            )"#,
+        )
+        .unwrap();
+
+        let package = wac_types::Package::from_bytes(
+            "test:pkg",
+            None,
+            bytes,
+            graph.types_mut(),
+        )
+        .unwrap();
+        let pkg_id = graph.register_package(package).unwrap();
+
+        // Create an instantiation and export an alias
+        let inst_id = graph.instantiate(pkg_id);
+        let alias_id = graph.alias_instance_export(inst_id, "g").unwrap();
+        graph.export(alias_id, "g").unwrap();
+
+        assert!(graph.get_export("g").is_some());
+
+        // Unregistering the package should clean up exports
+        graph.unregister_package(pkg_id);
+        assert!(
+            graph.get_export("g").is_none(),
+            "exports should be cleaned up after unregister_package"
+        );
     }
 }
