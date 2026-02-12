@@ -111,15 +111,17 @@ impl fmt::Display for CoreExtern {
     }
 }
 
-impl From<wasmparser::TableType> for CoreExtern {
-    fn from(ty: wasmparser::TableType) -> Self {
-        Self::Table {
-            element_type: ty.element_type.into(),
+impl TryFrom<wasmparser::TableType> for CoreExtern {
+    type Error = anyhow::Error;
+
+    fn try_from(ty: wasmparser::TableType) -> anyhow::Result<Self> {
+        Ok(Self::Table {
+            element_type: ty.element_type.try_into()?,
             initial: ty.initial,
             maximum: ty.maximum,
             table64: ty.table64,
             shared: ty.shared,
-        }
+        })
     }
 }
 
@@ -135,13 +137,15 @@ impl From<wasmparser::MemoryType> for CoreExtern {
     }
 }
 
-impl From<wasmparser::GlobalType> for CoreExtern {
-    fn from(ty: wasmparser::GlobalType) -> Self {
-        Self::Global {
-            val_type: ty.content_type.into(),
+impl TryFrom<wasmparser::GlobalType> for CoreExtern {
+    type Error = anyhow::Error;
+
+    fn try_from(ty: wasmparser::GlobalType) -> anyhow::Result<Self> {
+        Ok(Self::Global {
+            val_type: ty.content_type.try_into()?,
             mutable: ty.mutable,
             shared: ty.shared,
-        }
+        })
     }
 }
 
@@ -177,16 +181,18 @@ impl fmt::Display for CoreType {
     }
 }
 
-impl From<wasmparser::ValType> for CoreType {
-    fn from(ty: wasmparser::ValType) -> Self {
-        match ty {
+impl TryFrom<wasmparser::ValType> for CoreType {
+    type Error = anyhow::Error;
+
+    fn try_from(ty: wasmparser::ValType) -> anyhow::Result<Self> {
+        Ok(match ty {
             wasmparser::ValType::I32 => Self::I32,
             wasmparser::ValType::I64 => Self::I64,
             wasmparser::ValType::F32 => Self::F32,
             wasmparser::ValType::F64 => Self::F64,
             wasmparser::ValType::V128 => Self::V128,
-            wasmparser::ValType::Ref(ty) => Self::Ref(ty.into()),
-        }
+            wasmparser::ValType::Ref(ty) => Self::Ref(ty.try_into()?),
+        })
     }
 }
 
@@ -253,12 +259,14 @@ impl fmt::Display for CoreRefType {
     }
 }
 
-impl From<wasmparser::RefType> for CoreRefType {
-    fn from(ty: wasmparser::RefType) -> Self {
-        Self {
+impl TryFrom<wasmparser::RefType> for CoreRefType {
+    type Error = anyhow::Error;
+
+    fn try_from(ty: wasmparser::RefType) -> anyhow::Result<Self> {
+        Ok(Self {
             nullable: ty.is_nullable(),
-            heap_type: ty.heap_type().into(),
-        }
+            heap_type: ty.heap_type().try_into()?,
+        })
     }
 }
 
@@ -316,9 +324,11 @@ pub enum HeapType {
     NoCont,
 }
 
-impl From<wasmparser::HeapType> for HeapType {
-    fn from(ty: wasmparser::HeapType) -> Self {
-        match ty {
+impl TryFrom<wasmparser::HeapType> for HeapType {
+    type Error = anyhow::Error;
+
+    fn try_from(ty: wasmparser::HeapType) -> anyhow::Result<Self> {
+        Ok(match ty {
             wasmparser::HeapType::Abstract { shared: false, ty } => match ty {
                 wasmparser::AbstractHeapType::Any => Self::Any,
                 wasmparser::AbstractHeapType::Func => Self::Func,
@@ -336,15 +346,15 @@ impl From<wasmparser::HeapType> for HeapType {
                 wasmparser::AbstractHeapType::NoCont => Self::NoCont,
             },
             wasmparser::HeapType::Abstract { shared: true, ty } => {
-                panic!("shared heap types are not supported: {:?}", ty)
+                anyhow::bail!("shared heap types are not supported: {ty:?}")
             }
             wasmparser::HeapType::Concrete(index) => {
                 Self::Concrete(index.as_module_index().unwrap())
             }
             wasmparser::HeapType::Exact(_) => {
-                todo!("wasmparser::HeapType::Exact");
+                anyhow::bail!("exact heap types are not yet supported")
             }
-        }
+        })
     }
 }
 
