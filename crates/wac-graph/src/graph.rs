@@ -1980,13 +1980,8 @@ mod test {
         )
         .unwrap();
 
-        let package = wac_types::Package::from_bytes(
-            "test:pkg",
-            None,
-            bytes,
-            graph.types_mut(),
-        )
-        .unwrap();
+        let package =
+            wac_types::Package::from_bytes("test:pkg", None, bytes, graph.types_mut()).unwrap();
         let pkg_id = graph.register_package(package).unwrap();
 
         // Create an instantiation and export an alias
