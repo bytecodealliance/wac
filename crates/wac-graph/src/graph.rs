@@ -1986,7 +1986,7 @@ mod test {
         // Verify the definition and export were cleaned up
         assert!(graph.get_export("foo").is_none());
     }
-    
+    #[test]
     fn it_cleans_up_exports_on_unregister_package() {
         let mut graph = CompositionGraph::new();
         let bytes = wat::parse_str(
