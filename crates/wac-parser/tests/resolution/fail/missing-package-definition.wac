@@ -1,0 +1,5 @@
+package test:comp;
+
+interface i {
+    use foo:bar/nonexistent.{a};
+}
