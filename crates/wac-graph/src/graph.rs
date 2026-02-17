@@ -1553,7 +1553,8 @@ impl<'a> CompositionGraphEncoder<'a> {
 
         // Populate the implicit argument map
         for (name, node) in implicit_imports {
-            let (kind, index) = encoded[name];
+            let canonical = aggregator.canonical_import_name(name);
+            let (kind, index) = encoded[canonical];
             state
                 .implicit_args
                 .entry(node)
@@ -1563,7 +1564,8 @@ impl<'a> CompositionGraphEncoder<'a> {
 
         // Finally, populate the node indexes with the encoded explicit imports
         for (name, node_index) in explicit_imports {
-            let (_, encoded_index) = encoded[name];
+            let canonical = aggregator.canonical_import_name(name);
+            let (_, encoded_index) = encoded[canonical];
             state.node_indexes.insert(node_index, encoded_index);
         }
 
