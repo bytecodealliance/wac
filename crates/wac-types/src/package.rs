@@ -756,7 +756,7 @@ impl<'a> TypeConverter<'a> {
                 let option = ty.map(|ty| self.component_val_type(ty)).transpose()?;
                 ValueType::Defined(self.types.add_defined_type(DefinedType::Future(option)))
             }
-            wasm::ComponentDefinedType::FixedSizeList(ty, size) => {
+            wasm::ComponentDefinedType::FixedLengthList(ty, size) => {
                 let ty = self.component_val_type(*ty)?;
                 ValueType::Defined(
                     self.types
