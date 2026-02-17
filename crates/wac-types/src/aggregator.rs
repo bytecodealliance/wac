@@ -227,7 +227,7 @@ impl TypeAggregator {
                 // We'll remap the source below and replace
                 checker
                     .is_subtype(*source_kind, types, target_kind, &self.types)
-                    .with_context(|| format!("mismatched type for export `{name}`"))?;
+                    .with_context(|| format!("mismatched type for import `{name}`"))?;
             }
 
             let remapped = self.remap_item_kind(types, *source_kind, checker)?;
