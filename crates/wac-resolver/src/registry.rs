@@ -153,7 +153,9 @@ impl RegistryPackageResolver {
         let mut finished = 0;
 
         while let Some(res) = tasks.next().await {
-            let (index, download) = res.unwrap()?;
+            let (index, download) = res.map_err(|e| Error::RegistryDownloadFailure {
+                source: anyhow::anyhow!("download task panicked: {e}"),
+            })??;
 
             finished += 1;
 
