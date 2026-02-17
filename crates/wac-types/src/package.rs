@@ -462,14 +462,16 @@ impl<'a> TypeConverter<'a> {
         let imports = module_ty
             .imports
             .iter()
-            .map(|((module, name), ty)| ((module.clone(), name.clone()), self.entity_type(*ty)))
-            .collect();
+            .map(|((module, name), ty)| {
+                Ok(((module.clone(), name.clone()), self.entity_type(*ty)?))
+            })
+            .collect::<Result<_>>()?;
 
         let exports = module_ty
             .exports
             .iter()
-            .map(|(name, ty)| (name.clone(), self.entity_type(*ty)))
-            .collect();
+            .map(|(name, ty)| Ok((name.clone(), self.entity_type(*ty)?)))
+            .collect::<Result<_>>()?;
 
         let module_id = self.types.add_module_type(ModuleType { imports, exports });
         self.cache
@@ -803,25 +805,35 @@ impl<'a> TypeConverter<'a> {
         resource_id
     }
 
-    fn entity_type(&self, ty: wasmparser::types::EntityType) -> CoreExtern {
-        match ty {
-            wasmparser::types::EntityType::Func(ty) => CoreExtern::Func(self.func_type(ty)),
-            wasmparser::types::EntityType::Table(ty) => ty.into(),
+    fn entity_type(&self, ty: wasmparser::types::EntityType) -> Result<CoreExtern> {
+        Ok(match ty {
+            wasmparser::types::EntityType::Func(ty) => CoreExtern::Func(self.func_type(ty)?),
+            wasmparser::types::EntityType::Table(ty) => ty.try_into()?,
             wasmparser::types::EntityType::Memory(ty) => ty.into(),
-            wasmparser::types::EntityType::Global(ty) => ty.into(),
-            wasmparser::types::EntityType::Tag(ty) => CoreExtern::Tag(self.func_type(ty)),
+            wasmparser::types::EntityType::Global(ty) => ty.try_into()?,
+            wasmparser::types::EntityType::Tag(ty) => CoreExtern::Tag(self.func_type(ty)?),
             wasmparser::types::EntityType::FuncExact(_) => {
                 todo!("wasmparser::types::EntityType::FuncExact")
             }
-        }
+        })
     }
 
-    fn func_type(&self, ty: wasmparser::types::CoreTypeId) -> CoreFuncType {
+    fn func_type(&self, ty: wasmparser::types::CoreTypeId) -> Result<CoreFuncType> {
         let func_ty = self.wasm_types[ty].unwrap_func();
-        CoreFuncType {
-            params: func_ty.params().iter().copied().map(Into::into).collect(),
-            results: func_ty.results().iter().copied().map(Into::into).collect(),
-        }
+        Ok(CoreFuncType {
+            params: func_ty
+                .params()
+                .iter()
+                .copied()
+                .map(TryInto::try_into)
+                .collect::<Result<_>>()?,
+            results: func_ty
+                .results()
+                .iter()
+                .copied()
+                .map(TryInto::try_into)
+                .collect::<Result<_>>()?,
+        })
     }
 
     fn find_owner(&self, mut id: wasm::ComponentAnyTypeId) -> Option<&(Owner, String)> {
