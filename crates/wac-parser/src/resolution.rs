@@ -2553,7 +2553,8 @@ impl<'a> AstResolver<'a> {
             }
 
             // Otherwise, project into the parent based on the current segment
-            let export = match found.unwrap() {
+            let Some(parent) = found else { break };
+            let export = match parent {
                 // The parent is an interface or instance
                 ItemKind::Type(Type::Interface(id)) | ItemKind::Instance(id) => {
                     state.graph.types()[id].exports.get(segment).copied()
