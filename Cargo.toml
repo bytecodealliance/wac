@@ -63,13 +63,13 @@ wac-parser = { path = "crates/wac-parser", version = "0.10.0-dev", default-featu
 wac-resolver = { path = "crates/wac-resolver", version = "0.10.0-dev", default-features = false }
 wac-graph = { path = "crates/wac-graph", version = "0.10.0-dev" }
 wac-types = { path = "crates/wac-types", version = "0.10.0-dev" }
-wit-parser = "0.244.0"
-wasmparser = "0.244.0"
-wit-component = "0.244.0"
-wasm-encoder = "0.244.0"
-wasmprinter = "0.244.0"
-wasm-metadata = "0.244.0"
-wat = "1.244.0"
+wit-parser = "0.245.1"
+wasmparser = "0.245.1"
+wit-component = "0.245.1"
+wasm-encoder = "0.245.1"
+wasmprinter = "0.245.1"
+wasm-metadata = "0.245.1"
+wat = "1.245.1"
 anyhow = "1.0.81"
 clap = { version = "4.5.4", features = ["derive"] }
 semver = { version = "1.0.22", features = ["serde"] }
@@ -81,7 +81,7 @@ tokio = { version = "1.45.1", default-features = false, features = [
 ] }
 owo-colors = { version = "4.0.0", features = ["supports-colors"] }
 indexmap = { version = "2.2.6", features = ["serde"] }
-id-arena = "2.2.1"
+id-arena = "2.3.0"
 serde = { version = "1.0.197", features = ["derive"] }
 serde_json = "1.0.115"
 logos = "0.14.0"

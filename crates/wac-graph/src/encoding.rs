@@ -561,7 +561,7 @@ impl<'a> TypeEncoder<'a> {
             .encodable
             .ty()
             .defined_type()
-            .fixed_size_list(ty, elements);
+            .fixed_length_list(ty, elements);
         index
     }
 
@@ -613,7 +613,7 @@ impl<'a> TypeEncoder<'a> {
         let cases = variant
             .cases
             .iter()
-            .map(|(n, ty)| (n.as_str(), ty.map(|ty| self.value_type(state, ty)), None))
+            .map(|(n, ty)| (n.as_str(), ty.map(|ty| self.value_type(state, ty))))
             .collect::<Vec<_>>();
 
         let index = state.current.encodable.type_count();
