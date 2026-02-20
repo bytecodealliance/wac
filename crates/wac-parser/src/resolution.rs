@@ -666,7 +666,7 @@ pub struct Resolution<'a> {
 
 impl Resolution<'_> {
     /// Gets the document that was resolved.
-    pub fn document(&self) -> &Document {
+    pub fn document(&self) -> &Document<'_> {
         self.document
     }
 

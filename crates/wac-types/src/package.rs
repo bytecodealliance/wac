@@ -101,11 +101,11 @@ impl fmt::Display for BorrowedPackageKey<'_> {
 /// A trait implemented by types that can be borrowed as a package key.
 pub trait BorrowedKey {
     /// Borrows the key as a borrowed package key.
-    fn borrowed_key(&self) -> BorrowedPackageKey;
+    fn borrowed_key(&self) -> BorrowedPackageKey<'_>;
 }
 
 impl BorrowedKey for PackageKey {
-    fn borrowed_key(&self) -> BorrowedPackageKey {
+    fn borrowed_key(&self) -> BorrowedPackageKey<'_> {
         BorrowedPackageKey {
             name: &self.name,
             version: self.version.as_ref(),
@@ -114,7 +114,7 @@ impl BorrowedKey for PackageKey {
 }
 
 impl BorrowedKey for BorrowedPackageKey<'_> {
-    fn borrowed_key(&self) -> BorrowedPackageKey {
+    fn borrowed_key(&self) -> BorrowedPackageKey<'_> {
         *self
     }
 }
@@ -125,15 +125,15 @@ impl<'a> Borrow<dyn BorrowedKey + 'a> for PackageKey {
     }
 }
 
-impl Eq for (dyn BorrowedKey + '_) {}
+impl Eq for dyn BorrowedKey + '_ {}
 
-impl PartialEq for (dyn BorrowedKey + '_) {
+impl PartialEq for dyn BorrowedKey + '_ {
     fn eq(&self, other: &dyn BorrowedKey) -> bool {
         self.borrowed_key().eq(&other.borrowed_key())
     }
 }
 
-impl std::hash::Hash for (dyn BorrowedKey + '_) {
+impl std::hash::Hash for dyn BorrowedKey + '_ {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         self.borrowed_key().hash(state)
     }
@@ -165,7 +165,7 @@ pub struct Package {
 
 impl Package {
     /// Gets the package key for the package.
-    pub fn key(&self) -> BorrowedPackageKey {
+    pub fn key(&self) -> BorrowedPackageKey<'_> {
         BorrowedPackageKey::new(self)
     }
 
