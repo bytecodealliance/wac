@@ -62,7 +62,7 @@ pub enum TypeDecl<'a> {
 
 impl TypeDecl<'_> {
     /// Gets the identifier of the type being declared.
-    pub fn id(&self) -> &Ident {
+    pub fn id(&self) -> &Ident<'_> {
         match self {
             Self::Variant(variant) => &variant.id,
             Self::Record(record) => &record.id,
@@ -787,7 +787,7 @@ impl<'a> Parse<'a> for Type<'a> {
                     } else if Type::peek(&mut lookahead) {
                         Ok(Some(Box::new(Parse::parse(lexer)?)))
                     } else {
-                        return Err(lookahead.error());
+                        Err(lookahead.error())
                     }
                 })?
                 .unwrap_or(None);
@@ -904,7 +904,7 @@ impl Peek for ItemTypeDecl<'_> {
 
 impl ItemTypeDecl<'_> {
     /// Gets the identifier of the type being declared.
-    pub fn id(&self) -> &Ident {
+    pub fn id(&self) -> &Ident<'_> {
         match self {
             Self::Resource(resource) => &resource.id,
             Self::Variant(variant) => &variant.id,

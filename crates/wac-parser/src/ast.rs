@@ -359,7 +359,7 @@ impl<'a> Document<'a> {
     pub fn resolve(
         &self,
         packages: IndexMap<BorrowedPackageKey<'a>, Vec<u8>>,
-    ) -> ResolutionResult<Resolution> {
+    ) -> ResolutionResult<Resolution<'_>> {
         AstResolver::new(self).resolve(packages)
     }
 }
