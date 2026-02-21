@@ -197,7 +197,23 @@ impl NameMapIntern for NameMapNoIntern {
 /// This alternate lookup key is intended to serve the purpose where a
 /// semver-compatible definition can be located, if one is defined, at perhaps
 /// either a newer or an older version.
-fn alternate_lookup_key(name: &str) -> Option<(&str, Version)> {
+/// Returns true if two names are on compatible semver tracks.
+///
+/// Two names are compatible if they are identical, or if they both have
+/// semver versions with the same alternate lookup key. For example,
+/// `a:b/c@0.2.0` and `a:b/c@0.2.1` are compatible (both on the `a:b/c@0.2`
+/// track), while `a:b/c@0.2.0` and `a:b/c@0.3.0` are not.
+pub fn are_semver_compatible(a: &str, b: &str) -> bool {
+    if a == b {
+        return true;
+    }
+    match (alternate_lookup_key(a), alternate_lookup_key(b)) {
+        (Some((key_a, _)), Some((key_b, _))) => key_a == key_b,
+        _ => false,
+    }
+}
+
+pub(crate) fn alternate_lookup_key(name: &str) -> Option<(&str, Version)> {
     let at = name.find('@')?;
     let version_string = &name[at + 1..];
     let version = Version::parse(version_string).ok()?;

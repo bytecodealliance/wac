@@ -1,4 +1,5 @@
 use crate::{
+    names::{alternate_lookup_key, are_semver_compatible},
     DefinedType, DefinedTypeId, FuncType, FuncTypeId, Interface, InterfaceId, ItemKind,
     ModuleTypeId, Record, Resource, ResourceAlias, ResourceId, SubtypeChecker, Type, Types,
     UsedType, ValueType, Variant, World, WorldId,
@@ -28,6 +29,9 @@ pub struct TypeAggregator {
     remapped: HashMap<Type, Type>,
     /// A map of interface names to remapped interface id.
     interfaces: HashMap<String, InterfaceId>,
+    /// Maps import names that were superseded by a higher semver-compatible
+    /// version to the canonical (highest version) name.
+    name_redirects: HashMap<String, String>,
 }
 
 impl TypeAggregator {
@@ -46,6 +50,45 @@ impl TypeAggregator {
         self.imports.iter().map(|(n, k)| (n.as_str(), *k))
     }
 
+    /// Returns the canonical (highest semver version) import name for the given name.
+    ///
+    /// If the name was superseded by a higher semver-compatible version,
+    /// the canonical name is returned. Otherwise, the name itself is returned.
+    pub fn canonical_import_name<'a>(&'a self, name: &'a str) -> &'a str {
+        self.name_redirects
+            .get(name)
+            .map(|s| s.as_str())
+            .unwrap_or(name)
+    }
+
+    /// Finds an import whose name is on a compatible semver track with `name`.
+    ///
+    /// Returns both the existing import name and its `ItemKind`.
+    fn find_semver_compatible_import(&self, name: &str) -> Option<(&str, ItemKind)> {
+        let (alt_key, _) = alternate_lookup_key(name)?;
+        for (existing_name, kind) in &self.imports {
+            if let Some((existing_alt, _)) = alternate_lookup_key(existing_name) {
+                if existing_alt == alt_key {
+                    return Some((existing_name.as_str(), *kind));
+                }
+            }
+        }
+        None
+    }
+
+    /// Finds an interface whose name is on a compatible semver track with `name`.
+    fn find_semver_compatible_interface(&self, name: &str) -> Option<InterfaceId> {
+        let (alt_key, _) = alternate_lookup_key(name)?;
+        for (existing_name, id) in &self.interfaces {
+            if let Some((existing_alt, _)) = alternate_lookup_key(existing_name) {
+                if existing_alt == alt_key {
+                    return Some(*id);
+                }
+            }
+        }
+        None
+    }
+
     /// Aggregates a item kind from a specified type collection using the given
     /// import name.
     ///
@@ -62,6 +105,33 @@ impl TypeAggregator {
         // If it has already been remapped, do a merge; otherwise, remap it.
         if let Some(existing) = self.imports.get(name).copied() {
             self.merge_item_kind(existing, types, kind, checker)?;
+            return Ok(self);
+        }
+
+        // Check for a semver-compatible import (e.g., a:b/c@0.2.0 matching a:b/c@0.2.1)
+        if let Some((existing_name, existing_kind)) = self.find_semver_compatible_import(name) {
+            // Copy values before the mutable borrow in merge_item_kind
+            let existing_name = existing_name.to_string();
+            self.merge_item_kind(existing_kind, types, kind, checker)?;
+            let (_, new_version) = alternate_lookup_key(name).unwrap();
+            let (_, existing_version) = alternate_lookup_key(&existing_name).unwrap();
+
+            if new_version > existing_version {
+                // New version is higher: remove old entry, insert new name
+                let merged_kind = self.imports.shift_remove(&existing_name).unwrap();
+                self.imports.insert(name.to_string(), merged_kind);
+                // Update any existing redirects that pointed to the old name
+                for redirect in self.name_redirects.values_mut() {
+                    if *redirect == existing_name {
+                        *redirect = name.to_string();
+                    }
+                }
+                self.name_redirects.insert(existing_name, name.to_string());
+            } else {
+                // Existing version is higher or equal: redirect new name to existing
+                self.name_redirects.insert(name.to_string(), existing_name);
+            }
+
             return Ok(self);
         }
 
@@ -166,8 +236,8 @@ impl TypeAggregator {
                     .as_ref()
                     .context("used type has no interface identifier")?;
 
-                // The interface names must match
-                if existing_interface != used_interface {
+                // The interface names must be on compatible semver tracks
+                if !are_semver_compatible(existing_interface, used_interface) {
                     bail!("cannot merge used type `{name}` as it is expected to be from interface `{existing_interface}` but it is from interface `{used_interface}`");
                 }
 
@@ -282,8 +352,8 @@ impl TypeAggregator {
                     .as_ref()
                     .context("used type has no interface identifier")?;
 
-                // The interface names must match
-                if existing_interface != used_interface {
+                // The interface names must be on compatible semver tracks
+                if !are_semver_compatible(existing_interface, used_interface) {
                     bail!("cannot merge used type `{name}` as it is expected to be from interface `{existing_interface}` but it is from interface `{used_interface}`");
                 }
 
@@ -643,11 +713,19 @@ impl TypeAggregator {
         checker: &mut SubtypeChecker,
     ) -> Result<InterfaceId> {
         // If we've seen this interface before, perform a merge
-        // This will ensure that there's only a singular definition of "named" interfaces
+        // This will ensure that there's only a singular definition of "named" interfaces,
+        // including interfaces on compatible semver tracks
         if let Some(name) = types[id].id.as_ref() {
-            if let Some(existing) = self.interfaces.get(name).copied() {
+            if let Some(existing) = self
+                .interfaces
+                .get(name)
+                .copied()
+                .or_else(|| self.find_semver_compatible_interface(name))
+            {
                 self.merge_interface(existing, types, id, checker)
                     .with_context(|| format!("failed to merge interface `{name}`"))?;
+                // Also register this name so it can be looked up directly
+                self.interfaces.insert(name.clone(), existing);
                 return Ok(existing);
             }
         }
@@ -850,5 +928,540 @@ impl TypeAggregator {
         );
         assert!(prev.is_none());
         Ok(remapped)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::collections::HashSet;
+
+    // Helper to create a simple interface with optional id and exports
+    fn make_interface(
+        types: &mut Types,
+        name: Option<&str>,
+        exports: Vec<(&str, ItemKind)>,
+    ) -> InterfaceId {
+        let interface = Interface {
+            id: name.map(|n| n.to_string()),
+            uses: IndexMap::new(),
+            exports: exports
+                .into_iter()
+                .map(|(n, k)| (n.to_string(), k))
+                .collect(),
+        };
+        types.add_interface(interface)
+    }
+
+    // Helper to create a simple func type (no params, no result)
+    fn make_func_type(types: &mut Types) -> FuncTypeId {
+        types.add_func_type(FuncType {
+            params: IndexMap::new(),
+            result: None,
+        })
+    }
+
+    #[test]
+    fn semver_compatible_same_name() {
+        assert!(are_semver_compatible("a:b/c@0.2.0", "a:b/c@0.2.0"));
+    }
+
+    #[test]
+    fn semver_compatible_patch_versions() {
+        assert!(are_semver_compatible("a:b/c@0.2.0", "a:b/c@0.2.1"));
+        assert!(are_semver_compatible("a:b/c@0.2.1", "a:b/c@0.2.0"));
+        assert!(are_semver_compatible("a:b/c@0.2.0", "a:b/c@0.2.3"));
+    }
+
+    #[test]
+    fn semver_compatible_major_track() {
+        assert!(are_semver_compatible("a:b/c@1.0.0", "a:b/c@1.1.0"));
+        assert!(are_semver_compatible("a:b/c@1.0.0", "a:b/c@1.2.3"));
+        assert!(are_semver_compatible("a:b/c@2.0.0", "a:b/c@2.1.0"));
+    }
+
+    #[test]
+    fn semver_incompatible_minor_versions() {
+        assert!(!are_semver_compatible("a:b/c@0.2.0", "a:b/c@0.3.0"));
+    }
+
+    #[test]
+    fn semver_incompatible_major_versions() {
+        assert!(!are_semver_compatible("a:b/c@1.0.0", "a:b/c@2.0.0"));
+    }
+
+    #[test]
+    fn semver_compatible_no_version() {
+        // Same name without version
+        assert!(are_semver_compatible("a:b/c", "a:b/c"));
+        // Different names without version
+        assert!(!are_semver_compatible("a:b/c", "a:b/d"));
+        // One with version, one without
+        assert!(!are_semver_compatible("a:b/c@1.0.0", "a:b/c"));
+        assert!(!are_semver_compatible("a:b/c", "a:b/c@1.0.0"));
+    }
+
+    #[test]
+    fn semver_compatible_prerelease_rejected() {
+        assert!(!are_semver_compatible("a:b/c@1.0.0-rc.1", "a:b/c@1.0.0"));
+        assert!(!are_semver_compatible("a:b/c@0.2.0-pre", "a:b/c@0.2.0"));
+    }
+
+    #[test]
+    fn semver_compatible_zero_patch_rejected() {
+        // 0.0.x versions are not compatible with anything
+        assert!(!are_semver_compatible("a:b/c@0.0.1", "a:b/c@0.0.2"));
+    }
+
+    #[test]
+    fn aggregate_exact_match_merges() {
+        let mut types = Types::default();
+        let func_id = make_func_type(&mut types);
+        let iface_id = make_interface(
+            &mut types,
+            Some("a:b/c@0.2.0"),
+            vec![("foo", ItemKind::Func(func_id))],
+        );
+
+        let mut cache = HashSet::new();
+        let mut checker = SubtypeChecker::new(&mut cache);
+
+        let agg = TypeAggregator::new();
+        let agg = agg
+            .aggregate(
+                "a:b/c@0.2.0",
+                &types,
+                ItemKind::Instance(iface_id),
+                &mut checker,
+            )
+            .unwrap();
+        // Aggregate again with the same exact name
+        let agg = agg
+            .aggregate(
+                "a:b/c@0.2.0",
+                &types,
+                ItemKind::Instance(iface_id),
+                &mut checker,
+            )
+            .unwrap();
+
+        // Should still have one import entry (exact match merges in place)
+        assert_eq!(agg.imports().count(), 1);
+    }
+
+    #[test]
+    fn aggregate_semver_compatible_imports_merge() {
+        let mut types1 = Types::default();
+        let func_id1 = make_func_type(&mut types1);
+        let iface_id1 = make_interface(
+            &mut types1,
+            Some("a:b/c@0.2.0"),
+            vec![("foo", ItemKind::Func(func_id1))],
+        );
+
+        let mut types2 = Types::default();
+        let func_id2 = make_func_type(&mut types2);
+        let iface_id2 = make_interface(
+            &mut types2,
+            Some("a:b/c@0.2.1"),
+            vec![("foo", ItemKind::Func(func_id2))],
+        );
+
+        let mut cache = HashSet::new();
+        let mut checker = SubtypeChecker::new(&mut cache);
+
+        let agg = TypeAggregator::new();
+        let agg = agg
+            .aggregate(
+                "a:b/c@0.2.0",
+                &types1,
+                ItemKind::Instance(iface_id1),
+                &mut checker,
+            )
+            .unwrap();
+        let agg = agg
+            .aggregate(
+                "a:b/c@0.2.1",
+                &types2,
+                ItemKind::Instance(iface_id2),
+                &mut checker,
+            )
+            .unwrap();
+
+        // Only the highest version is retained in the imports
+        let items: Vec<_> = agg.imports().collect();
+        assert_eq!(items.len(), 1);
+        assert_eq!(items[0].0, "a:b/c@0.2.1");
+
+        // The lower version name redirects to the canonical (highest) name
+        assert_eq!(agg.canonical_import_name("a:b/c@0.2.0"), "a:b/c@0.2.1");
+        assert_eq!(agg.canonical_import_name("a:b/c@0.2.1"), "a:b/c@0.2.1");
+    }
+
+    #[test]
+    fn aggregate_semver_incompatible_imports_stay_separate() {
+        let mut types1 = Types::default();
+        let func_id1 = make_func_type(&mut types1);
+        let iface_id1 = make_interface(
+            &mut types1,
+            Some("a:b/c@0.2.0"),
+            vec![("foo", ItemKind::Func(func_id1))],
+        );
+
+        let mut types2 = Types::default();
+        let func_id2 = make_func_type(&mut types2);
+        let iface_id2 = make_interface(
+            &mut types2,
+            Some("a:b/c@0.3.0"),
+            vec![("foo", ItemKind::Func(func_id2))],
+        );
+
+        let mut cache = HashSet::new();
+        let mut checker = SubtypeChecker::new(&mut cache);
+
+        let agg = TypeAggregator::new();
+        let agg = agg
+            .aggregate(
+                "a:b/c@0.2.0",
+                &types1,
+                ItemKind::Instance(iface_id1),
+                &mut checker,
+            )
+            .unwrap();
+        let agg = agg
+            .aggregate(
+                "a:b/c@0.3.0",
+                &types2,
+                ItemKind::Instance(iface_id2),
+                &mut checker,
+            )
+            .unwrap();
+
+        // Two separate imports on different semver tracks
+        let items: Vec<_> = agg.imports().collect();
+        assert_eq!(items.len(), 2);
+        assert_ne!(items[0].1, items[1].1);
+    }
+
+    #[test]
+    fn aggregate_semver_compatible_major_merge() {
+        let mut types1 = Types::default();
+        let func_id1 = make_func_type(&mut types1);
+        let iface_id1 = make_interface(
+            &mut types1,
+            Some("a:b/c@1.0.0"),
+            vec![("foo", ItemKind::Func(func_id1))],
+        );
+
+        let mut types2 = Types::default();
+        let func_id2 = make_func_type(&mut types2);
+        let iface_id2 = make_interface(
+            &mut types2,
+            Some("a:b/c@1.1.0"),
+            vec![("foo", ItemKind::Func(func_id2))],
+        );
+
+        let mut cache = HashSet::new();
+        let mut checker = SubtypeChecker::new(&mut cache);
+
+        let agg = TypeAggregator::new();
+        let agg = agg
+            .aggregate(
+                "a:b/c@1.0.0",
+                &types1,
+                ItemKind::Instance(iface_id1),
+                &mut checker,
+            )
+            .unwrap();
+        let agg = agg
+            .aggregate(
+                "a:b/c@1.1.0",
+                &types2,
+                ItemKind::Instance(iface_id2),
+                &mut checker,
+            )
+            .unwrap();
+
+        // Only the highest version is retained in the imports
+        let items: Vec<_> = agg.imports().collect();
+        assert_eq!(items.len(), 1);
+        assert_eq!(items[0].0, "a:b/c@1.1.0");
+
+        // The lower version name redirects to the canonical (highest) name
+        assert_eq!(agg.canonical_import_name("a:b/c@1.0.0"), "a:b/c@1.1.0");
+        assert_eq!(agg.canonical_import_name("a:b/c@1.1.0"), "a:b/c@1.1.0");
+    }
+
+    #[test]
+    fn find_compatible_import_returns_match() {
+        let mut types = Types::default();
+        let func_id = make_func_type(&mut types);
+        let iface_id = make_interface(
+            &mut types,
+            Some("a:b/c@0.2.0"),
+            vec![("foo", ItemKind::Func(func_id))],
+        );
+
+        let mut cache = HashSet::new();
+        let mut checker = SubtypeChecker::new(&mut cache);
+
+        let agg = TypeAggregator::new();
+        let agg = agg
+            .aggregate(
+                "a:b/c@0.2.0",
+                &types,
+                ItemKind::Instance(iface_id),
+                &mut checker,
+            )
+            .unwrap();
+
+        assert!(agg.find_semver_compatible_import("a:b/c@0.2.1").is_some());
+        assert!(agg.find_semver_compatible_import("a:b/c@0.2.5").is_some());
+        assert!(agg.find_semver_compatible_import("a:b/c@0.3.0").is_none());
+        assert!(agg.find_semver_compatible_import("a:b/c@1.0.0").is_none());
+        assert!(agg.find_semver_compatible_import("x:y/z@0.2.0").is_none());
+    }
+
+    #[test]
+    fn find_compatible_interface_returns_match() {
+        let mut types = Types::default();
+        let func_id = make_func_type(&mut types);
+        let iface_id = make_interface(
+            &mut types,
+            Some("a:b/c@0.2.0"),
+            vec![("foo", ItemKind::Func(func_id))],
+        );
+
+        let mut cache = HashSet::new();
+        let mut checker = SubtypeChecker::new(&mut cache);
+
+        let agg = TypeAggregator::new();
+        let agg = agg
+            .aggregate(
+                "a:b/c@0.2.0",
+                &types,
+                ItemKind::Instance(iface_id),
+                &mut checker,
+            )
+            .unwrap();
+
+        assert!(agg
+            .find_semver_compatible_interface("a:b/c@0.2.1")
+            .is_some());
+        assert!(agg
+            .find_semver_compatible_interface("a:b/c@0.3.0")
+            .is_none());
+    }
+
+    #[test]
+    fn merge_used_types_from_semver_compatible_interfaces() {
+        // Types1: interface "dep:pkg/types@0.2.0" used by "my:pkg/iface@1.0.0"
+        let mut types1 = Types::default();
+        let func1 = make_func_type(&mut types1);
+        let dep_iface1 = make_interface(
+            &mut types1,
+            Some("dep:pkg/types@0.2.0"),
+            vec![("my-func", ItemKind::Func(func1))],
+        );
+        let main_iface1 = {
+            let mut uses = IndexMap::new();
+            uses.insert(
+                "my-used".to_string(),
+                UsedType {
+                    interface: dep_iface1,
+                    name: None,
+                },
+            );
+            let interface = Interface {
+                id: Some("my:pkg/iface@1.0.0".to_string()),
+                uses,
+                exports: IndexMap::new(),
+            };
+            types1.add_interface(interface)
+        };
+
+        // Types2: interface "dep:pkg/types@0.2.1" (compatible) used by "my:pkg/iface@1.0.0"
+        let mut types2 = Types::default();
+        let func2 = make_func_type(&mut types2);
+        let dep_iface2 = make_interface(
+            &mut types2,
+            Some("dep:pkg/types@0.2.1"),
+            vec![("my-func", ItemKind::Func(func2))],
+        );
+        let main_iface2 = {
+            let mut uses = IndexMap::new();
+            uses.insert(
+                "my-used".to_string(),
+                UsedType {
+                    interface: dep_iface2,
+                    name: None,
+                },
+            );
+            let interface = Interface {
+                id: Some("my:pkg/iface@1.0.0".to_string()),
+                uses,
+                exports: IndexMap::new(),
+            };
+            types2.add_interface(interface)
+        };
+
+        let mut cache = HashSet::new();
+        let mut checker = SubtypeChecker::new(&mut cache);
+
+        let agg = TypeAggregator::new();
+        let agg = agg
+            .aggregate(
+                "my:pkg/iface@1.0.0",
+                &types1,
+                ItemKind::Instance(main_iface1),
+                &mut checker,
+            )
+            .unwrap();
+
+        // This should succeed because dep:pkg/types@0.2.0 and @0.2.1 are compatible
+        let _agg = agg
+            .aggregate(
+                "my:pkg/iface@1.0.0",
+                &types2,
+                ItemKind::Instance(main_iface2),
+                &mut checker,
+            )
+            .unwrap();
+    }
+
+    #[test]
+    fn merge_used_types_from_semver_incompatible_interfaces_fails() {
+        // Types1: interface "dep:pkg/types@0.2.0" used by "my:pkg/iface@1.0.0"
+        let mut types1 = Types::default();
+        let func1 = make_func_type(&mut types1);
+        let dep_iface1 = make_interface(
+            &mut types1,
+            Some("dep:pkg/types@0.2.0"),
+            vec![("my-func", ItemKind::Func(func1))],
+        );
+        let main_iface1 = {
+            let mut uses = IndexMap::new();
+            uses.insert(
+                "my-used".to_string(),
+                UsedType {
+                    interface: dep_iface1,
+                    name: None,
+                },
+            );
+            let interface = Interface {
+                id: Some("my:pkg/iface@1.0.0".to_string()),
+                uses,
+                exports: IndexMap::new(),
+            };
+            types1.add_interface(interface)
+        };
+
+        // Types2: interface "dep:pkg/types@0.3.0" (INCOMPATIBLE) used by "my:pkg/iface@1.0.0"
+        let mut types2 = Types::default();
+        let func2 = make_func_type(&mut types2);
+        let dep_iface2 = make_interface(
+            &mut types2,
+            Some("dep:pkg/types@0.3.0"),
+            vec![("my-func", ItemKind::Func(func2))],
+        );
+        let main_iface2 = {
+            let mut uses = IndexMap::new();
+            uses.insert(
+                "my-used".to_string(),
+                UsedType {
+                    interface: dep_iface2,
+                    name: None,
+                },
+            );
+            let interface = Interface {
+                id: Some("my:pkg/iface@1.0.0".to_string()),
+                uses,
+                exports: IndexMap::new(),
+            };
+            types2.add_interface(interface)
+        };
+
+        let mut cache = HashSet::new();
+        let mut checker = SubtypeChecker::new(&mut cache);
+
+        let agg = TypeAggregator::new();
+        let agg = agg
+            .aggregate(
+                "my:pkg/iface@1.0.0",
+                &types1,
+                ItemKind::Instance(main_iface1),
+                &mut checker,
+            )
+            .unwrap();
+
+        // This should fail because dep:pkg/types@0.2.0 and @0.3.0 are incompatible
+        let result = agg.aggregate(
+            "my:pkg/iface@1.0.0",
+            &types2,
+            ItemKind::Instance(main_iface2),
+            &mut checker,
+        );
+        assert!(result.is_err());
+        let err = result.unwrap_err().to_string();
+        assert!(
+            err.contains("cannot merge used type"),
+            "unexpected error message: {err}"
+        );
+    }
+
+    #[test]
+    fn remap_interface_merges_semver_compatible() {
+        // First aggregate an interface at @0.2.0
+        let mut types1 = Types::default();
+        let func_id1 = make_func_type(&mut types1);
+        let iface1 = make_interface(
+            &mut types1,
+            Some("dep:pkg/iface@0.2.0"),
+            vec![("do-thing", ItemKind::Func(func_id1))],
+        );
+
+        // Second aggregate a different interface that depends on @0.2.1 of the same
+        let mut types2 = Types::default();
+        let func_id2 = make_func_type(&mut types2);
+        let dep_iface2 = make_interface(
+            &mut types2,
+            Some("dep:pkg/iface@0.2.1"),
+            vec![("do-thing", ItemKind::Func(func_id2))],
+        );
+        let wrapper = {
+            let mut exports = IndexMap::new();
+            exports.insert("dep".to_string(), ItemKind::Instance(dep_iface2));
+            let interface = Interface {
+                id: Some("wrap:pkg/wrapper@1.0.0".to_string()),
+                uses: IndexMap::new(),
+                exports,
+            };
+            types2.add_interface(interface)
+        };
+
+        let mut cache = HashSet::new();
+        let mut checker = SubtypeChecker::new(&mut cache);
+
+        let agg = TypeAggregator::new();
+        // First, aggregate the dep interface directly
+        let agg = agg
+            .aggregate(
+                "dep:pkg/iface@0.2.0",
+                &types1,
+                ItemKind::Instance(iface1),
+                &mut checker,
+            )
+            .unwrap();
+
+        // Then aggregate a wrapper that references a compatible version.
+        // The remap_interface call inside should find and merge with the existing one.
+        let _agg = agg
+            .aggregate(
+                "wrap:pkg/wrapper@1.0.0",
+                &types2,
+                ItemKind::Instance(wrapper),
+                &mut checker,
+            )
+            .unwrap();
     }
 }
