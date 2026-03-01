@@ -20,8 +20,8 @@ use wac_types::{
     Type, TypeAggregator, Types, ValueType,
 };
 use wasm_encoder::{
-    Alias, ComponentBuilder, ComponentExportKind, ComponentNameSection, ComponentTypeRef,
-    ComponentValType, NameMap, TypeBounds,
+    Alias, ComponentBuilder, ComponentExportKind, ComponentExternName, ComponentNameSection,
+    ComponentTypeRef, ComponentValType, NameMap, TypeBounds,
 };
 use wasmparser::{
     names::{ComponentName, ComponentNameKind},
@@ -1695,12 +1695,26 @@ impl<'a> CompositionGraphEncoder<'a> {
     }
 
     fn import(&self, state: &mut State, name: &str, types: &Types, kind: ItemKind) -> u32 {
+        // Determine whether this is a component model `(implements "I")` import.
+        // The same interface may be imported multiple times under different
+        // labels, so implements imports are exempt from the shared-dependency
+        // deduplication below and carry an `implements` directive when
+        // re-encoded.
+        let implements = match kind {
+            ItemKind::Instance(id) => crate::encoding::implements_directive(types, name, id),
+            _ => None,
+        };
+
         // Check to see if this is an import of an interface that's already been
-        // imported; this can happen based on importing of shared dependencies
-        if let ItemKind::Instance(id) = kind {
-            if let Some(id) = &types[id].id {
-                if let Some(index) = state.current.instances.get(id) {
-                    return *index;
+        // imported; this can happen based on importing of shared dependencies.
+        // Implements imports are skipped here since the same interface can be
+        // imported multiple times under distinct labels.
+        if implements.is_none() {
+            if let ItemKind::Instance(id) = kind {
+                if let Some(id) = &types[id].id {
+                    if let Some(index) = state.current.instances.get(id) {
+                        return *index;
+                    }
                 }
             }
         }
@@ -1718,8 +1732,12 @@ impl<'a> CompositionGraphEncoder<'a> {
 
         // Encode the type and import
         let ty = encoder.ty(state, kind.ty(), None);
+        let extern_name = ComponentExternName {
+            name: Cow::Borrowed(name),
+            implements: implements.map(Cow::Borrowed),
+        };
         let index = state.builder().import(
-            name,
+            extern_name,
             match kind {
                 ItemKind::Type(_) => ComponentTypeRef::Type(TypeBounds::Eq(ty)),
                 ItemKind::Func(_) => ComponentTypeRef::Func(ty),
@@ -1741,7 +1759,10 @@ impl<'a> CompositionGraphEncoder<'a> {
                 state.current.type_indexes.insert(ty, index);
             }
             ItemKind::Instance(id) => {
-                if let Some(id) = &types[id].id {
+                // Implements imports are not registered for shared-dependency
+                // aliasing: distinct labels of the same interface must remain
+                // distinct instances rather than collapsing to one.
+                if let (None, Some(id)) = (&implements, &types[id].id) {
                     log::debug!(
                         "interface `{id}` is available for aliasing as instance index {index}"
                     );
@@ -1774,7 +1795,7 @@ impl<'a> CompositionGraphEncoder<'a> {
                 let encoder = TypeEncoder::new(&self.0.types);
                 let ty = encoder.component(state, package.ty());
                 state.builder().import(
-                    &Self::package_import_name(package),
+                    Self::package_import_name(package),
                     ComponentTypeRef::Component(ty),
                 )
             };
