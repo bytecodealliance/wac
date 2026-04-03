@@ -443,7 +443,11 @@ impl<'a> TypeConverter<'a> {
             None => None,
         };
 
-        let id = self.types.add_func_type(FuncType { params, result });
+        let id = self.types.add_func_type(FuncType {
+            params,
+            result,
+            is_async: func_ty.async_,
+        });
         self.cache.insert(key, Entity::Type(Type::Func(id)));
         Ok(id)
     }

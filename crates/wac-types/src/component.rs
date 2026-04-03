@@ -873,6 +873,8 @@ pub struct FuncType {
     pub params: IndexMap<String, ValueType>,
     /// The result of the function.
     pub result: Option<ValueType>,
+    /// Whether or not this is an async function.
+    pub is_async: bool,
 }
 
 impl FuncType {

@@ -171,6 +171,15 @@ impl<'a> SubtypeChecker<'a> {
         // rather than actual subtyping; the reason for this is that implementing
         // runtimes don't yet support more complex subtyping rules.
 
+        if a.is_async != b.is_async {
+            let (expected, _, found, _) = self.expected_found(a, at, b, bt);
+            bail!(
+                "expected {} function, found {} function",
+                if expected.is_async { "async" } else { "sync" },
+                if found.is_async { "async" } else { "sync" },
+            );
+        }
+
         if a.params.len() != b.params.len() {
             let (expected, _, found, _) = self.expected_found(a, at, b, bt);
             bail!(
