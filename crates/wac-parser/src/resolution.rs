@@ -2130,10 +2130,11 @@ impl<'a> AstResolver<'a> {
             }
         };
 
-        Ok(state
-            .graph
-            .types_mut()
-            .add_func_type(FuncType { params, result }))
+        Ok(state.graph.types_mut().add_func_type(FuncType {
+            params,
+            result,
+            is_async: false,
+        }))
     }
 
     fn expr(

@@ -231,6 +231,7 @@ impl<'a> TypeEncoder<'a> {
         let result = ty.result.map(|ty| self.value_type(state, ty));
         let index = state.current.encodable.type_count();
         let mut encoder = state.current.encodable.ty().function();
+        encoder.async_(ty.is_async);
         encoder.params(params);
         encoder.result(result);
 

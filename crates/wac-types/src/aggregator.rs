@@ -678,6 +678,7 @@ impl TypeAggregator {
                 .result
                 .map(|ty| self.remap_value_type(types, ty, checker))
                 .transpose()?,
+            is_async: ty.is_async,
         };
 
         let remapped_id = self.types.add_func_type(remapped);
@@ -958,6 +959,7 @@ mod tests {
         types.add_func_type(FuncType {
             params: IndexMap::new(),
             result: None,
+            is_async: false,
         })
     }
 
