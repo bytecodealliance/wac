@@ -24,3 +24,5 @@ To cut a new release, you will need to do the following:
     ```
 
 6. Pushing the tag upstream will trigger the release actions which creates a release and publishes the crates in this workspace to `crates.io`
+
+7. Repeat step 2/3 bumping to the version for the next anticipated release with the `-dev` suffix (e.g. `0.11.0-dev`).
