@@ -264,7 +264,12 @@ impl<'a> TypeEncoder<'a> {
         index
     }
 
-    fn use_aliases(&self, state: &mut State, uses: &'a IndexMap<String, UsedType>) {
+    fn use_aliases(
+        &self,
+        state: &mut State,
+        uses: &'a IndexMap<String, UsedType>,
+        items: &'a IndexMap<String, ItemKind>,
+    ) {
         state.current.type_aliases.clear();
 
         for (name, used) in uses {
@@ -286,6 +291,17 @@ impl<'a> TypeEncoder<'a> {
             );
 
             state.current.type_aliases.insert(name.clone(), index);
+
+            // Record the alias under both ids that denote this used type (the
+            // interface's export and the using entity's own item) so a later
+            // id-keyed reference reuses it instead of re-encoding a local copy:
+            // a type import must reference a named type, not a local definition.
+            if let ItemKind::Type(ty) = kind {
+                state.current.type_indexes.insert(*ty, index);
+            }
+            if let Some(ItemKind::Type(ty)) = items.get(name) {
+                state.current.type_indexes.insert(*ty, index);
+            }
         }
     }
 
@@ -297,7 +313,7 @@ impl<'a> TypeEncoder<'a> {
         }
 
         // Encode any required aliases
-        self.use_aliases(state, &interface.uses);
+        self.use_aliases(state, &interface.uses, &interface.exports);
         state.push(Encodable::Instance(InstanceType::default()));
 
         // Otherwise, export all exports
@@ -335,7 +351,7 @@ impl<'a> TypeEncoder<'a> {
             self.import_deps(state, used.interface);
         }
 
-        self.use_aliases(state, &world.uses);
+        self.use_aliases(state, &world.uses, &world.imports);
 
         for (name, kind) in &world.imports {
             self.import(state, name, *kind);
