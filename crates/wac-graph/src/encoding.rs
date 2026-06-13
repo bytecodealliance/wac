@@ -190,6 +190,31 @@ impl<'a> TypeEncoder<'a> {
         Self(types)
     }
 
+    // Aliases a value type from an imported instance that exports it, rather
+    // than re-encoding it locally: a type import must reference a named type,
+    // not a local definition.
+    fn alias_from_instance_export(&self, state: &mut State, ty: ValueType) -> Option<u32> {
+        if state.current.instances.is_empty() {
+            return None;
+        }
+        let ty = Type::Value(ty);
+        let (instance, name) = self.0.interfaces().find_map(|interface| {
+            let iid = interface.id.as_ref()?;
+            let instance = *state.current.instances.get(iid)?;
+            interface.exports.iter().find_map(|(name, kind)| {
+                (*kind == ItemKind::Type(ty)).then(|| (instance, name.clone()))
+            })
+        })?;
+        let index = state.current.encodable.type_count();
+        state.current.encodable.alias(Alias::InstanceExport {
+            instance,
+            kind: ComponentExportKind::Type,
+            name: &name,
+        });
+        state.current.type_indexes.insert(ty, index);
+        Some(index)
+    }
+
     pub fn ty(&self, state: &mut State, ty: Type, name: Option<&str>) -> u32 {
         if let Some(index) = state.current.type_indexes.get(&ty) {
             return *index;
@@ -530,6 +555,10 @@ impl<'a> TypeEncoder<'a> {
     pub fn value_type(&self, state: &mut State, ty: ValueType) -> ComponentValType {
         if let Some(index) = state.current.type_indexes.get(&Type::Value(ty)) {
             return ComponentValType::Type(*index);
+        }
+
+        if let Some(index) = self.alias_from_instance_export(state, ty) {
+            return ComponentValType::Type(index);
         }
 
         let index = match ty {
