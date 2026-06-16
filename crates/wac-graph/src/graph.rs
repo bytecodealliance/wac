@@ -1544,8 +1544,12 @@ impl<'a> CompositionGraphEncoder<'a> {
 
         let mut encoded = HashMap::new();
 
-        // Next encode the imports
-        for (name, kind) in aggregator.imports() {
+        // Instances first, so a later type import can alias a type from an
+        // instance export instead of re-encoding it as a local definition.
+        let (instances, rest): (Vec<_>, Vec<_>) = aggregator
+            .imports()
+            .partition(|(_, kind)| matches!(kind, ItemKind::Instance(_)));
+        for (name, kind) in instances.into_iter().chain(rest) {
             log::debug!("import `{name}` is being imported");
             let index = self.import(state, name, aggregator.types(), kind);
             encoded.insert(name, (kind.into(), index));
