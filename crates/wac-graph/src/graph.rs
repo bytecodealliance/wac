@@ -1668,7 +1668,14 @@ impl<'a> CompositionGraphEncoder<'a> {
                         if let DefinedType::Alias(aliased @ ValueType::Defined(_)) =
                             &self.0.types()[id]
                         {
-                            (ty, state.current.type_indexes[&Type::Value(*aliased)])
+                            if let Some(&index) =
+                                // check if aliased had previously been exported
+                                state.current.type_indexes.get(&Type::Value(*aliased))
+                            {
+                                (ty, index)
+                            } else {
+                                (ty, encoder.ty(state, ty, None))
+                            }
                         } else {
                             (ty, encoder.ty(state, ty, None))
                         }
