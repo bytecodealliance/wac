@@ -1,0 +1,9 @@
+failed to parse document
+
+  × expected `func` keyword, found `u32` keyword
+   ╭─[tests/parser/fail/async-not-func.wac:3:18]
+ 2 │ 
+ 3 │ type bad = async u32;
+   ·                  ─┬─
+   ·                   ╰── unexpected `u32` keyword
+   ╰────

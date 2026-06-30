@@ -87,6 +87,7 @@
                   },
                   "kind": {
                     "func": {
+                      "isAsync": false,
                       "params": [],
                       "results": "empty"
                     }
@@ -154,6 +155,7 @@
                 },
                 "ty": {
                   "func": {
+                    "isAsync": false,
                     "params": [],
                     "results": "empty"
                   }
@@ -370,6 +372,7 @@
                     },
                     "ty": {
                       "func": {
+                        "isAsync": false,
                         "params": [],
                         "results": "empty"
                       }
@@ -468,6 +471,7 @@
                               },
                               "ty": {
                                 "func": {
+                                  "isAsync": false,
                                   "params": [],
                                   "results": "empty"
                                 }
@@ -963,6 +967,7 @@
             },
             "kind": {
               "func": {
+                "isAsync": false,
                 "params": [
                   {
                     "id": {

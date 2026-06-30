@@ -125,3 +125,35 @@ type option-alias = option<string>;
 type result-alias = result<u32, string>;
 type tuple-alias = tuple<u8, u16>;
 type nested-list-alias = list<list<u8>>;
+
+// wasip3 types: stream, future, error-context
+type stream1 = stream;
+type stream2 = stream<u8>;
+type stream3 = stream<list<string>>;
+type future1 = future;
+type future2 = future<u32>;
+type future3 = future<option<string>>;
+type ec = error-context;
+
+// async function types
+type async-fn1 = async func() -> string;
+type async-fn2 = async func(data: list<u8>) -> stream<u8>;
+type sync-fn = func() -> string;
+
+// interface with async functions and wasip3 types
+interface async-iface {
+    process: async func(input: list<u8>) -> stream<u8>;
+    get-result: async func() -> future<string>;
+    sync-op: func(x: u32) -> u32;
+    type my-stream = stream<u32>;
+    type my-future = future<string>;
+    type my-ec = error-context;
+}
+
+// world with async imports/exports
+world async-world {
+    import run: async func() -> string;
+    import fetch: async func(url: string) -> stream<u8>;
+    export process: async func(data: list<u8>) -> future<u32>;
+}
+

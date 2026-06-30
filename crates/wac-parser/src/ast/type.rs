@@ -482,7 +482,7 @@ pub enum FuncTypeRef<'a> {
 impl<'a> Parse<'a> for FuncTypeRef<'a> {
     fn parse(lexer: &mut Lexer<'a>) -> ParseResult<Self> {
         let mut lookahead = Lookahead::new(lexer);
-        if lookahead.peek(Token::FuncKeyword) {
+        if lookahead.peek(Token::AsyncKeyword) || lookahead.peek(Token::FuncKeyword) {
             Ok(Self::Func(Parse::parse(lexer)?))
         } else if Ident::peek(&mut lookahead) {
             Ok(Self::Ident(Parse::parse(lexer)?))
@@ -496,6 +496,8 @@ impl<'a> Parse<'a> for FuncTypeRef<'a> {
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FuncType<'a> {
+    /// Whether the function is async.
+    pub is_async: bool,
     /// The parameters of the function.
     pub params: Vec<NamedType<'a>>,
     /// The results of the function.
@@ -504,6 +506,7 @@ pub struct FuncType<'a> {
 
 impl<'a> Parse<'a> for FuncType<'a> {
     fn parse(lexer: &mut Lexer<'a>) -> ParseResult<Self> {
+        let is_async = parse_optional(lexer, Token::AsyncKeyword, |_| Ok(()))?.is_some();
         parse_token(lexer, Token::FuncKeyword)?;
         parse_token(lexer, Token::OpenParen)?;
         let params = parse_delimited(lexer, Token::CloseParen, true)?;
@@ -511,13 +514,17 @@ impl<'a> Parse<'a> for FuncType<'a> {
         let results =
             parse_optional(lexer, Token::Arrow, Parse::parse)?.unwrap_or(ResultList::Empty);
 
-        Ok(Self { params, results })
+        Ok(Self {
+            is_async,
+            params,
+            results,
+        })
     }
 }
 
 impl Peek for FuncType<'_> {
     fn peek(lookahead: &mut Lookahead) -> bool {
-        lookahead.peek(Token::FuncKeyword)
+        lookahead.peek(Token::AsyncKeyword) || lookahead.peek(Token::FuncKeyword)
     }
 }
 
@@ -604,7 +611,7 @@ pub enum TypeAliasKind<'a> {
 impl<'a> Parse<'a> for TypeAliasKind<'a> {
     fn parse(lexer: &mut Lexer<'a>) -> ParseResult<Self> {
         let mut lookahead = Lookahead::new(lexer);
-        if lookahead.peek(Token::FuncKeyword) {
+        if lookahead.peek(Token::AsyncKeyword) || lookahead.peek(Token::FuncKeyword) {
             Ok(Self::Func(Parse::parse(lexer)?))
         } else if Type::peek(&mut lookahead) {
             Ok(Self::Type(Parse::parse(lexer)?))
@@ -661,6 +668,12 @@ pub enum Type<'a> {
     },
     /// A borrow type.
     Borrow(Ident<'a>, SourceSpan),
+    /// A stream type.
+    Stream(Option<Box<Type<'a>>>, SourceSpan),
+    /// A future type.
+    Future(Option<Box<Type<'a>>>, SourceSpan),
+    /// An error-context type.
+    ErrorContext(SourceSpan),
     /// An identifier to a value type.
     Ident(Ident<'a>),
 }
@@ -686,7 +699,10 @@ impl Type<'_> {
             | Self::List(_, span)
             | Self::Option(_, span)
             | Self::Result { span, .. }
-            | Self::Borrow(_, span) => *span,
+            | Self::Borrow(_, span)
+            | Self::Stream(_, span)
+            | Self::Future(_, span)
+            | Self::ErrorContext(span) => *span,
             Self::Ident(ident) => ident.span,
         }
     }
@@ -817,6 +833,42 @@ impl<'a> Parse<'a> for Type<'a> {
                     (close.offset() + close.len()) - span.offset(),
                 ),
             ))
+        } else if lookahead.peek(Token::StreamKeyword) {
+            let span = lexer.next().unwrap().1;
+            let ty = parse_optional(lexer, Token::OpenAngle, |lexer| {
+                let ty = Box::new(Parse::parse(lexer)?);
+                let close = parse_token(lexer, Token::CloseAngle)?;
+                Ok((ty, close))
+            })?;
+            match ty {
+                Some((ty, close)) => Ok(Self::Stream(
+                    Some(ty),
+                    SourceSpan::new(
+                        span.offset().into(),
+                        (close.offset() + close.len()) - span.offset(),
+                    ),
+                )),
+                None => Ok(Self::Stream(None, span)),
+            }
+        } else if lookahead.peek(Token::FutureKeyword) {
+            let span = lexer.next().unwrap().1;
+            let ty = parse_optional(lexer, Token::OpenAngle, |lexer| {
+                let ty = Box::new(Parse::parse(lexer)?);
+                let close = parse_token(lexer, Token::CloseAngle)?;
+                Ok((ty, close))
+            })?;
+            match ty {
+                Some((ty, close)) => Ok(Self::Future(
+                    Some(ty),
+                    SourceSpan::new(
+                        span.offset().into(),
+                        (close.offset() + close.len()) - span.offset(),
+                    ),
+                )),
+                None => Ok(Self::Future(None, span)),
+            }
+        } else if lookahead.peek(Token::ErrorContextKeyword) {
+            Ok(Self::ErrorContext(lexer.next().unwrap().1))
         } else if Ident::peek(&mut lookahead) {
             Ok(Self::Ident(Parse::parse(lexer)?))
         } else {
@@ -845,6 +897,9 @@ impl Peek for Type<'_> {
             || lookahead.peek(Token::OptionKeyword)
             || lookahead.peek(Token::ResultKeyword)
             || lookahead.peek(Token::BorrowKeyword)
+            || lookahead.peek(Token::StreamKeyword)
+            || lookahead.peek(Token::FutureKeyword)
+            || lookahead.peek(Token::ErrorContextKeyword)
             || Ident::peek(lookahead)
     }
 }
@@ -1557,6 +1612,103 @@ enum foo {
         roundtrip(
             r#"package foo:bar; type x = tuple<u8, s8, u16, s16, u32, s32, u64, s64, f32, f64, char, bool, string, tuple<string, list<u8>>, option<list<bool>>, result, result<string>, result<_, string>, result<u8, u8>, borrow<y>, y>;"#,
             "package foo:bar;\n\ntype x = tuple<u8, s8, u16, s16, u32, s32, u64, s64, f32, f64, char, bool, string, tuple<string, list<u8>>, option<list<bool>>, result, result<string>, result<_, string>, result<u8, u8>, borrow<y>, y>;\n",
+        )
+        .unwrap();
+    }
+
+    #[test]
+    fn stream_future_error_context_roundtrip() {
+        // stream (no payload)
+        roundtrip(
+            "package foo:bar; type a = stream;",
+            "package foo:bar;\n\ntype a = stream;\n",
+        )
+        .unwrap();
+
+        // stream<u8>
+        roundtrip(
+            "package foo:bar; type b = stream<u8>;",
+            "package foo:bar;\n\ntype b = stream<u8>;\n",
+        )
+        .unwrap();
+
+        // future (no payload)
+        roundtrip(
+            "package foo:bar; type c = future;",
+            "package foo:bar;\n\ntype c = future;\n",
+        )
+        .unwrap();
+
+        // future<string>
+        roundtrip(
+            "package foo:bar; type d = future<string>;",
+            "package foo:bar;\n\ntype d = future<string>;\n",
+        )
+        .unwrap();
+
+        // error-context
+        roundtrip(
+            "package foo:bar; type e = error-context;",
+            "package foo:bar;\n\ntype e = error-context;\n",
+        )
+        .unwrap();
+
+        // nested: stream<stream<u8>>
+        roundtrip(
+            "package foo:bar; type f = stream<stream<u8>>;",
+            "package foo:bar;\n\ntype f = stream<stream<u8>>;\n",
+        )
+        .unwrap();
+
+        // future<option<u32>>
+        roundtrip(
+            "package foo:bar; type g = future<option<u32>>;",
+            "package foo:bar;\n\ntype g = future<option<u32>>;\n",
+        )
+        .unwrap();
+    }
+
+    #[test]
+    fn async_func_roundtrip() {
+        // async func type alias
+        roundtrip(
+            "package foo:bar; type x = async func() -> string;",
+            "package foo:bar;\n\ntype x = async func() -> string;\n",
+        )
+        .unwrap();
+
+        // async func with params
+        roundtrip(
+            "package foo:bar; type y = async func(a: u32, b: string) -> stream<u8>;",
+            "package foo:bar;\n\ntype y = async func(a: u32, b: string) -> stream<u8>;\n",
+        )
+        .unwrap();
+
+        // async func with no results
+        roundtrip(
+            "package foo:bar; type z = async func();",
+            "package foo:bar;\n\ntype z = async func();\n",
+        )
+        .unwrap();
+
+        // sync func still works (no async prefix)
+        roundtrip(
+            "package foo:bar; type w = func() -> u32;",
+            "package foo:bar;\n\ntype w = func() -> u32;\n",
+        )
+        .unwrap();
+
+        // async func in interface export
+        roundtrip(
+            "package foo:bar; interface i { do-work: async func(input: string) -> future<u32>; }",
+            "package foo:bar;\n\ninterface i {\n    do-work: async func(input: string) -> future<u32>;\n}\n",
+        )
+        .unwrap();
+
+        // async func in world import/export
+        roundtrip(
+            "package foo:bar; world w { import run: async func(); export process: async func(data: list<u8>) -> stream<u8>; }",
+            "package foo:bar;\n\nworld w {\n    import run: async func();\n\n    export process: async func(data: list<u8>) -> stream<u8>;\n}\n",
         )
         .unwrap();
     }

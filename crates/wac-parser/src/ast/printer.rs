@@ -125,6 +125,9 @@ impl<'a, W: Write> DocumentPrinter<'a, W> {
 
     /// Prints the given function type.
     pub fn func_type(&mut self, ty: &FuncType) -> std::fmt::Result {
+        if ty.is_async {
+            write!(self.writer, "async ")?;
+        }
         write!(self.writer, "func(")?;
         self.named_types(&ty.params)?;
         write!(self.writer, ")")?;
@@ -212,6 +215,23 @@ impl<'a, W: Write> DocumentPrinter<'a, W> {
             Type::Borrow(id, _) => {
                 write!(self.writer, "borrow<{id}>", id = self.source(id.span))
             }
+            Type::Stream(ty, _) => match ty {
+                Some(ty) => {
+                    write!(self.writer, "stream<")?;
+                    self.ty(ty)?;
+                    write!(self.writer, ">")
+                }
+                None => write!(self.writer, "stream"),
+            },
+            Type::Future(ty, _) => match ty {
+                Some(ty) => {
+                    write!(self.writer, "future<")?;
+                    self.ty(ty)?;
+                    write!(self.writer, ">")
+                }
+                None => write!(self.writer, "future"),
+            },
+            Type::ErrorContext(_) => write!(self.writer, "error-context"),
             Type::Ident(id) => write!(self.writer, "{id}", id = self.source(id.span)),
         }
     }

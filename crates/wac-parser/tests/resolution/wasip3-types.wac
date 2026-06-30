@@ -1,0 +1,34 @@
+package test:comp;
+
+// wasip3 value types: stream, future, error-context
+type stream1 = stream;
+type stream2 = stream<u32>;
+type stream3 = stream<list<string>>;
+
+type future1 = future;
+type future2 = future<u32>;
+type future3 = future<option<string>>;
+
+type ec = error-context;
+
+// async function types
+type async-fn = async func() -> string;
+type async-fn-with-stream = async func(data: list<u8>) -> stream<u8>;
+type sync-fn = func() -> string;
+
+/// Interface mixing async and sync functions and wasip3 types
+interface async-iface {
+    process: async func(input: list<u8>) -> stream<u8>;
+    get-result: async func() -> future<string>;
+    sync-op: func(x: u32) -> u32;
+    type my-stream = stream<u32>;
+    type my-future = future<string>;
+    type my-ec = error-context;
+}
+
+/// World with async imports and exports
+world async-world {
+    import run: async func() -> string;
+    import fetch: async func(url: string) -> stream<u8>;
+    export process: async func(data: list<u8>) -> future<u32>;
+}
