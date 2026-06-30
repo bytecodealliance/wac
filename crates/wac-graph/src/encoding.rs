@@ -1,6 +1,7 @@
 use crate::PackageId;
 use indexmap::IndexMap;
 use petgraph::graph::NodeIndex;
+use std::borrow::Cow;
 use std::collections::HashMap;
 use wac_types::{
     CoreExtern, DefinedType, DefinedTypeId, Enum, Flags, FuncTypeId, InterfaceId, ItemKind,
@@ -8,11 +9,49 @@ use wac_types::{
     WorldId,
 };
 use wasm_encoder::{
-    Alias, ComponentBuilder, ComponentCoreTypeEncoder, ComponentExportKind,
+    Alias, ComponentBuilder, ComponentCoreTypeEncoder, ComponentExportKind, ComponentExternName,
     ComponentOuterAliasKind, ComponentType, ComponentTypeEncoder, ComponentTypeRef,
     ComponentValType, EntityType, GlobalType, InstanceType, MemoryType, ModuleType, TableType,
     TagKind, TagType, TypeBounds,
 };
+use wasmparser::names::{ComponentName, ComponentNameKind};
+
+/// Determines whether an instance import/export needs a component model
+/// `(implements "…")` directive, and if so returns the interface name to put
+/// inside it.
+///
+/// An instance extern is encoded one of two ways depending on its name:
+///
+/// * Regular interface extern: the extern name *is* the interface name, e.g.
+///   `(import "foo:bar/iface" (instance …))`. Nothing to disambiguate, so this
+///   returns `None`.
+///
+/// * `implements` extern: the extern name is a plain-name label and the
+///   interface it implements is carried separately, e.g.
+///   `(import "primary" (implements "foo:bar/iface") (instance …))`. This is
+///   how a component imports/exports the same interface more than once under
+///   different labels. Here this returns `Some("foo:bar/iface")`, i.e. the
+///   string the caller should encode as the `implements` directive.
+///
+/// `name` is the extern name (`primary`) and `interface` identifies the
+/// instance's interface within `types`, whose own name (`foo:bar/iface`) is the
+/// returned value.
+pub(crate) fn implements_directive<'a>(
+    types: &'a Types,
+    name: &str,
+    interface: InterfaceId,
+) -> Option<&'a str> {
+    // Only a plain-name label is encoded with an `implements` directive; a
+    // regular interface extern already names its interface directly.
+    let is_label = matches!(
+        ComponentName::new(name, 0).as_ref().map(|n| n.kind()),
+        Ok(ComponentNameKind::Label(_))
+    );
+    if !is_label {
+        return None;
+    }
+    types[interface].id.as_deref()
+}
 
 /// A type used to abstract the API differences between a component builder,
 /// component type, and instance type from `wasm-encoder`.
@@ -65,7 +104,8 @@ impl Encodable {
         }
     }
 
-    fn import_type(&mut self, name: &str, ty: ComponentTypeRef) {
+    fn import_type<'a>(&mut self, name: impl Into<ComponentExternName<'a>>, ty: ComponentTypeRef) {
+        let name = name.into();
         match self {
             Encodable::Component(t) => {
                 t.import(name, ty);
@@ -730,13 +770,22 @@ impl<'a> TypeEncoder<'a> {
             }
             ItemKind::Instance(id) => {
                 let import_index = state.current.encodable.instance_count();
+                let implements = implements_directive(self.0, name, id);
+                let extern_name = ComponentExternName {
+                    name: Cow::Borrowed(name),
+                    implements: implements.map(Cow::Borrowed),
+                };
                 state
                     .current
                     .encodable
-                    .import_type(name, ComponentTypeRef::Instance(index));
-                if let Some(iid) = &self.0[id].id {
-                    log::debug!("instance index {import_index} ({iid}) is available for aliasing");
-                    state.current.instances.insert(iid.clone(), import_index);
+                    .import_type(extern_name, ComponentTypeRef::Instance(index));
+                if implements.is_none() {
+                    if let Some(iid) = &self.0[id].id {
+                        log::debug!(
+                            "instance index {import_index} ({iid}) is available for aliasing"
+                        );
+                        state.current.instances.insert(iid.clone(), import_index);
+                    }
                 }
             }
             _ => panic!("expected only types, functions, and instance types"),
@@ -827,9 +876,19 @@ impl<'a> TypeEncoder<'a> {
 
         let ty = kind.ty();
         let index = self.ty(state, ty, Some(name));
+        // Preserve the `(implements "I")` directive when re-encoding an
+        // instance export that uses a plain-name label.
+        let implements = match kind {
+            ItemKind::Instance(id) => implements_directive(self.0, name, id),
+            _ => None,
+        };
+        let extern_name = ComponentExternName {
+            name: Cow::Borrowed(name),
+            implements: implements.map(Cow::Borrowed),
+        };
         let index = Self::export_type(
             state,
-            name,
+            extern_name,
             match kind {
                 ItemKind::Type(_) => ComponentTypeRef::Type(TypeBounds::Eq(index)),
                 ItemKind::Func(_) => ComponentTypeRef::Func(index),
@@ -880,7 +939,12 @@ impl<'a> TypeEncoder<'a> {
         index
     }
 
-    fn export_type(state: &mut State, name: &str, ty: ComponentTypeRef) -> u32 {
+    fn export_type<'b>(
+        state: &mut State,
+        name: impl Into<ComponentExternName<'b>>,
+        ty: ComponentTypeRef,
+    ) -> u32 {
+        let name = name.into();
         match &mut state.current.encodable {
             Encodable::Component(t) => {
                 let index = t.type_count();
