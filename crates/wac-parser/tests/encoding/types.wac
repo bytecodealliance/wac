@@ -118,3 +118,10 @@ type m2 = m;
 type o2 = o;
 type p2 = p;
 type q2 = q;
+
+// Test encoding of aliases to inline-created defined types
+type list-alias = list<u8>;
+type option-alias = option<string>;
+type result-alias = result<u32, string>;
+type tuple-alias = tuple<u8, u16>;
+type nested-list-alias = list<list<u8>>;
