@@ -33,6 +33,7 @@
         "name": null,
         "ty": {
           "func": {
+            "isAsync": false,
             "params": [],
             "results": "empty"
           }
@@ -131,6 +132,7 @@
         },
         "ty": {
           "func": {
+            "isAsync": false,
             "params": [
               {
                 "id": {
@@ -187,6 +189,7 @@
                   },
                   "ty": {
                     "func": {
+                      "isAsync": false,
                       "params": [],
                       "results": "empty"
                     }
@@ -260,6 +263,7 @@
         },
         "ty": {
           "func": {
+            "isAsync": false,
             "params": [
               {
                 "id": {

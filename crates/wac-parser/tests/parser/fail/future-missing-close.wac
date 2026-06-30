@@ -1,0 +1,3 @@
+package test:comp;
+
+type bad = future<string;

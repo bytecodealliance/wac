@@ -75,6 +75,7 @@
                 },
                 "ty": {
                   "func": {
+                    "isAsync": false,
                     "params": [
                       {
                         "id": {
