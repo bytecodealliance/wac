@@ -18,5 +18,8 @@ serde = { workspace = true, optional = true }
 wasmparser = { workspace = true }
 wasm-encoder = { workspace = true }
 
+[dev-dependencies]
+wat = { workspace = true }
+
 [features]
 serde = ["dep:serde"]

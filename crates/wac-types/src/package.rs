@@ -224,13 +224,13 @@ impl Package {
                                 Payload::ComponentImportSection(s) => {
                                     imports.reserve(s.count() as usize);
                                     for import in s {
-                                        imports.push(import?.name.0);
+                                        imports.push(import?.name.name);
                                     }
                                 }
                                 Payload::ComponentExportSection(s) => {
                                     exports.reserve(s.count() as usize);
                                     for export in s {
-                                        exports.push(export?.name.0);
+                                        exports.push(export?.name.name);
                                     }
                                 }
                                 _ => {}
@@ -406,18 +406,14 @@ impl<'a> TypeConverter<'a> {
     }
 
     fn import(&mut self, name: &str) -> Result<ItemKind> {
-        let import = self
-            .wasm_types
-            .component_entity_type_of_import(name)
-            .unwrap();
+        let wasm_types = self.wasm_types.clone();
+        let import = wasm_types.component_item_for_import(name).unwrap();
         self.entity(name, import)
     }
 
     fn export(&mut self, name: &str) -> Result<ItemKind> {
-        let export = self
-            .wasm_types
-            .component_entity_type_of_export(name)
-            .unwrap();
+        let wasm_types = self.wasm_types.clone();
+        let export = wasm_types.component_item_for_export(name).unwrap();
         self.entity(name, export)
     }
 
@@ -529,13 +525,13 @@ impl<'a> TypeConverter<'a> {
             exports: IndexMap::with_capacity(instance_ty.exports.len()),
         });
 
-        for (name, ty) in &instance_ty.exports {
-            let export = self.entity(name, *ty)?;
+        for (name, item) in &instance_ty.exports {
+            let export = self.entity(name, item)?;
 
             if let wasm::ComponentEntityType::Type {
                 referenced,
                 created,
-            } = ty
+            } = &item.ty
             {
                 self.use_or_own(Owner::Interface(id), name, *referenced, *created);
 
@@ -559,8 +555,8 @@ impl<'a> TypeConverter<'a> {
         Ok(id)
     }
 
-    fn entity(&mut self, name: &str, ty: wasm::ComponentEntityType) -> Result<ItemKind> {
-        match ty {
+    fn entity(&mut self, name: &str, item: &wasm::ComponentItem) -> Result<ItemKind> {
+        match item.ty {
             wasm::ComponentEntityType::Module(id) => Ok(ItemKind::Module(self.module_type(id)?)),
             wasm::ComponentEntityType::Value(ty) => {
                 Ok(ItemKind::Value(self.component_val_type(ty)?))
@@ -571,9 +567,17 @@ impl<'a> TypeConverter<'a> {
             wasm::ComponentEntityType::Func(id) => {
                 Ok(ItemKind::Func(self.component_func_type(id)?))
             }
-            wasm::ComponentEntityType::Instance(id) => Ok(ItemKind::Instance(
-                self.component_instance_type(Some(name), id)?,
-            )),
+            wasm::ComponentEntityType::Instance(id) => {
+                // A `(implements "I")` import is given a plain-name label (e.g.
+                // `primary`) in the binary, but the interface it implements is
+                // carried in the `implements` metadata. Use that interface name
+                // as the interface id so it resolves to the named interface
+                // rather than the opaque label.
+                let iface_name = item.implements.as_deref().unwrap_or(name);
+                Ok(ItemKind::Instance(
+                    self.component_instance_type(Some(iface_name), id)?,
+                ))
+            }
             wasm::ComponentEntityType::Component(id) => {
                 Ok(ItemKind::Component(self.component_type(Some(name), id)?))
             }
@@ -635,13 +639,13 @@ impl<'a> TypeConverter<'a> {
             exports: IndexMap::with_capacity(component_ty.exports.len()),
         });
 
-        for (name, ty) in &component_ty.imports {
-            let import = self.entity(name, *ty)?;
+        for (name, item) in &component_ty.imports {
+            let import = self.entity(name, item)?;
 
             if let wasm::ComponentEntityType::Type {
                 referenced,
                 created,
-            } = ty
+            } = &item.ty
             {
                 self.use_or_own(Owner::World(id), name, *referenced, *created);
             }
@@ -650,8 +654,8 @@ impl<'a> TypeConverter<'a> {
             assert!(prev.is_none());
         }
 
-        for (name, ty) in &component_ty.exports {
-            let ty = self.entity(name, *ty)?;
+        for (name, item) in &component_ty.exports {
+            let ty = self.entity(name, item)?;
             let prev = self.types[id].exports.insert(name.clone(), ty);
             assert!(prev.is_none());
         }
