@@ -1,0 +1,9 @@
+failed to parse document
+
+  × expected either `u8` keyword, `s8` keyword, `u16` keyword, `s16` keyword, `u32` keyword, `s32` keyword, `u64` keyword, `s64` keyword, `f32` keyword, `f64` keyword, or more..., found `>`
+   ╭─[tests/parser/fail/future-empty-payload.wac:3:19]
+ 2 │ 
+ 3 │ type bad = future<>;
+   ·                   ┬
+   ·                   ╰── unexpected `>`
+   ╰────

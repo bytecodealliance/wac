@@ -188,6 +188,30 @@ where
     }
 }
 
+/// Consumes the current keyword token, parses an optional `<T>` payload, then
+/// builds the type using it's constructor.
+pub fn parse_optional_payload<'a>(
+    lexer: &mut Lexer<'a>,
+    ctor: impl FnOnce(Option<Box<Type<'a>>>, SourceSpan) -> Type<'a>,
+) -> ParseResult<Type<'a>> {
+    let span = lexer.next().unwrap().1;
+    let ty = parse_optional(lexer, Token::OpenAngle, |lexer| {
+        let ty = Box::new(Parse::parse(lexer)?);
+        let close = parse_token(lexer, Token::CloseAngle)?;
+        Ok((ty, close))
+    })?;
+    Ok(match ty {
+        Some((ty, close)) => ctor(
+            Some(ty),
+            SourceSpan::new(
+                span.offset().into(),
+                (close.offset() + close.len()) - span.offset(),
+            ),
+        ),
+        None => ctor(None, span),
+    })
+}
+
 /// Used to look ahead one token in the lexer.
 ///
 /// The lookahead stores up to 10 attempted tokens.

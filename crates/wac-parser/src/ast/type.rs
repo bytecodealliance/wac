@@ -1,6 +1,6 @@
 use super::{
-    parse_delimited, parse_optional, parse_token, DocComment, Error, Ident, Lookahead, PackagePath,
-    Parse, ParseResult, Peek,
+    parse_delimited, parse_optional, parse_optional_payload, parse_token, DocComment, Error, Ident,
+    Lookahead, PackagePath, Parse, ParseResult, Peek,
 };
 use crate::lexer::{Lexer, Token};
 use miette::SourceSpan;
@@ -834,39 +834,9 @@ impl<'a> Parse<'a> for Type<'a> {
                 ),
             ))
         } else if lookahead.peek(Token::StreamKeyword) {
-            let span = lexer.next().unwrap().1;
-            let ty = parse_optional(lexer, Token::OpenAngle, |lexer| {
-                let ty = Box::new(Parse::parse(lexer)?);
-                let close = parse_token(lexer, Token::CloseAngle)?;
-                Ok((ty, close))
-            })?;
-            match ty {
-                Some((ty, close)) => Ok(Self::Stream(
-                    Some(ty),
-                    SourceSpan::new(
-                        span.offset().into(),
-                        (close.offset() + close.len()) - span.offset(),
-                    ),
-                )),
-                None => Ok(Self::Stream(None, span)),
-            }
+            parse_optional_payload(lexer, Self::Stream)
         } else if lookahead.peek(Token::FutureKeyword) {
-            let span = lexer.next().unwrap().1;
-            let ty = parse_optional(lexer, Token::OpenAngle, |lexer| {
-                let ty = Box::new(Parse::parse(lexer)?);
-                let close = parse_token(lexer, Token::CloseAngle)?;
-                Ok((ty, close))
-            })?;
-            match ty {
-                Some((ty, close)) => Ok(Self::Future(
-                    Some(ty),
-                    SourceSpan::new(
-                        span.offset().into(),
-                        (close.offset() + close.len()) - span.offset(),
-                    ),
-                )),
-                None => Ok(Self::Future(None, span)),
-            }
+            parse_optional_payload(lexer, Self::Future)
         } else if lookahead.peek(Token::ErrorContextKeyword) {
             Ok(Self::ErrorContext(lexer.next().unwrap().1))
         } else if Ident::peek(&mut lookahead) {
