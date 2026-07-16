@@ -1,0 +1,9 @@
+failed to parse document
+
+  × expected `>`, found `;`
+   ╭─[tests/parser/fail/stream-missing-close.wac:3:21]
+ 2 │ 
+ 3 │ type bad = stream<u8;
+   ·                     ┬
+   ·                     ╰── unexpected `;`
+   ╰────

@@ -1,0 +1,14 @@
+digraph {
+    0 [ label = "type definition \"stream1\""; kind = "stream"; export = "stream1"]
+    1 [ label = "type definition \"stream2\""; kind = "stream"; export = "stream2"]
+    2 [ label = "type definition \"stream3\""; kind = "stream"; export = "stream3"]
+    3 [ label = "type definition \"future1\""; kind = "future"; export = "future1"]
+    4 [ label = "type definition \"future2\""; kind = "future"; export = "future2"]
+    5 [ label = "type definition \"future3\""; kind = "future"; export = "future3"]
+    6 [ label = "type definition \"ec\""; kind = "error-context"; export = "ec"]
+    7 [ label = "type definition \"async-fn\""; kind = "function type"; export = "async-fn"]
+    8 [ label = "type definition \"async-fn-with-stream\""; kind = "function type"; export = "async-fn-with-stream"]
+    9 [ label = "type definition \"sync-fn\""; kind = "function type"; export = "sync-fn"]
+    10 [ label = "type definition \"async-iface\""; kind = "interface"; export = "async-iface"]
+    11 [ label = "type definition \"async-world\""; kind = "world"; export = "async-world"]
+}

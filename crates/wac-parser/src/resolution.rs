@@ -960,6 +960,7 @@ impl<'a> AstResolver<'a> {
                 &ty.results,
                 FuncKind::Free,
                 None,
+                ty.is_async,
             )?),
             ast::ImportType::Interface(i) => {
                 ItemKind::Instance(self.inline_interface(state, i, packages)?)
@@ -1330,9 +1331,14 @@ impl<'a> AstResolver<'a> {
         log::debug!("resolving type alias for id `{id}`", id = alias.id.string);
 
         let ty = match &alias.kind {
-            ast::TypeAliasKind::Func(f) => {
-                Type::Func(self.func_type(state, &f.params, &f.results, FuncKind::Free, None)?)
-            }
+            ast::TypeAliasKind::Func(f) => Type::Func(self.func_type(
+                state,
+                &f.params,
+                &f.results,
+                FuncKind::Free,
+                None,
+                f.is_async,
+            )?),
             ast::TypeAliasKind::Type(ty) => match ty {
                 ast::Type::Ident(id) => {
                     let (item, _) = state.local_item(id)?;
@@ -1390,7 +1396,7 @@ impl<'a> AstResolver<'a> {
     ) -> ResolutionResult<FuncTypeId> {
         match r {
             ast::FuncTypeRef::Func(ty) => {
-                self.func_type(state, &ty.params, &ty.results, kind, None)
+                self.func_type(state, &ty.params, &ty.results, kind, None, ty.is_async)
             }
             ast::FuncTypeRef::Ident(id) => {
                 let (item, _) = state.local_item(id)?;
@@ -1473,6 +1479,25 @@ impl<'a> AstResolver<'a> {
                     span: id.span,
                 })
             }
+            ast::Type::Stream(ty, _) => {
+                let ty = ty.as_ref().map(|t| Self::ty(state, t)).transpose()?;
+                Ok(ValueType::Defined(
+                    state
+                        .graph
+                        .types_mut()
+                        .add_defined_type(DefinedType::Stream(ty)),
+                ))
+            }
+            ast::Type::Future(ty, _) => {
+                let ty = ty.as_ref().map(|t| Self::ty(state, t)).transpose()?;
+                Ok(ValueType::Defined(
+                    state
+                        .graph
+                        .types_mut()
+                        .add_defined_type(DefinedType::Future(ty)),
+                ))
+            }
+            ast::Type::ErrorContext(_) => Ok(ValueType::Primitive(PrimitiveType::ErrorContext)),
             ast::Type::Ident(id) => {
                 let (item, _) = state.local_item(id)?;
                 let kind = item.kind(&state.graph);
@@ -1627,6 +1652,7 @@ impl<'a> AstResolver<'a> {
                             &f.results,
                             FuncKind::Free,
                             None,
+                            f.is_async,
                         )?),
                         ast::ExternType::Interface(i) => {
                             ItemKind::Instance(self.inline_interface(state, i, packages)?)
@@ -2049,6 +2075,7 @@ impl<'a> AstResolver<'a> {
                             &ast::ResultList::Empty,
                             FuncKind::Constructor,
                             Some(id),
+                            false,
                         )?,
                     )
                 }
@@ -2074,7 +2101,14 @@ impl<'a> AstResolver<'a> {
 
                     (
                         method_extern_name(decl.id.string, method_id.string, kind),
-                        self.func_type(state, &ty.params, &ty.results, kind, Some(id))?,
+                        self.func_type(
+                            state,
+                            &ty.params,
+                            &ty.results,
+                            kind,
+                            Some(id),
+                            ty.is_async,
+                        )?,
                     )
                 }
             };
@@ -2093,6 +2127,7 @@ impl<'a> AstResolver<'a> {
         func_results: &ast::ResultList<'a>,
         kind: FuncKind,
         resource: Option<ResourceId>,
+        is_async: bool,
     ) -> ResolutionResult<FuncTypeId> {
         let mut params = IndexMap::new();
 
@@ -2133,7 +2168,7 @@ impl<'a> AstResolver<'a> {
         Ok(state.graph.types_mut().add_func_type(FuncType {
             params,
             result,
-            is_async: false,
+            is_async,
         }))
     }
 

@@ -238,6 +238,18 @@ pub enum Token {
     /// The `targets` keyword.
     #[token("targets")]
     TargetsKeyword,
+    /// The `async` keyword.
+    #[token("async")]
+    AsyncKeyword,
+    /// The `stream` keyword.
+    #[token("stream")]
+    StreamKeyword,
+    /// The `future` keyword.
+    #[token("future")]
+    FutureKeyword,
+    /// The `error-context` keyword.
+    #[token("error-context")]
+    ErrorContextKeyword,
 
     /// The `;` symbol.
     #[token(";")]
@@ -342,6 +354,10 @@ impl fmt::Display for Token {
             Token::AsKeyword => write!(f, "`as` keyword"),
             Token::PackageKeyword => write!(f, "`package` keyword"),
             Token::TargetsKeyword => write!(f, "`targets` keyword"),
+            Token::AsyncKeyword => write!(f, "`async` keyword"),
+            Token::StreamKeyword => write!(f, "`stream` keyword"),
+            Token::FutureKeyword => write!(f, "`future` keyword"),
+            Token::ErrorContextKeyword => write!(f, "`error-context` keyword"),
             Token::Semicolon => write!(f, "`;`"),
             Token::OpenBrace => write!(f, "`{{`"),
             Token::CloseBrace => write!(f, "`}}`"),
@@ -833,6 +849,10 @@ include
 as
 package
 targets
+async
+stream
+future
+error-context
             "#,
             &[
                 (Ok(Token::ImportKeyword), "import", 1..7),
@@ -874,6 +894,10 @@ targets
                 (Ok(Token::AsKeyword), "as", 207..209),
                 (Ok(Token::PackageKeyword), "package", 210..217),
                 (Ok(Token::TargetsKeyword), "targets", 218..225),
+                (Ok(Token::AsyncKeyword), "async", 226..231),
+                (Ok(Token::StreamKeyword), "stream", 232..238),
+                (Ok(Token::FutureKeyword), "future", 239..245),
+                (Ok(Token::ErrorContextKeyword), "error-context", 246..259),
             ],
         );
     }

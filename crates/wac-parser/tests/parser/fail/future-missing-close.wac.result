@@ -1,0 +1,9 @@
+failed to parse document
+
+  × expected `>`, found `;`
+   ╭─[tests/parser/fail/future-missing-close.wac:3:25]
+ 2 │ 
+ 3 │ type bad = future<string;
+   ·                         ┬
+   ·                         ╰── unexpected `;`
+   ╰────

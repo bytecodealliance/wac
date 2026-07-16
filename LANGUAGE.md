@@ -485,7 +485,7 @@ ids                 ::= id (',' id)* ','?
 enum-decl           ::= 'enum' id '{' ids '}'
 type-alias          ::= 'type' id '=' (func-type | type) ';'
 func-type-ref       ::= func-type | id
-func-type           ::= 'func' '(' params? ')' ('->' results)?
+func-type           ::= 'async'? 'func' '(' params? ')' ('->' results)?
 params              ::= named-type (',' named-type)* ','?
 results             ::= type
                       | '(' named-type (',' named-type)* ','? ')'
@@ -508,6 +508,9 @@ type                ::= u8
                       | option
                       | result
                       | borrow
+                      | stream
+                      | future
+                      | error-context
                       | id
 tuple               ::= 'tuple' '<' type (',' type)* ','? '>'
 list                ::= 'list' '<' type '>'
@@ -517,6 +520,9 @@ result              ::= 'result'
                       | 'result' '<' '_' ',' type '>'
                       | 'result' '<' type ',' type '>'
 borrow              ::= 'borrow' '<' type '>'
+stream              ::= 'stream' | 'stream' '<' type '>'
+future              ::= 'future' | 'future' '<' type '>'
+error-context       ::= 'error-context'
 
 let-statement           ::= 'let' id '=' expr ';'
 expr                    ::= primary-expr postfix-expr*
