@@ -152,8 +152,12 @@ impl PlugCommand {
         let socket = Package::from_bytes("socket", None, socket, graph.types_mut())?;
         let socket = graph.register_package(socket)?;
 
-        // Collect the plugs by their names
-        let mut plugs_by_name = std::collections::HashMap::<_, Vec<_>>::new();
+        // Collect the plugs by their names.
+        // An insertion-ordered map is used so that plugs are registered and
+        // instantiated in command-line order, which makes the encoded output
+        // deterministic; iterating a `HashMap` here made the emitted component
+        // order vary between runs on identical inputs.
+        let mut plugs_by_name = indexmap::IndexMap::<_, Vec<_>>::new();
         for plug in self.plugs.iter() {
             let name = match plug {
                 #[cfg(feature = "registry")]
