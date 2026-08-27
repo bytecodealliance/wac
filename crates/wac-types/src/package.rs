@@ -708,8 +708,8 @@ impl<'a> TypeConverter<'a> {
                         .add_defined_type(DefinedType::Variant(Variant { cases })),
                 )
             }
-            wasm::ComponentDefinedType::List(ty) => {
-                let ty = self.component_val_type(*ty)?;
+            wasm::ComponentDefinedType::List { element, .. } => {
+                let ty = self.component_val_type(*element)?;
                 ValueType::Defined(self.types.add_defined_type(DefinedType::List(ty)))
             }
             wasm::ComponentDefinedType::Tuple(ty) => {
@@ -731,11 +731,11 @@ impl<'a> TypeConverter<'a> {
                 let cases = cases.iter().map(|case| case.as_str().to_owned()).collect();
                 ValueType::Defined(self.types.add_defined_type(DefinedType::Enum(Enum(cases))))
             }
-            wasm::ComponentDefinedType::Option(ty) => {
+            wasm::ComponentDefinedType::Option { ty, .. } => {
                 let ty = self.component_val_type(*ty)?;
                 ValueType::Defined(self.types.add_defined_type(DefinedType::Option(ty)))
             }
-            wasm::ComponentDefinedType::Result { ok, err } => {
+            wasm::ComponentDefinedType::Result { ok, err, .. } => {
                 let ok = ok.map(|ty| self.component_val_type(ty)).transpose()?;
                 let err = err.map(|ty| self.component_val_type(ty)).transpose()?;
                 ValueType::Defined(self.types.add_defined_type(DefinedType::Result { ok, err }))
@@ -756,22 +756,24 @@ impl<'a> TypeConverter<'a> {
                     _ => panic!("expected a resource"),
                 },
             ),
-            wasm::ComponentDefinedType::Stream(ty) => {
+            wasm::ComponentDefinedType::Stream { ty, .. } => {
                 let stream = ty.map(|ty| self.component_val_type(ty)).transpose()?;
                 ValueType::Defined(self.types.add_defined_type(DefinedType::Stream(stream)))
             }
-            wasm::ComponentDefinedType::Future(ty) => {
+            wasm::ComponentDefinedType::Future { ty, .. } => {
                 let option = ty.map(|ty| self.component_val_type(ty)).transpose()?;
                 ValueType::Defined(self.types.add_defined_type(DefinedType::Future(option)))
             }
-            wasm::ComponentDefinedType::FixedLengthList(ty, size) => {
-                let ty = self.component_val_type(*ty)?;
+            wasm::ComponentDefinedType::FixedLengthList {
+                element, length, ..
+            } => {
+                let ty = self.component_val_type(*element)?;
                 ValueType::Defined(
                     self.types
-                        .add_defined_type(DefinedType::FixedSizeList(ty, *size)),
+                        .add_defined_type(DefinedType::FixedSizeList(ty, *length)),
                 )
             }
-            wasmparser::component_types::ComponentDefinedType::Map(_, _) => {
+            wasm::ComponentDefinedType::Map { .. } => {
                 bail!("ComponentDefinedType::Map is not yet supported");
             }
         };

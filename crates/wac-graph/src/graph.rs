@@ -1742,6 +1742,8 @@ impl<'a> CompositionGraphEncoder<'a> {
         let extern_name = ComponentExternName {
             name: Cow::Borrowed(name),
             implements: implements.map(Cow::Borrowed),
+            external_id: None,
+            version_suffix: None,
         };
         let index = state.builder().import(
             extern_name,

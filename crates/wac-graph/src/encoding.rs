@@ -774,6 +774,8 @@ impl<'a> TypeEncoder<'a> {
                 let extern_name = ComponentExternName {
                     name: Cow::Borrowed(name),
                     implements: implements.map(Cow::Borrowed),
+                    external_id: None,
+                    version_suffix: None,
                 };
                 state
                     .current
@@ -885,6 +887,8 @@ impl<'a> TypeEncoder<'a> {
         let extern_name = ComponentExternName {
             name: Cow::Borrowed(name),
             implements: implements.map(Cow::Borrowed),
+            external_id: None,
+            version_suffix: None,
         };
         let index = Self::export_type(
             state,
