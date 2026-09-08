@@ -250,6 +250,6 @@
   )
   (export $async-world (;99;) "async-world" (type 98))
   (@producers
-    (processed-by "wac-parser" "0.10.1")
+    (processed-by "wac-parser" "0.11.0")
   )
 )
