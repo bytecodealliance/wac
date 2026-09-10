@@ -305,6 +305,13 @@ arguments of `a:b` first.
 Any unsatisfied arguments will then be satisfied by the matching exports of
 instance `c`, followed by any matching the exports of instance `d`.
 
+An export matches an instantiation argument if the names are identical or if
+the names are _semver-compatible_. For example, an export named
+`a:b/c@0.2.0` will satisfy an instantiation argument named `a:b/c@0.2.1`, as
+both are on the `0.2` track; it will not satisfy `a:b/c@0.3.0`. An exact name
+match is always preferred over a semver-compatible one. The type of the export
+must still be compatible with the type of the instantiation argument.
+
 The above behavior differs from JavaScript's spread argument syntax, which is
 the inspiration for this syntax, because component instantiation arguments are
 _named_ and not _positional_.

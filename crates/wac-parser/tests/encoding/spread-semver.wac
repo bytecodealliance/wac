@@ -1,0 +1,8 @@
+package test:comp;
+
+// The plug exports `test:dep/iface@0.2.0`, but the socket imports
+// `test:dep/iface@0.2.1`; the spread should match them via semver compatibility.
+let plug = new foo:plug { };
+let socket = new foo:socket { ...plug };
+
+export socket...;

@@ -10,10 +10,10 @@ use std::{
 };
 use wac_graph::{
     types::{
-        BorrowedPackageKey, DefinedType, Enum, ExternKind, Flags, FuncKind, FuncType, FuncTypeId,
-        Interface, InterfaceId, ItemKind, Package, PackageKey, PrimitiveType, Record, Resource,
-        ResourceAlias, ResourceId, SubtypeChecker, Type, UsedType, ValueType, Variant, World,
-        WorldId,
+        are_semver_compatible, BorrowedPackageKey, DefinedType, Enum, ExternKind, Flags, FuncKind,
+        FuncType, FuncTypeId, Interface, InterfaceId, ItemKind, Package, PackageKey, PrimitiveType,
+        Record, Resource, ResourceAlias, ResourceId, SubtypeChecker, Type, UsedType, ValueType,
+        Variant, World, WorldId,
     },
     CompositionGraph, DefineTypeError, EncodeError, EncodeOptions, ExportError, ImportError,
     InstantiationArgumentError, NodeId, NodeKind, PackageId, Processor,
@@ -2461,10 +2461,35 @@ impl<'a> AstResolver<'a> {
                 continue;
             }
 
-            // Alias a matching export of the instance
-            if let Some(aliased) =
-                self.alias_export(state, item, name, id.span, InstanceOperation::Spread)?
-            {
+            // Prefer an exact export name match, then fall back to a semver-compatible one
+            let export_name = {
+                let exports = match item.kind(&state.graph) {
+                    ItemKind::Instance(id) => &state.graph.types()[id].exports,
+                    _ => unreachable!("item was checked to be an instance"),
+                };
+
+                if exports.contains_key(name) {
+                    Some(name.clone())
+                } else {
+                    exports
+                        .keys()
+                        .find(|export| are_semver_compatible(export, name))
+                        .cloned()
+                }
+            };
+
+            let Some(export_name) = export_name else {
+                continue;
+            };
+
+            // Alias the matching export of the instance
+            if let Some(aliased) = self.alias_export(
+                state,
+                item,
+                &export_name,
+                id.span,
+                InstanceOperation::Spread,
+            )? {
                 spread = true;
                 arguments.insert(name.clone(), (aliased, id.span));
             }
