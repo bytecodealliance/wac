@@ -1,0 +1,39 @@
+(component
+  (type (;0;)
+    (component
+      (type (;0;)
+        (instance
+          (type (;0;) (func))
+          (export (;0;) "foo" (func (type 0)))
+        )
+      )
+      (export (;0;) "test:dep/iface@0.2.0" (instance (type 0)))
+    )
+  )
+  (import "unlocked-dep=<foo:plug>" (component (;0;) (type 0)))
+  (instance $plug (;0;) (instantiate 0))
+  (alias export $plug "test:dep/iface@0.2.0" (instance (;1;)))
+  (type (;1;)
+    (component
+      (type (;0;)
+        (instance
+          (type (;0;) (func))
+          (export (;0;) "foo" (func (type 0)))
+        )
+      )
+      (import "test:dep/iface@0.2.1" (instance (;0;) (type 0)))
+      (type (;1;) (func))
+      (export (;0;) "bar" (func (type 1)))
+    )
+  )
+  (import "unlocked-dep=<foo:socket>" (component (;1;) (type 1)))
+  (instance $socket (;2;) (instantiate 1
+      (with "test:dep/iface@0.2.1" (instance 1))
+    )
+  )
+  (alias export $socket "bar" (func (;0;)))
+  (export (;1;) "bar" (func 0))
+  (@producers
+    (processed-by "wac-parser" "0.11.0")
+  )
+)
