@@ -583,6 +583,12 @@ impl<'a> SubtypeChecker<'a> {
                 self.value_type(*a, at, *b, bt)
                     .context("mismatched type for fixed size list element")
             }
+            (DefinedType::Map(akey, avalue), DefinedType::Map(bkey, bvalue)) => {
+                self.value_type(*akey, at, *bkey, bt)
+                    .context("mismatched type for map key")?;
+                self.value_type(*avalue, at, *bvalue, bt)
+                    .context("mismatched type for map value")
+            }
             (DefinedType::Future(a), DefinedType::Future(b)) => self
                 .payload(*a, at, *b, bt)
                 .context("mismatched type for future payload"),
@@ -616,6 +622,7 @@ impl<'a> SubtypeChecker<'a> {
             (DefinedType::Tuple(_), _)
             | (DefinedType::List(_), _)
             | (DefinedType::FixedSizeList(_, _), _)
+            | (DefinedType::Map(_, _), _)
             | (DefinedType::Option(_), _)
             | (DefinedType::Result { .. }, _)
             | (DefinedType::Variant(_), _)

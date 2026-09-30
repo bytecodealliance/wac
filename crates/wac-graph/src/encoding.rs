@@ -311,6 +311,7 @@ impl<'a> TypeEncoder<'a> {
             DefinedType::Tuple(types) => self.tuple(state, types),
             DefinedType::List(ty) => self.list(state, *ty),
             DefinedType::FixedSizeList(ty, elements) => self.fixed_size_list(state, *ty, *elements),
+            DefinedType::Map(key, value) => self.map(state, *key, *value),
             DefinedType::Option(ty) => self.option(state, *ty),
             DefinedType::Result { ok, err } => self.result(state, *ok, *err),
             DefinedType::Variant(v) => self.variant(state, v),
@@ -637,6 +638,14 @@ impl<'a> TypeEncoder<'a> {
         let ty = self.value_type(state, ty);
         let index = state.current.encodable.type_count();
         state.current.encodable.ty().defined_type().list(ty);
+        index
+    }
+
+    fn map(&self, state: &mut State, key: ValueType, value: ValueType) -> u32 {
+        let key = self.value_type(state, key);
+        let value = self.value_type(state, value);
+        let index = state.current.encodable.type_count();
+        state.current.encodable.ty().defined_type().map(key, value);
         index
     }
 

@@ -871,6 +871,10 @@ impl TypeAggregator {
             DefinedType::FixedSizeList(ty, elements) => {
                 DefinedType::FixedSizeList(self.remap_value_type(types, *ty, checker)?, *elements)
             }
+            DefinedType::Map(key, value) => DefinedType::Map(
+                self.remap_value_type(types, *key, checker)?,
+                self.remap_value_type(types, *value, checker)?,
+            ),
             DefinedType::Option(ty) => {
                 DefinedType::Option(self.remap_value_type(types, *ty, checker)?)
             }

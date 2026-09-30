@@ -661,6 +661,8 @@ pub enum DefinedType {
     List(ValueType),
     /// A fixed size array
     FixedSizeList(ValueType, u32),
+    /// A map type.
+    Map(ValueType, ValueType),
     /// An option type.
     Option(ValueType),
     /// A result type.
@@ -692,6 +694,7 @@ impl DefinedType {
         match self {
             Self::Tuple(tys) => tys.iter().any(|ty| ty.contains_borrow(types)),
             Self::List(ty) | Self::FixedSizeList(ty, _) => ty.contains_borrow(types),
+            Self::Map(key, value) => key.contains_borrow(types) || value.contains_borrow(types),
             Self::Option(ty) => ty.contains_borrow(types),
             Self::Result { ok, err } => {
                 ok.map(|ty| ty.contains_borrow(types)).unwrap_or(false)
@@ -725,6 +728,10 @@ impl DefinedType {
             }
             DefinedType::List(ty) | DefinedType::Option(ty) | DefinedType::FixedSizeList(ty, _) => {
                 ty._visit_defined_types(types, visitor, false)
+            }
+            DefinedType::Map(key, value) => {
+                key._visit_defined_types(types, visitor, false)?;
+                value._visit_defined_types(types, visitor, false)
             }
             DefinedType::Result { ok, err } => {
                 if let Some(ty) = ok.as_ref() {
@@ -768,6 +775,7 @@ impl DefinedType {
             Self::Tuple(_) => "tuple",
             Self::List(_) => "list",
             Self::FixedSizeList(_, _) => "list<,N>",
+            Self::Map(_, _) => "map",
             Self::Option(_) => "option",
             Self::Result { .. } => "result",
             Self::Variant(_) => "variant",

@@ -773,8 +773,13 @@ impl<'a> TypeConverter<'a> {
                         .add_defined_type(DefinedType::FixedSizeList(ty, *length)),
                 )
             }
-            wasm::ComponentDefinedType::Map { .. } => {
-                bail!("ComponentDefinedType::Map is not yet supported");
+            wasm::ComponentDefinedType::Map { key, value, .. } => {
+                let key_ty = self.component_val_type(*key)?;
+                let value_ty = self.component_val_type(*value)?;
+                ValueType::Defined(
+                    self.types
+                        .add_defined_type(DefinedType::Map(key_ty, value_ty)),
+                )
             }
         };
 
