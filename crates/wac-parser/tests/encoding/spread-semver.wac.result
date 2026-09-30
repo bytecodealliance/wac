@@ -34,6 +34,6 @@
   (alias export $socket "bar" (func (;0;)))
   (export (;1;) "bar" (func 0))
   (@producers
-    (processed-by "wac-parser" "0.11.0")
+    (processed-by "wac-parser" "0.12.0")
   )
 )
