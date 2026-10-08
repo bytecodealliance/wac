@@ -507,11 +507,25 @@ impl<'a> TypeConverter<'a> {
         name: Option<&str>,
         id: wasm::ComponentInstanceTypeId,
     ) -> Result<InterfaceId> {
+        let name = name.filter(|n| n.contains(':'));
         let key = wasm::AnyTypeId::Component(wasm::ComponentAnyTypeId::Instance(id));
         if let Some(ty) = self.cache.get(&key) {
             match ty {
                 Entity::Type(Type::Interface(id)) => {
-                    return Ok(*id);
+                    let interface = &self.types[*id];
+                    if interface.id.as_deref() == name {
+                        return Ok(*id);
+                    }
+
+                    // An instance can be imported by its interface name and
+                    // re-exported under a label, with or without `implements`.
+                    // Share its type contents, but use this extern's metadata
+                    // instead of the name cached for an earlier extern.
+                    let interface = Interface {
+                        id: name.map(ToOwned::to_owned),
+                        ..interface.clone()
+                    };
+                    return Ok(self.types.add_interface(interface));
                 }
                 _ => panic!("invalid cached type"),
             }
@@ -520,7 +534,7 @@ impl<'a> TypeConverter<'a> {
         let wasm_types = self.wasm_types.clone();
         let instance_ty = &wasm_types[id];
         let id = self.types.add_interface(Interface {
-            id: name.and_then(|n| n.contains(':').then(|| n.to_owned())),
+            id: name.map(ToOwned::to_owned),
             uses: Default::default(),
             exports: IndexMap::with_capacity(instance_ty.exports.len()),
         });

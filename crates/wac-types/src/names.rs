@@ -4,6 +4,7 @@ use anyhow::{bail, Result};
 use core::hash::Hash;
 use indexmap::IndexMap;
 use semver::Version;
+use wasmparser::names::{ComponentName, ComponentNameKind};
 
 /// A semver-aware map for imports/exports of a component.
 ///
@@ -211,6 +212,16 @@ pub fn are_semver_compatible(a: &str, b: &str) -> bool {
         (Some((key_a, _)), Some((key_b, _))) => key_a == key_b,
         _ => false,
     }
+}
+
+/// Returns true if an import or export name is a plain-name label, such as
+/// the `primary` of `(import "primary" (implements "a:b/c") ...)`, rather
+/// than an interface name or another kind of name.
+pub fn is_label(name: &str) -> bool {
+    matches!(
+        ComponentName::new(name, 0).as_ref().map(|n| n.kind()),
+        Ok(ComponentNameKind::Label(_))
+    )
 }
 
 pub(crate) fn alternate_lookup_key(name: &str) -> Option<(&str, Version)> {

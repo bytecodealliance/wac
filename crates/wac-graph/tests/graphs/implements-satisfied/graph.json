@@ -13,5 +13,8 @@
     "arguments": [
         { "source": 2, "target": 4, "name": "primary" },
         { "source": 3, "target": 4, "name": "backup" }
+    ],
+    "exports": [
+        { "node": 2, "name": "renamed" }
     ]
 }

@@ -1,0 +1,14 @@
+{
+    "packages": [
+        { "name": "test:producer", "path": "producer.wit" }
+    ],
+    "nodes": [
+        { "type": "instantiation", "package": 0 },
+        { "type": "alias", "source": 0, "export": "primary" },
+        { "type": "alias", "source": 0, "export": "backup" }
+    ],
+    "exports": [
+        { "node": 1, "name": "primary" },
+        { "node": 2, "name": "backup" }
+    ]
+}

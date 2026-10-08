@@ -47,4 +47,5 @@
       (with "primary" (instance 3))
     )
   )
+  (export (;6;) "renamed" (instance 3))
 )

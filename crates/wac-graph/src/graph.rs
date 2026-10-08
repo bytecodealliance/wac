@@ -1,4 +1,4 @@
-use crate::encoding::{State, TypeEncoder};
+use crate::encoding::{implements_directive, State, TypeEncoder};
 use indexmap::IndexMap;
 use petgraph::{
     dot::{Config, Dot},
@@ -16,8 +16,8 @@ use std::{
 };
 use thiserror::Error;
 use wac_types::{
-    BorrowedKey, BorrowedPackageKey, DefinedType, ItemKind, Package, PackageKey, SubtypeChecker,
-    Type, TypeAggregator, Types, ValueType,
+    is_label, BorrowedKey, BorrowedPackageKey, DefinedType, ItemKind, Package, PackageKey,
+    SubtypeChecker, Type, TypeAggregator, Types, ValueType,
 };
 use wasm_encoder::{
     Alias, ComponentBuilder, ComponentExportKind, ComponentExternName, ComponentNameSection,
@@ -1455,10 +1455,27 @@ impl<'a> CompositionGraphEncoder<'a> {
             .filter(|(_, n)| !matches!(self.0.graph[**n].kind, NodeKind::Definition))
         {
             let index = state.node_indexes[node];
-            let node = &self.0.graph[*node];
+            let kind = self.0.graph[*node].item_kind;
+            // Preserve the `(implements "I")` directive of an instance
+            // exported under a plain-name label, if it came from a labelled
+            // import or export that had one; a directive isn't added to an
+            // instance that never had one.
+            let source = match &self.0.graph[*node].kind {
+                NodeKind::Import(name) => Some(name.as_str()),
+                NodeKind::Alias => self.0.get_alias_source(NodeId(*node)).map(|(_, e)| e),
+                _ => None,
+            };
+            let implements = implements_directive(&self.0.types, name, kind)
+                .filter(|_| source.is_some_and(is_label));
+            let extern_name = ComponentExternName {
+                name: Cow::Borrowed(name),
+                implements: implements.map(Cow::Borrowed),
+                external_id: None,
+                version_suffix: None,
+            };
             state
                 .builder()
-                .export(name, node.item_kind.into(), index, None);
+                .export(extern_name, kind.into(), index, None);
         }
 
         let mut builder = std::mem::take(state.builder());
@@ -1707,10 +1724,7 @@ impl<'a> CompositionGraphEncoder<'a> {
         // labels, so implements imports are exempt from the shared-dependency
         // deduplication below and carry an `implements` directive when
         // re-encoded.
-        let implements = match kind {
-            ItemKind::Instance(id) => crate::encoding::implements_directive(types, name, id),
-            _ => None,
-        };
+        let implements = implements_directive(types, name, kind);
 
         // Check to see if this is an import of an interface that's already been
         // imported; this can happen based on importing of shared dependencies.
@@ -1738,7 +1752,7 @@ impl<'a> CompositionGraphEncoder<'a> {
         );
 
         // Encode the type and import
-        let ty = encoder.ty(state, kind.ty(), None);
+        let ty = encoder.extern_ty(state, name, kind, false);
         let extern_name = ComponentExternName {
             name: Cow::Borrowed(name),
             implements: implements.map(Cow::Borrowed),

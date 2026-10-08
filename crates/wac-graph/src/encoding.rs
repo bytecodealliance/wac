@@ -4,9 +4,9 @@ use petgraph::graph::NodeIndex;
 use std::borrow::Cow;
 use std::collections::HashMap;
 use wac_types::{
-    CoreExtern, DefinedType, DefinedTypeId, Enum, Flags, FuncTypeId, InterfaceId, ItemKind,
-    ModuleTypeId, PrimitiveType, Record, ResourceId, Type, Types, UsedType, ValueType, Variant,
-    WorldId,
+    is_label, CoreExtern, DefinedType, DefinedTypeId, Enum, Flags, FuncTypeId, InterfaceId,
+    ItemKind, ModuleTypeId, PrimitiveType, Record, ResourceId, Type, Types, UsedType, ValueType,
+    Variant, WorldId,
 };
 use wasm_encoder::{
     Alias, ComponentBuilder, ComponentCoreTypeEncoder, ComponentExportKind, ComponentExternName,
@@ -14,11 +14,10 @@ use wasm_encoder::{
     ComponentValType, EntityType, GlobalType, InstanceType, MemoryType, ModuleType, TableType,
     TagKind, TagType, TypeBounds,
 };
-use wasmparser::names::{ComponentName, ComponentNameKind};
 
-/// Determines whether an instance import/export needs a component model
+/// Determines whether an import/export needs a component model
 /// `(implements "…")` directive, and if so returns the interface name to put
-/// inside it.
+/// inside it. Only instance externs can carry the directive.
 ///
 /// An instance extern is encoded one of two ways depending on its name:
 ///
@@ -33,21 +32,21 @@ use wasmparser::names::{ComponentName, ComponentNameKind};
 ///   different labels. Here this returns `Some("foo:bar/iface")`, i.e. the
 ///   string the caller should encode as the `implements` directive.
 ///
-/// `name` is the extern name (`primary`) and `interface` identifies the
-/// instance's interface within `types`, whose own name (`foo:bar/iface`) is the
+/// `name` is the extern name (`primary`) and `kind` is the extern's kind within
+/// `types`; for an instance, its interface's own name (`foo:bar/iface`) is the
 /// returned value.
 pub(crate) fn implements_directive<'a>(
     types: &'a Types,
     name: &str,
-    interface: InterfaceId,
+    kind: ItemKind,
 ) -> Option<&'a str> {
+    let ItemKind::Instance(interface) = kind else {
+        return None;
+    };
+
     // Only a plain-name label is encoded with an `implements` directive; a
     // regular interface extern already names its interface directly.
-    let is_label = matches!(
-        ComponentName::new(name, 0).as_ref().map(|n| n.kind()),
-        Ok(ComponentNameKind::Label(_))
-    );
-    if !is_label {
+    if !is_label(name) {
         return None;
     }
     types[interface].id.as_deref()
@@ -146,6 +145,9 @@ pub struct Scope {
     pub instances: IndexMap<String, u32>,
     /// The map of import/export name to their alias indexes.
     type_aliases: IndexMap<String, u32>,
+    /// The map of instance index and type export name to the index of the
+    /// type aliased from that export.
+    export_aliases: HashMap<(u32, String), u32>,
     /// The map of resource names to their encoded indexes.
     resources: IndexMap<String, u32>,
     /// The encodable for this scope.
@@ -201,6 +203,24 @@ impl State {
         prev.encodable
     }
 
+    /// Aliases the type export `name` of the instance at index `instance`,
+    /// reusing the alias if the current scope already has one.
+    fn alias_type_export(&mut self, instance: u32, name: &str) -> u32 {
+        let key = (instance, name.to_string());
+        if let Some(index) = self.current.export_aliases.get(&key) {
+            return *index;
+        }
+
+        let index = self.current.encodable.type_count();
+        self.current.encodable.alias(Alias::InstanceExport {
+            instance,
+            kind: ComponentExportKind::Type,
+            name,
+        });
+        self.current.export_aliases.insert(key, index);
+        index
+    }
+
     fn used_type_index(&mut self, name: &str) -> Option<u32> {
         if let Some(index) = self.current.type_aliases.get(name) {
             return Some(*index);
@@ -245,12 +265,7 @@ impl<'a> TypeEncoder<'a> {
                 (*kind == ItemKind::Type(ty)).then(|| (instance, name.clone()))
             })
         })?;
-        let index = state.current.encodable.type_count();
-        state.current.encodable.alias(Alias::InstanceExport {
-            instance,
-            kind: ComponentExportKind::Type,
-            name: &name,
-        });
+        let index = state.alias_type_export(instance, &name);
         state.current.type_indexes.insert(ty, index);
         Some(index)
     }
@@ -342,14 +357,9 @@ impl<'a> TypeEncoder<'a> {
             let interface = &self.0[used.interface];
             let iid = interface.id.as_ref().expect("interface should have an id");
             let instance = state.current.instances[iid];
-            let index = state.current.encodable.type_count();
             let export: &String = used.name.as_ref().unwrap_or(name);
             let kind = interface.exports.get(export).unwrap();
-            state.current.encodable.alias(Alias::InstanceExport {
-                instance,
-                kind: ComponentExportKind::Type,
-                name: export,
-            });
+            let index = state.alias_type_export(instance, export);
 
             log::debug!(
                 "aliased {kind} export `{export}` of instance index {instance} ({iid}) to type index {index}",
@@ -405,6 +415,46 @@ impl<'a> TypeEncoder<'a> {
             }
             _ => panic!("expected the pushed encodable to be an instance type"),
         }
+    }
+
+    /// Encodes the type of the import or export `name` of the given kind.
+    ///
+    /// An instance named by a plain-name label, such as an `(implements "I")`
+    /// extern, gets an instance type of its own, as wit-component encodes it,
+    /// rather than the cached type of its interface, unless its interface can
+    /// share one (see [`Self::shares_instance_type`]).
+    ///
+    /// Otherwise this defers to [`Self::ty`], which resolves `name` as a used
+    /// type if `resolve_used` is set.
+    pub fn extern_ty(
+        &self,
+        state: &mut State,
+        name: &str,
+        kind: ItemKind,
+        resolve_used: bool,
+    ) -> u32 {
+        match kind {
+            ItemKind::Instance(id) if is_label(name) && !self.shares_instance_type(id) => {
+                self.instance(state, id, false)
+            }
+            _ => self.ty(state, kind.ty(), resolve_used.then_some(name)),
+        }
+    }
+
+    /// Determines whether externs of an interface can share one instance type.
+    ///
+    /// Decoders such as wit-parser give each type an instance type exports one
+    /// identity, so externs sharing an instance type that exports a type see
+    /// it more than once and are rejected. Resources the interface defines are
+    /// the exception, as they are fresh for each extern; types it uses from
+    /// another interface are not.
+    fn shares_instance_type(&self, id: InterfaceId) -> bool {
+        let interface = &self.0[id];
+        interface.uses.is_empty()
+            && interface
+                .exports
+                .values()
+                .all(|kind| matches!(kind, ItemKind::Func(_) | ItemKind::Type(Type::Resource(_))))
     }
 
     pub fn component(&self, state: &mut State, id: WorldId) -> u32 {
@@ -758,7 +808,7 @@ impl<'a> TypeEncoder<'a> {
 
         log::debug!("encoding {kind} import `{name}`", kind = kind.desc(self.0));
         let ty = kind.ty();
-        let index = self.ty(state, ty, Some(name));
+        let index = self.extern_ty(state, name, kind, true);
 
         match kind {
             ItemKind::Type(_) => {
@@ -779,7 +829,7 @@ impl<'a> TypeEncoder<'a> {
             }
             ItemKind::Instance(id) => {
                 let import_index = state.current.encodable.instance_count();
-                let implements = implements_directive(self.0, name, id);
+                let implements = implements_directive(self.0, name, kind);
                 let extern_name = ComponentExternName {
                     name: Cow::Borrowed(name),
                     implements: implements.map(Cow::Borrowed),
@@ -885,14 +935,10 @@ impl<'a> TypeEncoder<'a> {
             kind = kind.desc(self.0)
         );
 
-        let ty = kind.ty();
-        let index = self.ty(state, ty, Some(name));
+        let index = self.extern_ty(state, name, kind, true);
         // Preserve the `(implements "I")` directive when re-encoding an
         // instance export that uses a plain-name label.
-        let implements = match kind {
-            ItemKind::Instance(id) => implements_directive(self.0, name, id),
-            _ => None,
-        };
+        let implements = implements_directive(self.0, name, kind);
         let extern_name = ComponentExternName {
             name: Cow::Borrowed(name),
             implements: implements.map(Cow::Borrowed),

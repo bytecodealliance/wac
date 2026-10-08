@@ -8,9 +8,12 @@ use std::{
     fs::{self, File},
     path::{Path, PathBuf},
 };
-use wac_graph::{types::Package, CompositionGraph, EncodeOptions, NodeId, PackageId};
+use wac_graph::{
+    types::{Interface, ItemKind, Package, Type, World},
+    CompositionGraph, EncodeOptions, NodeId, PackageId,
+};
 use wit_component::{ComponentEncoder, StringEncoding};
-use wit_parser::Resolve;
+use wit_parser::{decoding::DecodedWasm, Resolve, WorldId, WorldItem, WorldKey};
 
 /// Represents a node to add to a composition graph.
 #[derive(Deserialize)]
@@ -383,6 +386,296 @@ fn encoding() -> Result<()> {
             );
         }
     }
+
+    Ok(())
+}
+
+/// Describes the labelled instance externs among `items` as
+/// `label: I [functions]`, where `I` is the interface an `(implements "I")`
+/// extern names, or `_` for an unnamed interface.
+fn labelled_externs<'a>(
+    resolve: &Resolve,
+    items: impl IntoIterator<Item = (&'a WorldKey, &'a WorldItem)>,
+) -> Vec<String> {
+    items
+        .into_iter()
+        .filter_map(|(key, item)| {
+            let (WorldKey::Name(label), WorldItem::Interface { id, .. }) = (key, item) else {
+                return None;
+            };
+            let interface = resolve.id_of(*id).unwrap_or_else(|| "_".to_string());
+            let functions = resolve.interfaces[*id]
+                .functions
+                .keys()
+                .map(String::as_str)
+                .collect::<Vec<_>>()
+                .join(", ");
+            Some(format!("{label}: {interface} [{functions}]"))
+        })
+        .collect()
+}
+
+/// Encodes the composition graph of a test case in `tests/graphs`, with its
+/// components defined inline, and decodes it with wit-parser.
+fn decode_test_case(test_case: &str) -> Result<(Resolve, WorldId)> {
+    let root = Path::new("tests/graphs").join(test_case);
+    let file = File::open(root.join("graph.json"))?;
+    let graph =
+        serde_json::from_reader::<_, GraphFile>(file)?.into_composition_graph(&root, test_case)?;
+    let bytes = graph.encode(EncodeOptions::default())?;
+    match wit_parser::decoding::decode(&bytes)
+        .with_context(|| format!("failed to decode the composition of `{test_case}`"))?
+    {
+        DecodedWasm::Component(resolve, world) => Ok((resolve, world)),
+        DecodedWasm::WitPackage(..) => bail!("expected `{test_case}` to decode as a component"),
+    }
+}
+
+/// Tests that a composition with several `(implements "I")` imports of one
+/// interface decodes with wit-parser, through both implicit imports and
+/// explicit import nodes.
+///
+/// Each labelled import needs an instance type of its own, as wit-component
+/// encodes it: labels sharing one instance type share the types it exports,
+/// which wit-parser's decoder rejects.
+#[test]
+fn implements_imports_decode() -> Result<()> {
+    let expected = [
+        "primary: test:test/logger [log]",
+        "backup: test:test/logger [log]",
+    ];
+
+    let (resolve, world) = decode_test_case("implements-imports-defined-type")?;
+    assert_eq!(
+        labelled_externs(&resolve, &resolve.worlds[world].imports),
+        expected
+    );
+
+    let (resolve, world) = decode_test_case("implements-imports-resource")?;
+    assert_eq!(
+        labelled_externs(&resolve, &resolve.worlds[world].imports),
+        ["left: test:test/res [f]", "right: test:test/res [f]"]
+    );
+
+    // Import the consumer's labels through explicit import nodes instead.
+    let consumer = wat::parse_file("tests/graphs/implements-imports-defined-type/consumer.wat")?;
+    let mut graph = CompositionGraph::new();
+    let package = Package::from_bytes("test:consumer", None, consumer, graph.types_mut())?;
+    let package = graph.register_package(package)?;
+    let instantiation = graph.instantiate(package);
+    let imports = graph.types()[graph[package].ty()].imports.clone();
+    for (name, kind) in imports {
+        let import = graph.import(&name, kind)?;
+        graph.set_instantiation_argument(instantiation, &name, import)?;
+    }
+
+    let bytes = graph.encode(EncodeOptions::default())?;
+    let DecodedWasm::Component(resolve, world) = wit_parser::decoding::decode(&bytes)
+        .context("failed to decode the composition with explicit imports")?
+    else {
+        bail!("expected the composition to decode as a component");
+    };
+    assert_eq!(
+        labelled_externs(&resolve, &resolve.worlds[world].imports),
+        expected
+    );
+
+    Ok(())
+}
+
+/// Tests that labels of one interface imported by different components stay
+/// separate imports, each implementing its own version of the interface, and
+/// that one label imported at compatible versions implements the highest.
+#[test]
+fn implements_labels_decode() -> Result<()> {
+    let (resolve, world) = decode_test_case("implements-labels-unmerged")?;
+    assert_eq!(
+        labelled_externs(&resolve, &resolve.worlds[world].imports),
+        [
+            "primary: test:test/logger@0.2.0 [log]",
+            "backup: test:test/logger@0.2.1 [log, flush]",
+        ]
+    );
+
+    let (resolve, world) = decode_test_case("implements-label-semver-merge")?;
+    assert_eq!(
+        labelled_externs(&resolve, &resolve.worlds[world].imports),
+        ["primary: test:test/logger@0.2.1 [log, flush]"]
+    );
+
+    Ok(())
+}
+
+/// Tests that a composition re-exporting `(implements "I")` exports of an
+/// instantiation keeps their `implements` directive, and that re-exporting an
+/// interface export under a label doesn't add one.
+#[test]
+fn implements_composition_exports_decode() -> Result<()> {
+    let (resolve, world) = decode_test_case("implements-composition-exports")?;
+    assert_eq!(
+        labelled_externs(&resolve, &resolve.worlds[world].exports),
+        [
+            "primary: test:test/logger [log]",
+            "backup: test:test/logger [log]",
+        ]
+    );
+
+    let (resolve, world) = decode_test_case("implements-satisfied")?;
+    assert_eq!(
+        labelled_externs(&resolve, &resolve.worlds[world].exports),
+        ["renamed: _ [do-something]"]
+    );
+
+    Ok(())
+}
+
+#[test]
+fn reexport_preserves_source_implements_metadata() -> Result<()> {
+    let producer = wat::parse_str(
+        r#"(component
+            (type (instance
+                (type (func))
+                (export "log" (func (type 0)))))
+            (import "test:test/logger" (instance (type 0)))
+            (export "plain" (instance 0))
+            (export "annotated" (implements "test:test/logger") (instance 0))
+        )"#,
+    )?;
+    let mut graph = CompositionGraph::new();
+    let package = Package::from_bytes("test:producer", None, producer, graph.types_mut())?;
+    let package = graph.register_package(package)?;
+    let instance = graph.instantiate(package);
+    for name in ["plain", "annotated"] {
+        let alias = graph.alias_instance_export(instance, name)?;
+        graph.export(alias, name)?;
+    }
+
+    for define_components in [true, false] {
+        let bytes = graph.encode(EncodeOptions {
+            define_components,
+            ..Default::default()
+        })?;
+        let types = wasmparser::Validator::new_with_features(wasmparser::WasmFeatures::all())
+            .validate_all(&bytes)?;
+        assert_eq!(
+            types.component_item_for_export("plain").unwrap().implements,
+            None
+        );
+        assert_eq!(
+            types
+                .component_item_for_export("annotated")
+                .unwrap()
+                .implements
+                .as_deref(),
+            Some("test:test/logger")
+        );
+
+        if define_components {
+            let DecodedWasm::Component(resolve, world) = wit_parser::decoding::decode(&bytes)?
+            else {
+                bail!("expected a component");
+            };
+            assert_eq!(
+                labelled_externs(&resolve, &resolve.worlds[world].exports),
+                ["plain: _ [log]", "annotated: test:test/logger [log]"]
+            );
+        } else {
+            let import = types
+                .component_item_for_import("unlocked-dep=<test:producer>")
+                .unwrap();
+            let wasmparser::component_types::ComponentEntityType::Component(id) = import.ty else {
+                bail!("expected a component import");
+            };
+            assert_eq!(types[id].exports["plain"].implements, None);
+            assert_eq!(
+                types[id].exports["annotated"].implements.as_deref(),
+                Some("test:test/logger")
+            );
+        }
+    }
+
+    Ok(())
+}
+
+/// Tests that a world definition with several labelled imports and exports of
+/// one interface decodes with wit-parser, whether or not the interface is
+/// named (i.e. the labels are `(implements "I")` externs).
+///
+/// This encodes the labelled externs within a component type, where each
+/// needs an instance type of its own just as in a composition's imports,
+/// unless the interface only exports functions and its own resources.
+#[test]
+fn implements_world_decode() -> Result<()> {
+    let consumer = wat::parse_file("tests/graphs/implements-imports-defined-type/consumer.wat")?;
+    let mut graph = CompositionGraph::new();
+    let package = Package::from_bytes("test:consumer", None, consumer, graph.types_mut())?;
+
+    // Each set of labels refers to one interface, as in a component whose
+    // labels share one instance type.
+    let ItemKind::Instance(logger) = graph.types()[package.ty()].imports["primary"] else {
+        bail!("expected `primary` to be an instance");
+    };
+    let unnamed = Interface {
+        id: None,
+        ..graph.types()[logger].clone()
+    };
+    let unnamed = graph.types_mut().add_interface(unnamed);
+    let consumer = wat::parse_file("tests/graphs/implements-imports-resource/consumer.wat")?;
+    let package = Package::from_bytes("test:resources", None, consumer, graph.types_mut())?;
+    let ItemKind::Instance(res) = graph.types()[package.ty()].imports["left"] else {
+        bail!("expected `left` to be an instance");
+    };
+    let labelled = |interface, labels: &[&str]| {
+        labels
+            .iter()
+            .map(move |l| (l.to_string(), ItemKind::Instance(interface)))
+            .collect::<Vec<_>>()
+    };
+    let world = graph.types_mut().add_world(World {
+        id: Some("test:app/service".to_string()),
+        uses: Default::default(),
+        imports: [
+            labelled(logger, &["primary", "backup"]),
+            labelled(unnamed, &["first", "second"]),
+            labelled(res, &["left", "right"]),
+        ]
+        .concat()
+        .into_iter()
+        .collect(),
+        exports: [
+            labelled(logger, &["audit", "trace"]),
+            labelled(res, &["out"]),
+        ]
+        .concat()
+        .into_iter()
+        .collect(),
+    });
+    graph.define_type("service", Type::World(world))?;
+
+    let bytes = graph.encode(EncodeOptions::default())?;
+    let (resolve, world) =
+        wit_parser::decoding::decode_world(&bytes).context("failed to decode the world")?;
+    let world = &resolve.worlds[world];
+
+    assert_eq!(
+        labelled_externs(&resolve, &world.imports),
+        [
+            "primary: test:test/logger [log]",
+            "backup: test:test/logger [log]",
+            "first: _ [log]",
+            "second: _ [log]",
+            "left: test:test/res [f]",
+            "right: test:test/res [f]",
+        ]
+    );
+    assert_eq!(
+        labelled_externs(&resolve, &world.exports),
+        [
+            "audit: test:test/logger [log]",
+            "trace: test:test/logger [log]",
+            "out: test:test/res [f]",
+        ]
+    );
 
     Ok(())
 }

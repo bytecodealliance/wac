@@ -1,0 +1,5 @@
+failed to encode the graph
+
+Caused by:
+    0: failed to merge the type definition for implicit import `primary` due to conflicting types
+    1: interface `test:test/logger@0.3.0` cannot be merged with interface `test:test/logger@0.2.0`

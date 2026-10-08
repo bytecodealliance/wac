@@ -1,0 +1,52 @@
+(component
+  (type (;0;)
+    (instance
+      (type (;0;) (func (param "message" string)))
+      (export (;0;) "log" (func (type 0)))
+    )
+  )
+  (import "primary" (implements "test:test/logger@0.2.0") (instance (;0;) (type 0)))
+  (type (;1;)
+    (instance
+      (type (;0;) (func (param "message" string)))
+      (export (;0;) "log" (func (type 0)))
+      (type (;1;) (func))
+      (export (;1;) "flush" (func (type 1)))
+    )
+  )
+  (import "backup" (implements "test:test/logger@0.2.1") (instance (;1;) (type 1)))
+  (type (;2;)
+    (component
+      (type (;0;)
+        (instance
+          (type (;0;) (func (param "message" string)))
+          (export (;0;) "log" (func (type 0)))
+        )
+      )
+      (import "primary" (implements "test:test/logger@0.2.0") (instance (;0;) (type 0)))
+    )
+  )
+  (import "unlocked-dep=<test:consumer-a>" (component (;0;) (type 2)))
+  (instance (;2;) (instantiate 0
+      (with "primary" (instance 0))
+    )
+  )
+  (type (;3;)
+    (component
+      (type (;0;)
+        (instance
+          (type (;0;) (func (param "message" string)))
+          (export (;0;) "log" (func (type 0)))
+          (type (;1;) (func))
+          (export (;1;) "flush" (func (type 1)))
+        )
+      )
+      (import "backup" (implements "test:test/logger@0.2.1") (instance (;0;) (type 0)))
+    )
+  )
+  (import "unlocked-dep=<test:consumer-b>" (component (;1;) (type 3)))
+  (instance (;3;) (instantiate 1
+      (with "backup" (instance 1))
+    )
+  )
+)

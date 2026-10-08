@@ -1,0 +1,11 @@
+package test:test;
+
+interface logger {
+  enum level { debug, info }
+  log: func(level: level, message: string);
+}
+
+world producer {
+  export primary: logger;
+  export backup: logger;
+}

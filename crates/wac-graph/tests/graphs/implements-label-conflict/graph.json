@@ -1,0 +1,10 @@
+{
+    "packages": [
+        { "name": "test:consumer-a", "path": "consumer-a.wat" },
+        { "name": "test:consumer-b", "path": "consumer-b.wat" }
+    ],
+    "nodes": [
+        { "type": "instantiation", "package": 0 },
+        { "type": "instantiation", "package": 1 }
+    ]
+}

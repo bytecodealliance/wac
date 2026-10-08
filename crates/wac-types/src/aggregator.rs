@@ -1,5 +1,5 @@
 use crate::{
-    names::{alternate_lookup_key, are_semver_compatible},
+    names::{alternate_lookup_key, are_semver_compatible, is_label},
     DefinedType, DefinedTypeId, FuncType, FuncTypeId, Interface, InterfaceId, ItemKind,
     ModuleTypeId, Record, Resource, ResourceAlias, ResourceId, SubtypeChecker, Type, Types,
     UsedType, ValueType, Variant, World, WorldId,
@@ -135,7 +135,7 @@ impl TypeAggregator {
             return Ok(self);
         }
 
-        let remapped = self.remap_item_kind(types, kind, checker)?;
+        let remapped = self.remap_extern(name, types, kind, checker)?;
         let prev = self.imports.insert(name.to_string(), remapped);
         assert!(prev.is_none());
         Ok(self)
@@ -184,20 +184,32 @@ impl TypeAggregator {
         id: InterfaceId,
         checker: &mut SubtypeChecker,
     ) -> Result<()> {
+        self.merge_interface_names(existing, types, id)?;
+
         // Merge the used types of the two interfaces
         self.merge_interface_used_types(existing, types, id, checker)?;
 
         // Merge the interface's exports
         for (name, source_kind) in &types[id].exports {
+            let mut merged_name = None;
             if let Some(target_kind) = self.types[existing].exports.get(name).copied() {
+                if let (true, ItemKind::Instance(target), ItemKind::Instance(source)) =
+                    (is_label(name), target_kind, *source_kind)
+                {
+                    self.merge_interface_names(target, types, source)?;
+                    merged_name = Some(self.types[target].id.clone());
+                }
                 // If the source kind is already a subtype of the target, do nothing
                 if checker
                     .is_subtype(*source_kind, types, target_kind, &self.types)
                     .is_ok()
                 {
-                    // Keep track that the source type should be replaced with the
-                    // target type wherever it's used.
-                    self.remapped.insert(source_kind.ty(), target_kind.ty());
+                    // Labelled instances have a separate definition per extern.
+                    // Caching their mapping would make a later named import
+                    // reuse this label's potentially narrower definition.
+                    if !(is_label(name) && matches!(source_kind, ItemKind::Instance(_))) {
+                        self.remapped.insert(source_kind.ty(), target_kind.ty());
+                    }
                     continue;
                 }
 
@@ -208,8 +220,52 @@ impl TypeAggregator {
                     .with_context(|| format!("mismatched type for export `{name}`"))?;
             }
 
-            let remapped = self.remap_item_kind(types, *source_kind, checker)?;
+            let remapped = self.remap_extern(name, types, *source_kind, checker)?;
+            if let (Some(name), ItemKind::Instance(id)) = (merged_name, remapped) {
+                self.types[id].id = name;
+            }
             self.types[existing].exports.insert(name.clone(), remapped);
+        }
+
+        Ok(())
+    }
+
+    /// Checks that two named interfaces being merged are the same interface on
+    /// compatible semver tracks, and names the merged interface after the
+    /// higher version.
+    ///
+    /// The merged interface can have exports only the higher version defines,
+    /// and an `(implements "I")` import of it encodes its name as `I`.
+    ///
+    /// Merging a named interface with an unnamed one (e.g. a label imported
+    /// both as `(implements "I")` and as an inline interface) keeps the name,
+    /// whichever is merged first.
+    fn merge_interface_names(
+        &mut self,
+        existing: InterfaceId,
+        types: &Types,
+        id: InterfaceId,
+    ) -> Result<()> {
+        let (existing_name, name) = match (&self.types[existing].id, &types[id].id) {
+            (Some(existing_name), Some(name)) => (existing_name, name),
+            (None, Some(name)) => {
+                self.types[existing].id = Some(name.clone());
+                return Ok(());
+            }
+            _ => return Ok(()),
+        };
+
+        if !are_semver_compatible(existing_name, name) {
+            bail!("interface `{name}` cannot be merged with interface `{existing_name}`");
+        }
+
+        if let (Some((_, existing_version)), Some((_, version))) = (
+            alternate_lookup_key(existing_name),
+            alternate_lookup_key(name),
+        ) {
+            if version > existing_version {
+                self.types[existing].id = Some(name.clone());
+            }
         }
 
         Ok(())
@@ -284,7 +340,14 @@ impl TypeAggregator {
         // Merge the worlds's imports
         checker.invert();
         for (name, source_kind) in &types[id].imports {
+            let mut merged_name = None;
             if let Some(target_kind) = self.types[existing].imports.get(name).copied() {
+                if let (true, ItemKind::Instance(target), ItemKind::Instance(source)) =
+                    (is_label(name), target_kind, *source_kind)
+                {
+                    self.merge_interface_names(target, types, source)?;
+                    merged_name = Some(self.types[target].id.clone());
+                }
                 // If the target kind is already a subtype of the source, do nothing
                 if checker
                     .is_subtype(target_kind, &self.types, *source_kind, types)
@@ -300,7 +363,10 @@ impl TypeAggregator {
                     .with_context(|| format!("mismatched type for import `{name}`"))?;
             }
 
-            let remapped = self.remap_item_kind(types, *source_kind, checker)?;
+            let remapped = self.remap_extern(name, types, *source_kind, checker)?;
+            if let (Some(name), ItemKind::Instance(id)) = (merged_name, remapped) {
+                self.types[id].id = name;
+            }
             self.types[existing].imports.insert(name.clone(), remapped);
         }
 
@@ -308,7 +374,14 @@ impl TypeAggregator {
 
         // Merge the worlds's exports
         for (name, source_kind) in &types[id].exports {
+            let mut merged_name = None;
             if let Some(target_kind) = self.types[existing].exports.get(name).copied() {
+                if let (true, ItemKind::Instance(target), ItemKind::Instance(source)) =
+                    (is_label(name), target_kind, *source_kind)
+                {
+                    self.merge_interface_names(target, types, source)?;
+                    merged_name = Some(self.types[target].id.clone());
+                }
                 // If the source kind is already a subtype of the target, do nothing
                 if checker
                     .is_subtype(*source_kind, types, target_kind, &self.types)
@@ -324,7 +397,10 @@ impl TypeAggregator {
                     .with_context(|| format!("mismatched type for export `{name}`"))?;
             }
 
-            let remapped = self.remap_item_kind(types, *source_kind, checker)?;
+            let remapped = self.remap_extern(name, types, *source_kind, checker)?;
+            if let (Some(name), ItemKind::Instance(id)) = (merged_name, remapped) {
+                self.types[id].id = name;
+            }
             self.types[existing].exports.insert(name.clone(), remapped);
         }
 
@@ -564,6 +640,26 @@ impl TypeAggregator {
         Ok(())
     }
 
+    /// Remaps the item kind of an import or export named `name`.
+    ///
+    /// Each label (e.g. of an `(implements "I")` import) is an extern of its
+    /// own, so a labelled instance isn't merged with other externs of its
+    /// interface: its type only requires what that label's users need.
+    fn remap_extern(
+        &mut self,
+        name: &str,
+        types: &Types,
+        kind: ItemKind,
+        checker: &mut SubtypeChecker,
+    ) -> Result<ItemKind> {
+        match kind {
+            ItemKind::Instance(id) if is_label(name) => Ok(ItemKind::Instance(
+                self.remap_labelled_interface(types, id, checker)?,
+            )),
+            _ => self.remap_item_kind(types, kind, checker),
+        }
+    }
+
     fn remap_item_kind(
         &mut self,
         types: &Types,
@@ -738,8 +834,46 @@ impl TypeAggregator {
             };
         }
 
+        let interface = self.remap_interface_definition(types, id, checker)?;
+        let remapped = self.types.add_interface(interface);
+        let prev = self
+            .remapped
+            .insert(Type::Interface(id), Type::Interface(remapped));
+        assert!(prev.is_none());
+
+        if let Some(name) = self.types[remapped].id.as_ref() {
+            let prev = self.interfaces.insert(name.clone(), remapped);
+            assert!(prev.is_none());
+        }
+
+        Ok(remapped)
+    }
+
+    /// Remaps the interface of a labelled instance extern to a new interface.
+    ///
+    /// Unlike [`Self::remap_interface`], the new interface neither merges with
+    /// other remappings of the interface nor is found by its name, as each
+    /// label is an extern of its own. The types it uses or exports are
+    /// remapped as usual, so they may be shared with other interfaces.
+    fn remap_labelled_interface(
+        &mut self,
+        types: &Types,
+        id: InterfaceId,
+        checker: &mut SubtypeChecker,
+    ) -> Result<InterfaceId> {
+        let interface = self.remap_interface_definition(types, id, checker)?;
+        Ok(self.types.add_interface(interface))
+    }
+
+    /// Remaps the used types and exports of an interface.
+    fn remap_interface_definition(
+        &mut self,
+        types: &Types,
+        id: InterfaceId,
+        checker: &mut SubtypeChecker,
+    ) -> Result<Interface> {
         let ty = &types[id];
-        let interface = Interface {
+        Ok(Interface {
             id: ty.id.clone(),
             uses: ty
                 .uses
@@ -761,22 +895,9 @@ impl TypeAggregator {
             exports: ty
                 .exports
                 .iter()
-                .map(|(n, k)| Ok((n.clone(), self.remap_item_kind(types, *k, checker)?)))
+                .map(|(n, k)| Ok((n.clone(), self.remap_extern(n, types, *k, checker)?)))
                 .collect::<Result<_>>()?,
-        };
-
-        let remapped = self.types.add_interface(interface);
-        let prev = self
-            .remapped
-            .insert(Type::Interface(id), Type::Interface(remapped));
-        assert!(prev.is_none());
-
-        if let Some(name) = self.types[remapped].id.as_ref() {
-            let prev = self.interfaces.insert(name.clone(), remapped);
-            assert!(prev.is_none());
-        }
-
-        Ok(remapped)
+        })
     }
 
     fn remap_world(
@@ -815,12 +936,12 @@ impl TypeAggregator {
             imports: ty
                 .imports
                 .iter()
-                .map(|(n, k)| Ok((n.clone(), self.remap_item_kind(types, *k, checker)?)))
+                .map(|(n, k)| Ok((n.clone(), self.remap_extern(n, types, *k, checker)?)))
                 .collect::<Result<_>>()?,
             exports: ty
                 .exports
                 .iter()
-                .map(|(n, k)| Ok((n.clone(), self.remap_item_kind(types, *k, checker)?)))
+                .map(|(n, k)| Ok((n.clone(), self.remap_extern(n, types, *k, checker)?)))
                 .collect::<Result<_>>()?,
         };
 
@@ -1469,5 +1590,399 @@ mod tests {
                 &mut checker,
             )
             .unwrap();
+    }
+
+    // Helper to create a logger interface named `name` exporting a no-op func
+    // for each of `funcs`
+    fn make_logger(types: &mut Types, name: &str, funcs: &[&str]) -> InterfaceId {
+        let exports = funcs
+            .iter()
+            .map(|f| (*f, ItemKind::Func(make_func_type(types))))
+            .collect();
+        make_interface(types, Some(name), exports)
+    }
+
+    #[test]
+    fn aggregate_labels_of_one_interface_stay_separate() {
+        let mut types1 = Types::default();
+        let primary = make_logger(&mut types1, "a:b/logger@0.2.0", &["log"]);
+        let mut types2 = Types::default();
+        let backup = make_logger(&mut types2, "a:b/logger@0.2.1", &["log", "flush"]);
+
+        let mut cache = HashSet::new();
+        let mut checker = SubtypeChecker::new(&mut cache);
+
+        let agg = TypeAggregator::new()
+            .aggregate(
+                "primary",
+                &types1,
+                ItemKind::Instance(primary),
+                &mut checker,
+            )
+            .unwrap()
+            .aggregate("backup", &types2, ItemKind::Instance(backup), &mut checker)
+            .unwrap();
+
+        // Each label keeps its own interface, version, and exports
+        let imports: Vec<_> = agg
+            .imports()
+            .map(|(name, kind)| match kind {
+                ItemKind::Instance(id) => {
+                    let interface = &agg.types()[id];
+                    let exports: Vec<_> = interface.exports.keys().map(String::as_str).collect();
+                    (name, interface.id.as_deref().unwrap(), exports)
+                }
+                _ => panic!("expected an instance"),
+            })
+            .collect();
+        assert_eq!(
+            imports,
+            [
+                ("primary", "a:b/logger@0.2.0", vec!["log"]),
+                ("backup", "a:b/logger@0.2.1", vec!["log", "flush"]),
+            ]
+        );
+    }
+
+    #[test]
+    fn aggregate_label_keeps_highest_version() {
+        let mut types1 = Types::default();
+        let lower = make_logger(&mut types1, "a:b/logger@0.2.0", &["log"]);
+        let mut types2 = Types::default();
+        let higher = make_logger(&mut types2, "a:b/logger@0.2.1", &["log", "flush"]);
+
+        let mut cache = HashSet::new();
+        let mut checker = SubtypeChecker::new(&mut cache);
+
+        let agg = TypeAggregator::new()
+            .aggregate("primary", &types1, ItemKind::Instance(lower), &mut checker)
+            .unwrap()
+            .aggregate("primary", &types2, ItemKind::Instance(higher), &mut checker)
+            .unwrap();
+
+        // The label's merged interface is named after the version that
+        // defines all of its exports
+        let items: Vec<_> = agg.imports().collect();
+        assert_eq!(items.len(), 1);
+        let ItemKind::Instance(id) = items[0].1 else {
+            panic!("expected an instance");
+        };
+        let interface = &agg.types()[id];
+        assert_eq!(interface.id.as_deref(), Some("a:b/logger@0.2.1"));
+        assert_eq!(
+            interface.exports.keys().collect::<Vec<_>>(),
+            ["log", "flush"]
+        );
+    }
+
+    #[test]
+    fn aggregate_label_of_incompatible_interfaces_fails() {
+        let mut types1 = Types::default();
+        let lower = make_logger(&mut types1, "a:b/logger@0.2.0", &["log"]);
+        let mut types2 = Types::default();
+        let higher = make_logger(&mut types2, "a:b/logger@0.3.0", &["log"]);
+
+        let mut cache = HashSet::new();
+        let mut checker = SubtypeChecker::new(&mut cache);
+
+        let result = TypeAggregator::new()
+            .aggregate("primary", &types1, ItemKind::Instance(lower), &mut checker)
+            .unwrap()
+            .aggregate("primary", &types2, ItemKind::Instance(higher), &mut checker);
+        let err = result.unwrap_err().to_string();
+        assert_eq!(
+            err,
+            "interface `a:b/logger@0.3.0` cannot be merged with interface `a:b/logger@0.2.0`"
+        );
+    }
+
+    // Helper to get the interface name and export names of an instance
+    fn describe(agg: &TypeAggregator, kind: ItemKind) -> (Option<&str>, Vec<&str>) {
+        let ItemKind::Instance(id) = kind else {
+            panic!("expected an instance");
+        };
+        let interface = &agg.types()[id];
+        (
+            interface.id.as_deref(),
+            interface.exports.keys().map(String::as_str).collect(),
+        )
+    }
+
+    #[test]
+    fn aggregate_label_keeps_interface_name() {
+        let mut types = Types::default();
+        let named = make_logger(&mut types, "a:b/logger", &["log"]);
+        let func = make_func_type(&mut types);
+        let unnamed = make_interface(&mut types, None, vec![("log", ItemKind::Func(func))]);
+
+        // Whichever is aggregated first, the label implements the named interface
+        for order in [[unnamed, named], [named, unnamed]] {
+            let mut cache = HashSet::new();
+            let mut checker = SubtypeChecker::new(&mut cache);
+
+            let agg = TypeAggregator::new()
+                .aggregate(
+                    "primary",
+                    &types,
+                    ItemKind::Instance(order[0]),
+                    &mut checker,
+                )
+                .unwrap()
+                .aggregate(
+                    "primary",
+                    &types,
+                    ItemKind::Instance(order[1]),
+                    &mut checker,
+                )
+                .unwrap();
+
+            let items: Vec<_> = agg.imports().collect();
+            assert_eq!(items.len(), 1);
+            assert_eq!(
+                describe(&agg, items[0].1),
+                (Some("a:b/logger"), vec!["log"])
+            );
+        }
+    }
+
+    #[test]
+    fn aggregate_label_in_component_import_stays_separate() {
+        let mut types = Types::default();
+        let label = make_logger(&mut types, "a:b/logger", &["log"]);
+        let logger = make_logger(&mut types, "a:b/logger", &["log", "flush"]);
+        let world = types.add_world(World {
+            id: None,
+            uses: IndexMap::new(),
+            imports: [("primary".to_string(), ItemKind::Instance(label))]
+                .into_iter()
+                .collect(),
+            exports: IndexMap::new(),
+        });
+
+        let mut cache = HashSet::new();
+        let mut checker = SubtypeChecker::new(&mut cache);
+
+        let agg = TypeAggregator::new()
+            .aggregate("comp", &types, ItemKind::Component(world), &mut checker)
+            .unwrap()
+            .aggregate(
+                "a:b/logger",
+                &types,
+                ItemKind::Instance(logger),
+                &mut checker,
+            )
+            .unwrap();
+
+        // The label within the component type only requires its own exports
+        let imports: IndexMap<_, _> = agg.imports().collect();
+        let ItemKind::Component(world) = imports["comp"] else {
+            panic!("expected a component");
+        };
+        let label = agg.types()[world].imports["primary"];
+        assert_eq!(describe(&agg, label), (Some("a:b/logger"), vec!["log"]));
+        assert_eq!(
+            describe(&agg, imports["a:b/logger"]),
+            (Some("a:b/logger"), vec!["log", "flush"])
+        );
+    }
+
+    #[test]
+    fn aggregate_component_labels_check_names_even_when_shapes_match() {
+        let make_world = |version: &str| {
+            let mut types = Types::default();
+            let logger = make_logger(&mut types, version, &["log"]);
+            let world = types.add_world(World {
+                id: None,
+                uses: IndexMap::new(),
+                imports: [("primary".to_string(), ItemKind::Instance(logger))]
+                    .into_iter()
+                    .collect(),
+                exports: [("backup".to_string(), ItemKind::Instance(logger))]
+                    .into_iter()
+                    .collect(),
+            });
+            (types, world)
+        };
+
+        let (lower_types, lower_world) = make_world("a:b/logger@0.2.0");
+        let (higher_types, higher_world) = make_world("a:b/logger@0.2.1");
+        for (first_types, first_world, second_types, second_world) in [
+            (&lower_types, lower_world, &higher_types, higher_world),
+            (&higher_types, higher_world, &lower_types, lower_world),
+        ] {
+            let mut cache = HashSet::new();
+            let mut checker = SubtypeChecker::new(&mut cache);
+            let agg = TypeAggregator::new()
+                .aggregate(
+                    "comp",
+                    first_types,
+                    ItemKind::Component(first_world),
+                    &mut checker,
+                )
+                .unwrap()
+                .aggregate(
+                    "comp",
+                    second_types,
+                    ItemKind::Component(second_world),
+                    &mut checker,
+                )
+                .unwrap();
+            let ItemKind::Component(world) = agg.imports().next().unwrap().1 else {
+                panic!("expected a component");
+            };
+            for label in [
+                agg.types()[world].imports["primary"],
+                agg.types()[world].exports["backup"],
+            ] {
+                assert_eq!(describe(&agg, label).0, Some("a:b/logger@0.2.1"));
+            }
+        }
+
+        let (incompatible_types, incompatible_world) = make_world("a:b/logger@0.3.0");
+        let mut cache = HashSet::new();
+        let mut checker = SubtypeChecker::new(&mut cache);
+        let result = TypeAggregator::new()
+            .aggregate(
+                "comp",
+                &lower_types,
+                ItemKind::Component(lower_world),
+                &mut checker,
+            )
+            .unwrap()
+            .aggregate(
+                "comp",
+                &incompatible_types,
+                ItemKind::Component(incompatible_world),
+                &mut checker,
+            );
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn aggregate_nested_labelled_exports_stay_separate() {
+        let mut types = Types::default();
+        let primary = make_logger(&mut types, "a:b/logger@0.2.0", &["log"]);
+        let backup = make_logger(&mut types, "a:b/logger@0.2.1", &["log", "flush"]);
+        let outer = make_interface(
+            &mut types,
+            Some("a:b/outer"),
+            vec![
+                ("primary", ItemKind::Instance(primary)),
+                ("backup", ItemKind::Instance(backup)),
+            ],
+        );
+        let mut cache = HashSet::new();
+        let mut checker = SubtypeChecker::new(&mut cache);
+        let agg = TypeAggregator::new()
+            .aggregate("a:b/outer", &types, ItemKind::Instance(outer), &mut checker)
+            .unwrap();
+        let ItemKind::Instance(outer) = agg.imports().next().unwrap().1 else {
+            panic!("expected an instance");
+        };
+        let exports = &agg.types()[outer].exports;
+        assert_eq!(
+            describe(&agg, exports["primary"]),
+            (Some("a:b/logger@0.2.0"), vec!["log"])
+        );
+        assert_eq!(
+            describe(&agg, exports["backup"]),
+            (Some("a:b/logger@0.2.1"), vec!["log", "flush"])
+        );
+    }
+
+    #[test]
+    fn aggregate_nested_labelled_export_keeps_highest_version() {
+        let make_outer = |version: &str| {
+            let mut types = Types::default();
+            let logger = make_logger(&mut types, version, &["log"]);
+            let outer = make_interface(
+                &mut types,
+                Some("a:b/outer"),
+                vec![("primary", ItemKind::Instance(logger))],
+            );
+            (types, outer)
+        };
+        let (lower_types, lower) = make_outer("a:b/logger@0.2.0");
+        let (higher_types, higher) = make_outer("a:b/logger@0.2.1");
+        let mut cache = HashSet::new();
+        let mut checker = SubtypeChecker::new(&mut cache);
+        let agg = TypeAggregator::new()
+            .aggregate(
+                "a:b/outer",
+                &lower_types,
+                ItemKind::Instance(lower),
+                &mut checker,
+            )
+            .unwrap()
+            .aggregate(
+                "a:b/outer",
+                &higher_types,
+                ItemKind::Instance(higher),
+                &mut checker,
+            )
+            .unwrap();
+        let ItemKind::Instance(outer) = agg.imports().next().unwrap().1 else {
+            panic!("expected an instance");
+        };
+        assert_eq!(
+            describe(&agg, agg.types()[outer].exports["primary"]).0,
+            Some("a:b/logger@0.2.1")
+        );
+    }
+
+    #[test]
+    fn aggregate_named_import_after_merging_nested_labels() {
+        let mut types = Types::default();
+        let lower = make_logger(&mut types, "a:b/logger@0.2.0", &["log"]);
+        let higher = make_logger(&mut types, "a:b/logger@0.2.1", &["log", "flush"]);
+        let outer_lower = make_interface(
+            &mut types,
+            None,
+            vec![("primary", ItemKind::Instance(lower))],
+        );
+        let outer_higher = make_interface(
+            &mut types,
+            None,
+            vec![("primary", ItemKind::Instance(higher))],
+        );
+        let mut cache = HashSet::new();
+        let mut checker = SubtypeChecker::new(&mut cache);
+        let agg = TypeAggregator::new()
+            .aggregate(
+                "outer",
+                &types,
+                ItemKind::Instance(outer_lower),
+                &mut checker,
+            )
+            .unwrap()
+            .aggregate(
+                "outer",
+                &types,
+                ItemKind::Instance(outer_higher),
+                &mut checker,
+            )
+            .unwrap()
+            .aggregate(
+                "a:b/logger@0.2.1",
+                &types,
+                ItemKind::Instance(higher),
+                &mut checker,
+            )
+            .unwrap();
+
+        let imports: IndexMap<_, _> = agg.imports().collect();
+        // The named import must retain its full definition even though the
+        // same source interface was merged into a narrower labelled export.
+        assert_eq!(
+            describe(&agg, imports["a:b/logger@0.2.1"]),
+            (Some("a:b/logger@0.2.1"), vec!["log", "flush"])
+        );
+        let ItemKind::Instance(outer) = imports["outer"] else {
+            panic!("expected an instance");
+        };
+        assert_eq!(
+            describe(&agg, agg.types()[outer].exports["primary"]).1,
+            vec!["log"]
+        );
     }
 }
