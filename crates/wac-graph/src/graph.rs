@@ -1738,7 +1738,7 @@ impl<'a> CompositionGraphEncoder<'a> {
         );
 
         // Encode the type and import
-        let ty = encoder.ty(state, kind.ty(), None);
+        let ty = encoder.extern_ty(state, name, kind, false);
         let extern_name = ComponentExternName {
             name: Cow::Borrowed(name),
             implements: implements.map(Cow::Borrowed),
