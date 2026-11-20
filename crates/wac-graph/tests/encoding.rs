@@ -359,6 +359,13 @@ fn encoding() -> Result<()> {
             let bytes =
                 r.with_context(|| format!("failed to encode for test case `{test_case}`"))?;
 
+            // The output must also decode with wit-parser, which rejects some
+            // shapes that validate, such as labelled instance externs sharing
+            // an instance type.
+            wit_parser::decoding::decode(&bytes).with_context(|| {
+                format!("failed to decode the encoded bytes for test case `{test_case}`")
+            })?;
+
             (
                 wasmprinter::print_bytes(&bytes).with_context(|| {
                     format!("failed to print encoded bytes for test case `{test_case}`")
